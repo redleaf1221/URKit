@@ -714,10 +714,19 @@ inline std::unordered_map<std::string, const void *> &field_cache() {
 inline void clear_error() noexcept {
     error_slot().clear();
 }
+// The Unity helpers follow the Win32 GetLastError contract: a failure is
+// recorded for the caller and not printed, because only the caller knows the
+// context and owns the log policy. Define URK_UNITY_LOG_ERRORS=1 to get the old
+// echo-every-failure behaviour while chasing a specific call.
+#ifndef URK_UNITY_LOG_ERRORS
+#define URK_UNITY_LOG_ERRORS 0
+#endif
+
 inline void set_error(std::string_view text) {
     error_slot().assign(text.data(), text.size());
-    // Log too, so failures are visible even if last_error() is never polled.
+#if URK_UNITY_LOG_ERRORS
     URK::log(("[Unity][ERROR] " + error_slot()).c_str());
+#endif
 }
 inline const char *fallback_error() noexcept {
     const std::string &value = error_slot();
@@ -1040,7 +1049,9 @@ inline void append_backend_error() {
         if (!error_slot().empty())
             error_slot() += "; backend: ";
         error_slot() += e;
+#if URK_UNITY_LOG_ERRORS
         URK::log((std::string("[Unity][ERROR] backend: ") + e).c_str());
+#endif
     }
 }
 inline std::string managed_string_to_utf8(void *value) {
