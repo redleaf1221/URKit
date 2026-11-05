@@ -573,6 +573,12 @@ bool BuildPlan(const Inspection &inspection, const CandidateTree &candidate, std
     std::size_t templateCount = 0;
 
     for (const std::string &path : candidateFiles) {
+        // Localization files are user-owned once the project exists. Updating
+        // must not add missing languages back or refresh existing ones, so a
+        // language the author deleted stays deleted.
+        if (path.starts_with("locales/"))
+            continue;
+
         const fs::path source = candidate.root() / path;
         const fs::path existing = inspection.projectRoot / path;
         const bool generated =
