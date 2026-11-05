@@ -360,6 +360,11 @@ enum class FindObjectsSortMode : int {
     None = 0,
     InstanceID = 1
 };
+// Unity 2022.3+/6 take FindObjectsInactive where 2022.2 took FindObjectsSortMode.
+enum class FindObjectsInactive : int {
+    Exclude = 0,
+    Include = 1
+};
 enum class ObjectFilterFlags : std::uint32_t {
     None = 0,
     IncludeInactive = 1u << 0,

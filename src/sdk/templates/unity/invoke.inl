@@ -322,6 +322,9 @@ template <> inline std::optional<const char *> parameter_type_name<TypeObject>()
 template <> inline std::optional<const char *> parameter_type_name<FindObjectsSortMode>() {
     return "UnityEngine.FindObjectsSortMode";
 }
+template <> inline std::optional<const char *> parameter_type_name<FindObjectsInactive>() {
+    return "UnityEngine.FindObjectsInactive";
+}
 template <> inline std::optional<const char *> parameter_type_name<Object>() {
     return "UnityEngine.Object";
 }
@@ -677,13 +680,28 @@ detail::FindObjectsUsingRooted(TypeRef owner, std::string_view methodName, std::
         return {};
     }
     void *array = InvokeStatic<void *>(owner, methodName, TypeObject{type}, std::forward<ExtraArgs>(extraArgs)...);
-    // FindObjectsOfType (pre-2022.2) vs FindObjectsByType; try both.
-    if (!array && methodName == "FindObjectsOfType" && sizeof...(ExtraArgs) == 0) {
+    if (!array && sizeof...(ExtraArgs) == 0 &&
+        (methodName == "FindObjectsOfType" || methodName == "FindObjectsByType")) {
+        // The object-search API moved twice: Unity 6 requires the
+        // FindObjectsInactive second parameter and dropped the one-argument
+        // FindObjectsOfType(Type), while 2022.2 and older only know
+        // FindObjectsSortMode. Retry newest-first so one generated SDK works on
+        // every player instead of failing with "no overload matched".
         clear_error();
-        array = InvokeStatic<void *>(owner, "FindObjectsByType", TypeObject{type}, FindObjectsSortMode::None);
-    } else if (!array && methodName == "FindObjectsByType") {
-        clear_error();
-        array = InvokeStatic<void *>(owner, "FindObjectsOfType", TypeObject{type});
+        array = InvokeStatic<void *>(owner, "FindObjectsByType", TypeObject{type},
+                                     FindObjectsInactive::Exclude, FindObjectsSortMode::None);
+        if (!array) {
+            clear_error();
+            array = InvokeStatic<void *>(owner, "FindObjectsByType", TypeObject{type}, FindObjectsSortMode::None);
+        }
+        if (!array) {
+            clear_error();
+            array = InvokeStatic<void *>(owner, "FindObjectsOfType", TypeObject{type}, false);
+        }
+        if (!array) {
+            clear_error();
+            array = InvokeStatic<void *>(owner, "FindObjectsOfType", TypeObject{type});
+        }
     }
     return RootedObjectArray<T>::from_managed_array(array, "Unity rooted object finding");
 }
