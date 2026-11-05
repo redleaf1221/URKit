@@ -43,12 +43,12 @@ Build it before you change anything, just to confirm the toolchain works:
 
 ```powershell
 cd C:\Games\SampleGame\urk-sdk-output\FirstMod\project
-cmake --preset clang-debug
-cmake --build --preset clang-debug --parallel
+cmake --preset clang-relwithdebinfo
+cmake --build --preset clang-relwithdebinfo --parallel
 ```
 
 (Using MSVC instead? Run this from an x64 Visual Studio Developer PowerShell
-and use `msvc-debug`.)
+and use `msvc-relwithdebinfo`.)
 
 The build copies the DLL straight into the game's `Mods` folder.
 
@@ -85,7 +85,7 @@ bool start(const URK_ModContext *ctx) {
 ```
 
 Add that `ModLog::info("FirstMod is alive")` line, rebuild
-(`cmake --build --preset clang-debug --parallel`; no need to re-run
+(`cmake --build --preset clang-relwithdebinfo --parallel`; no need to re-run
 `cmake --preset` unless you added a new file), relaunch the game, and look
 for it in the log. If it's there, your build-edit-reload loop works and
 you're ready for actual game logic.

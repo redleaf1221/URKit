@@ -255,12 +255,12 @@ std::string CMakePresets() {
   "version": 3,
   "configurePresets": [
     {
-      "name": "clang-debug",
-      "displayName": "Clang x64 Debug",
+      "name": "clang-relwithdebinfo",
+      "displayName": "Clang x64 RelWithDebInfo",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
@@ -277,12 +277,12 @@ std::string CMakePresets() {
       }
     },
     {
-      "name": "msvc-debug",
-      "displayName": "MSVC x64 Debug",
+      "name": "msvc-relwithdebinfo",
+      "displayName": "MSVC x64 RelWithDebInfo",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_CXX_COMPILER": "cl",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
@@ -301,16 +301,16 @@ std::string CMakePresets() {
   ],
   "buildPresets": [
     {
-      "name": "clang-debug",
-      "configurePreset": "clang-debug"
+      "name": "clang-relwithdebinfo",
+      "configurePreset": "clang-relwithdebinfo"
     },
     {
       "name": "clang-release",
       "configurePreset": "clang-release"
     },
     {
-      "name": "msvc-debug",
-      "configurePreset": "msvc-debug"
+      "name": "msvc-relwithdebinfo",
+      "configurePreset": "msvc-relwithdebinfo"
     },
     {
       "name": "msvc-release",
@@ -330,7 +330,7 @@ std::string VsCodeCppProperties() {
       "compilerPath": "C:/Program Files/LLVM/bin/clang++.exe",
       "intelliSenseMode": "windows-clang-x64",
       "cppStandard": "c++20",
-      "compileCommands": "${workspaceFolder}/out/build/clang-debug/compile_commands.json",
+      "compileCommands": "${workspaceFolder}/out/build/clang-relwithdebinfo/compile_commands.json",
       "mergeConfigurations": true
     },
     {
@@ -338,7 +338,7 @@ std::string VsCodeCppProperties() {
       "compilerPath": "cl.exe",
       "intelliSenseMode": "windows-msvc-x64",
       "cppStandard": "c++20",
-      "compileCommands": "${workspaceFolder}/out/build/msvc-debug/compile_commands.json",
+      "compileCommands": "${workspaceFolder}/out/build/msvc-relwithdebinfo/compile_commands.json",
       "mergeConfigurations": true
     }
   ]
@@ -354,11 +354,11 @@ std::string Readme(const ModuleProjectOptions &options) {
         << "## Build\n\n"
         << "Use Clang from PowerShell or MSVC from an x64 Visual Studio Developer PowerShell.\n\n"
         << "```powershell\n"
-        << "cmake --preset clang-debug\n"
-        << "cmake --build --preset clang-debug --parallel\n"
+        << "cmake --preset clang-relwithdebinfo\n"
+        << "cmake --build --preset clang-relwithdebinfo --parallel\n"
         << "# Or, from an x64 Visual Studio Developer PowerShell:\n"
-        << "cmake --preset msvc-debug\n"
-        << "cmake --build --preset msvc-debug --parallel\n"
+        << "cmake --preset msvc-relwithdebinfo\n"
+        << "cmake --build --preset msvc-relwithdebinfo --parallel\n"
         << "```\n\n"
         << "Use `clang-release` or `msvc-release` for release builds. Builds deploy to the selected game's "
            "`Mods` directory.\n\n";
@@ -795,7 +795,7 @@ bool WriteModuleProject(const ModuleProjectOptions &options, std::string *error)
         {"mod/generated/mod_entry.cpp", OutputFilePolicy::GeneratedOverwrite, ModEntrySource(), true, false},
         {"README.md", OutputFilePolicy::DocumentationPreserve, Readme(project), true, false},
         {".clangd", OutputFilePolicy::GeneratedOverwrite,
-         "CompileFlags:\n  CompilationDatabase: out/build/clang-debug\n  Compiler: clang++\n\nIndex:\n  Background: Build\n",
+         "CompileFlags:\n  CompilationDatabase: out/build/clang-relwithdebinfo\n  Compiler: clang++\n\nIndex:\n  Background: Build\n",
          true, false},
         {"CMakePresets.json", OutputFilePolicy::GeneratedOverwrite, CMakePresets(), true, false},
         {".vscode/c_cpp_properties.json", OutputFilePolicy::GeneratedOverwrite, VsCodeCppProperties(), true, false},

@@ -76,7 +76,7 @@ Multiple running games:
 | `list_runtime_tests` | Discover test exports from loaded native mods. |
 | `run_runtime_test` | Execute one test on the Unity main thread. |
 
-`build_mod` defaults to `clang-debug`. The `preset` argument must exist in both
+`build_mod` defaults to `clang-relwithdebinfo`. The `preset` argument must exist in both
 `configurePresets` and `buildPresets`. Build output is bounded and returned with
 the exact failure state. A successful compile without the expected deployed DLL
 is reported as `deployment_missing`.

@@ -41,8 +41,8 @@ beside it. Only one proxy should be installed.
 ```powershell
 ./urk.exe new --game-exe C:\Games\Example\Example.exe --name MyMod --loader proxy
 cd <GameDir>\urk-sdk-output\MyMod\project
-cmake --preset clang-debug
-cmake --build --preset clang-debug --parallel
+cmake --preset clang-relwithdebinfo
+cmake --build --preset clang-relwithdebinfo --parallel
 ```
 
 URKit works out whether the game is Mono or IL2CPP for you, and
@@ -51,7 +51,7 @@ DLL straight into the game's `Mods` folder. The same steps are on the
 **Create** page of `urk.exe`.
 
 You'll need CMake 3.28 or newer, Ninja, and either LLVM/Clang or MSVC (VS 2022
-Build Tools or newer). Prefer `cl.exe`? Use `msvc-debug`. When you're ready to
+Build Tools or newer). Prefer `cl.exe`? Use `msvc-relwithdebinfo`. When you're ready to
 share your mod, build with `clang-release` or `msvc-release`.
 
 Now start the game and open `URKit_logs.log` next to its executable. You
@@ -122,7 +122,7 @@ cmake --preset msvc-release
 cmake --build out/build/msvc-release
 ```
 
-`clang-release`, `clang-debug` and `msvc-debug` work too.
+`clang-release`, `clang-relwithdebinfo` and `msvc-relwithdebinfo` work too.
 
 ## Antivirus warnings
 

@@ -117,7 +117,7 @@ Json McpServer::ExecuteTool(const std::string &name, const Json &arguments, Proc
     if (name == "build_mod" || name == "deploy_mod") {
         if (!HasOnlyKeys(arguments, {"preset"}))
             return ToolFailure("invalid_arguments", "only preset is accepted");
-        const Json presetValue = arguments.value("preset", Json("clang-debug"));
+        const Json presetValue = arguments.value("preset", Json("clang-relwithdebinfo"));
         if (!presetValue.is_string() || presetValue.get_ref<const std::string &>().empty() ||
             presetValue.get_ref<const std::string &>().size() > 64)
             return ToolFailure("invalid_arguments", "preset must be a non-empty string up to 64 bytes");

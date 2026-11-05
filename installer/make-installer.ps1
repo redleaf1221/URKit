@@ -21,7 +21,13 @@ if (-not $iscc) {
 }
 
 if (-not $SkipBuild) {
-    & (Join-Path $RepoRoot 'build.ps1') -Compiler msvc -Config Release
+    if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
+        Write-Host "ERROR: cl.exe is not on PATH. Run this from a Developer PowerShell for Visual Studio." -ForegroundColor Red
+        exit 1
+    }
+    & cmake --preset msvc-release
+    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    & cmake --build --preset msvc-release --parallel
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
 

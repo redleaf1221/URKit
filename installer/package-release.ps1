@@ -25,8 +25,14 @@ if ($dirty) {
 
 if ($Bump) { & (Join-Path $PSScriptRoot 'set-version.ps1') $Bump }
 
-$buildArgs = @{ Compiler = 'msvc'; Config = 'Release'; Clean = [bool]$Clean }
-& (Join-Path $RepoRoot 'build.ps1') @buildArgs
+if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
+    Fail "cl.exe is not on PATH. Run this from a Developer PowerShell for Visual Studio."
+}
+& cmake --preset msvc-release
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$buildArgs = @('--build', '--preset', 'msvc-release', '--parallel')
+if ($Clean) { $buildArgs += '--clean-first' }
+& cmake @buildArgs
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & (Join-Path $PSScriptRoot 'make-installer.ps1') -SkipBuild

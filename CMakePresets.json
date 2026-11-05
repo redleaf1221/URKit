@@ -2,12 +2,12 @@
   "version": 3,
   "configurePresets": [
     {
-      "name": "clang-debug",
-      "displayName": "Clang x64 Debug",
+      "name": "clang-relwithdebinfo",
+      "displayName": "Clang x64 RelWithDebInfo",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -28,12 +28,12 @@
       }
     },
     {
-      "name": "msvc-debug",
-      "displayName": "MSVC x64 Debug",
+      "name": "msvc-relwithdebinfo",
+      "displayName": "MSVC x64 RelWithDebInfo",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_COMPILER": "cl",
         "CMAKE_CXX_COMPILER": "cl",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -56,16 +56,16 @@
   ],
   "buildPresets": [
     {
-      "name": "clang-debug",
-      "configurePreset": "clang-debug"
+      "name": "clang-relwithdebinfo",
+      "configurePreset": "clang-relwithdebinfo"
     },
     {
       "name": "clang-release",
       "configurePreset": "clang-release"
     },
     {
-      "name": "msvc-debug",
-      "configurePreset": "msvc-debug"
+      "name": "msvc-relwithdebinfo",
+      "configurePreset": "msvc-relwithdebinfo"
     },
     {
       "name": "msvc-release",

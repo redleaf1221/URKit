@@ -240,16 +240,16 @@ The project is written to:
 Build it once before editing anything:
 
 ```powershell
-cmake --preset clang-debug
-cmake --build --preset clang-debug --parallel
+cmake --preset clang-relwithdebinfo
+cmake --build --preset clang-relwithdebinfo --parallel
 ```
 
 Or use MSVC from an x64 Visual Studio Developer PowerShell, where `cl.exe` is
 available:
 
 ```powershell
-cmake --preset msvc-debug
-cmake --build --preset msvc-debug --parallel
+cmake --preset msvc-relwithdebinfo
+cmake --build --preset msvc-relwithdebinfo --parallel
 ```
 
 For a build you intend to distribute:
