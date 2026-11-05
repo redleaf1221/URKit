@@ -119,7 +119,10 @@ if (URK_BUILD_APP)
     )
     FetchContent_MakeAvailable(wxWidgets)
 
-    set(URK_GENERATED_SDK_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/sdk)
+    # Keep generated headers inside the source tree: IDEs exclude the build
+    # directory from indexing, so a header generated there is visible to the
+    # compiler but permanently unresolved in the editor.
+    set(URK_GENERATED_SDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/generated/sdk)
     set(URK_EMBEDDED_MOD_SDK_HEADER ${URK_GENERATED_SDK_DIR}/embedded_mod_sdk.h)
     set(URK_EMBEDDED_DEV_TEST_HEADER ${URK_GENERATED_SDK_DIR}/embedded_dev_test.h)
 
