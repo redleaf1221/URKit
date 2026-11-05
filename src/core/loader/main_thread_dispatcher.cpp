@@ -22,7 +22,11 @@ struct MainThreadCallback {
 };
 
 std::mutex g_mainThreadMutex;
-std::vector<MainThreadCallback> g_callbacks;
+std::vector<MainThreadCallback> &Callbacks() {
+    // Constructed on first use, not during DLL attach (loader-lock safety).
+    static std::vector<MainThreadCallback> callbacks;
+    return callbacks;
+}
 bool g_dispatchTargetAvailable = false;
 bool g_unavailableLogged = false;
 constexpr std::uint32_t kMaxConsecutiveCallbackFaults = 3;
@@ -47,11 +51,11 @@ bool InvokeCallbackSafely(void (*callback)(), DWORD *exceptionCode) {
 
 std::uint32_t RecordCallbackResult(void (*callback)(), bool succeeded) {
     std::lock_guard lock(g_mainThreadMutex);
-    const auto found = std::find_if(g_callbacks.begin(), g_callbacks.end(),
+    const auto found = std::find_if(Callbacks().begin(), Callbacks().end(),
                                     [callback](const MainThreadCallback &entry) {
                                         return entry.callback == callback;
                                     });
-    if (found == g_callbacks.end())
+    if (found == Callbacks().end())
         return 0;
 
     if (succeeded) {
@@ -62,7 +66,7 @@ std::uint32_t RecordCallbackResult(void (*callback)(), bool succeeded) {
     ++found->consecutiveFaults;
     const std::uint32_t faults = found->consecutiveFaults;
     if (faults >= kMaxConsecutiveCallbackFaults)
-        g_callbacks.erase(found);
+        Callbacks().erase(found);
     return faults;
 }
 } // namespace
@@ -81,12 +85,12 @@ int MainThread_Register(void (*callback)()) {
 
     std::lock_guard lock(g_mainThreadMutex);
 
-    const auto found = std::find_if(g_callbacks.begin(), g_callbacks.end(),
+    const auto found = std::find_if(Callbacks().begin(), Callbacks().end(),
                                     [callback](const MainThreadCallback &entry) { return entry.callback == callback; });
-    if (found != g_callbacks.end())
+    if (found != Callbacks().end())
         return 1;
 
-    g_callbacks.push_back({callback, module});
+    Callbacks().push_back({callback, module});
 
     if (!g_dispatchTargetAvailable && !g_unavailableLogged) {
         Log("[mod][WARNING] MainThreadRegister queued: URKit runtime dispatch "
@@ -103,12 +107,12 @@ int MainThread_Unregister(void (*callback)()) {
         return 0;
 
     std::lock_guard lock(g_mainThreadMutex);
-    const auto before = g_callbacks.size();
-    g_callbacks.erase(
-        std::remove_if(g_callbacks.begin(), g_callbacks.end(),
+    const auto before = Callbacks().size();
+    Callbacks().erase(
+        std::remove_if(Callbacks().begin(), Callbacks().end(),
                        [callback](const MainThreadCallback &entry) { return entry.callback == callback; }),
-        g_callbacks.end());
-    return g_callbacks.size() != before ? 1 : 0;
+        Callbacks().end());
+    return Callbacks().size() != before ? 1 : 0;
 }
 
 void MainThread_UnregisterModule(void *module) {
@@ -117,10 +121,10 @@ void MainThread_UnregisterModule(void *module) {
 
     const HMODULE targetModule = static_cast<HMODULE>(module);
     std::lock_guard lock(g_mainThreadMutex);
-    g_callbacks.erase(
-        std::remove_if(g_callbacks.begin(), g_callbacks.end(),
+    Callbacks().erase(
+        std::remove_if(Callbacks().begin(), Callbacks().end(),
                        [targetModule](const MainThreadCallback &entry) { return entry.module == targetModule; }),
-        g_callbacks.end());
+        Callbacks().end());
 }
 
 bool MainThread_HasDispatchTarget() {
@@ -134,15 +138,15 @@ void MainThread_SetDispatchTargetAvailable(bool available) {
     g_dispatchTargetAvailable = available;
 
     if (!available) {
-        g_callbacks.clear();
+        Callbacks().clear();
         g_unavailableLogged = false;
         return;
     }
 
-    if (becameAvailable && !g_callbacks.empty()) {
+    if (becameAvailable && !Callbacks().empty()) {
         Log("[SUCCESS][runtime][events] main-thread dispatch target activated; %zu queued "
             "callback(s) will run on the next runtime pump.",
-            g_callbacks.size());
+            Callbacks().size());
     }
 }
 
@@ -150,9 +154,9 @@ void MainThread_Drain() {
     std::vector<MainThreadCallback> callbacks;
     {
         std::lock_guard lock(g_mainThreadMutex);
-        if (!g_dispatchTargetAvailable || g_callbacks.empty())
+        if (!g_dispatchTargetAvailable || Callbacks().empty())
             return;
-        callbacks = g_callbacks;
+        callbacks = Callbacks();
     }
 
     for (const MainThreadCallback &entry : callbacks) {

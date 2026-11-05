@@ -39,7 +39,11 @@ struct MidHookSlot {
 };
 
 std::mutex g_hook_mutex;
-std::vector<std::unique_ptr<HookRecord>> g_hooks;
+std::vector<std::unique_ptr<HookRecord>> &Hooks() {
+    // Constructed on first use, not during DLL attach (loader-lock safety).
+    static std::vector<std::unique_ptr<HookRecord>> hooks;
+    return hooks;
+}
 std::array<MidHookSlot, SafetyHookBackend_MidSlotCount> g_mid_slots;
 #ifdef _WIN64
 bool g_detours_address_policy_configured = false;
@@ -52,7 +56,7 @@ struct DetoursResult {
 };
 
 HookRecord *FindRecord(void **original, void *detour) {
-    for (auto &record : g_hooks) {
+    for (auto &record : Hooks()) {
         if (record && record->original_slot == original && record->detour == detour) {
             return record.get();
         }
@@ -325,7 +329,7 @@ DetoursResult RunDetoursBatch(const std::vector<HookRecord *> &records, bool att
 
 std::vector<HookRecord *> RecordsForTarget(void *target) {
     std::vector<HookRecord *> records;
-    for (const auto &record : g_hooks) {
+    for (const auto &record : Hooks()) {
         if (record && record->target == target)
             records.push_back(record.get());
     }
@@ -385,12 +389,12 @@ std::vector<HookRecord *> RecordsExcept(const std::vector<HookRecord *> &records
 }
 
 void DropRecords(const std::vector<HookRecord *> &removed) {
-    g_hooks.erase(std::remove_if(g_hooks.begin(), g_hooks.end(),
+    Hooks().erase(std::remove_if(Hooks().begin(), Hooks().end(),
                                  [&removed](const auto &record) {
                                      return record && std::find(removed.begin(), removed.end(), record.get()) !=
                                                           removed.end();
                                  }),
-                  g_hooks.end());
+                  Hooks().end());
 }
 
 bool RebuildSafetyHookTargetWithout(void *target, const std::vector<HookRecord *> &removed) {
@@ -469,9 +473,9 @@ bool RebuildTargetWithout(void *target, const std::vector<HookRecord *> &removed
             if (record->original_slot)
                 *record->original_slot = target;
         }
-        g_hooks.erase(std::remove_if(g_hooks.begin(), g_hooks.end(),
+        Hooks().erase(std::remove_if(Hooks().begin(), Hooks().end(),
                                      [target](const auto &record) { return record && record->target == target; }),
-                      g_hooks.end());
+                      Hooks().end());
         return true;
     }
 
@@ -480,10 +484,10 @@ bool RebuildTargetWithout(void *target, const std::vector<HookRecord *> &removed
         if (record && record->original_slot)
             *record->original_slot = target;
     }
-    g_hooks.erase(std::remove_if(g_hooks.begin(), g_hooks.end(), [&removed](const auto &record) {
+    Hooks().erase(std::remove_if(Hooks().begin(), Hooks().end(), [&removed](const auto &record) {
                       return record && std::find(removed.begin(), removed.end(), record.get()) != removed.end();
                   }),
-                  g_hooks.end());
+                  Hooks().end());
     Log("[hooks] rebuilt target=%p chain: removed=%zu remaining=%zu.", target, removed.size(), remaining.size());
     return true;
 }
@@ -538,7 +542,7 @@ int AttachWithBackend(void **original, void *detour, uint32_t backend) {
         record->trampoline = original ? *original : nullptr;
         record->detour = detour;
 
-        g_hooks.emplace_back(std::move(record));
+        Hooks().emplace_back(std::move(record));
         return 1;
     }
 
@@ -571,7 +575,7 @@ int AttachWithBackend(void **original, void *detour, uint32_t backend) {
         record->detour = detour;
         record->safety_hook = handle;
 
-        g_hooks.emplace_back(std::move(record));
+        Hooks().emplace_back(std::move(record));
         return 1;
     }
 
@@ -680,11 +684,11 @@ int HookManager_Detach(void **original, void *detour) {
 
     std::scoped_lock lock(g_hook_mutex);
 
-    auto it = std::find_if(g_hooks.begin(), g_hooks.end(), [&](const std::unique_ptr<HookRecord> &record) {
+    auto it = std::find_if(Hooks().begin(), Hooks().end(), [&](const std::unique_ptr<HookRecord> &record) {
         return record && record->original_slot == original && record->detour == detour;
     });
 
-    if (it == g_hooks.end())
+    if (it == Hooks().end())
         return 0;
 
     HookRecord *record = it->get();
@@ -701,7 +705,7 @@ int HookManager_DetachModule(void *module) {
     int detached = 0;
     int failed = 0;
     std::vector<void *> targets;
-    for (const auto &record : g_hooks) {
+    for (const auto &record : Hooks()) {
         if (record && ModuleForAddress(record->detour) == targetModule &&
             std::find(targets.begin(), targets.end(), record->target) == targets.end()) {
             targets.push_back(record->target);
@@ -710,7 +714,7 @@ int HookManager_DetachModule(void *module) {
 
     for (void *target : targets) {
         std::vector<HookRecord *> removed;
-        for (const auto &record : g_hooks) {
+        for (const auto &record : Hooks()) {
             if (record && record->target == target && ModuleForAddress(record->detour) == targetModule)
                 removed.push_back(record.get());
         }

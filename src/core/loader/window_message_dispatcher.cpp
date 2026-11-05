@@ -34,9 +34,31 @@ struct WindowRecord {
 };
 
 std::mutex g_mutex;
-std::unordered_map<HWND, WindowRecord> g_windows;
 thread_local CallbackRecord *g_currentCallback = nullptr;
-thread_local std::vector<CallbackRecord *> g_dispatchStack;
+
+// Never give these file-scope objects a dynamic initializer: the CRT runs those
+// from __dyn_tls_init during DLL attach, while the loader lock is held. If the
+// initializer allocates, a Debug STL build allocates a container proxy
+// (operator new -> _malloc_dbg -> __acrt_lock) and can deadlock against a thread
+// that holds the CRT heap lock and is itself waiting for the loader lock. That
+// shows up as the game freezing on the intro splash before any mod loads.
+// Containers are created on first use, and the dispatch stack is a plain array.
+constexpr size_t kMaxDispatchDepth = 32;
+thread_local CallbackRecord *g_dispatchStack[kMaxDispatchDepth] = {};
+thread_local size_t g_dispatchDepth = 0;
+
+std::unordered_map<HWND, WindowRecord> &Windows() {
+    static std::unordered_map<HWND, WindowRecord> windows;
+    return windows;
+}
+
+bool OnDispatchStack(const CallbackRecord *record) {
+    for (size_t index = 0; index < g_dispatchDepth; ++index) {
+        if (g_dispatchStack[index] == record)
+            return true;
+    }
+    return false;
+}
 
 HMODULE ModuleForAddress(const void *address) {
     HMODULE module = nullptr;
@@ -69,8 +91,8 @@ LRESULT CALLBACK DispatchWindowMessage(HWND window, UINT message, WPARAM wparam,
     WNDPROC original = nullptr;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
-        const auto found = g_windows.find(window);
-        if (found == g_windows.end())
+        const auto found = Windows().find(window);
+        if (found == Windows().end())
             return DefWindowProc(window, message, wparam, lparam);
         original = found->second.original;
         callbacks.assign(found->second.callbacks.rbegin(), found->second.callbacks.rend());
@@ -80,9 +102,11 @@ LRESULT CALLBACK DispatchWindowMessage(HWND window, UINT message, WPARAM wparam,
 
     bool handled = false;
     LRESULT handledResult = 0;
-    const size_t dispatchStackBase = g_dispatchStack.size();
-    for (const auto &record : callbacks)
-        g_dispatchStack.push_back(record.get());
+    const size_t dispatchStackBase = g_dispatchDepth;
+    for (const auto &record : callbacks) {
+        if (g_dispatchDepth < kMaxDispatchDepth)
+            g_dispatchStack[g_dispatchDepth++] = record.get();
+    }
     for (const auto &record : callbacks) {
         int callbackHandled = 0;
         intptr_t callbackResult = 0;
@@ -104,7 +128,7 @@ LRESULT CALLBACK DispatchWindowMessage(HWND window, UINT message, WPARAM wparam,
             record->waitCondition.notify_all();
         }
     }
-    g_dispatchStack.resize(dispatchStackBase);
+    g_dispatchDepth = dispatchStackBase;
 
     if (handled)
         return handledResult;
@@ -141,8 +165,8 @@ int WindowMessage_Register(void *windowValue, URK_WindowMessageCallback callback
         return 0;
 
     std::lock_guard<std::mutex> lock(g_mutex);
-    auto found = g_windows.find(window);
-    if (found == g_windows.end()) {
+    auto found = Windows().find(window);
+    if (found == Windows().end()) {
         SetLastError(ERROR_SUCCESS);
         const LONG_PTR previous = SetWindowLongPtr(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&DispatchWindowMessage));
         if (!previous && GetLastError() != ERROR_SUCCESS) {
@@ -150,7 +174,7 @@ int WindowMessage_Register(void *windowValue, URK_WindowMessageCallback callback
                 GetLastError());
             return 0;
         }
-        found = g_windows.emplace(window, WindowRecord{reinterpret_cast<WNDPROC>(previous), {}, true}).first;
+        found = Windows().emplace(window, WindowRecord{reinterpret_cast<WNDPROC>(previous), {}, true}).first;
     } else if (!found->second.installed) {
         SetLastError(ERROR_SUCCESS);
         const LONG_PTR previous = SetWindowLongPtr(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&DispatchWindowMessage));
@@ -183,19 +207,19 @@ int WindowMessage_Unregister(void *windowValue, URK_WindowMessageCallback callba
     std::shared_ptr<CallbackRecord> removed;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
-        const auto found = g_windows.find(window);
-        if (found == g_windows.end())
+        const auto found = Windows().find(window);
+        if (found == Windows().end())
             return 0;
         const auto callbackIt = std::find_if(found->second.callbacks.begin(), found->second.callbacks.end(),
                                              [callback](const auto &record) { return record->callback == callback; });
         if (callbackIt == found->second.callbacks.end())
             return 0;
-        if (std::find(g_dispatchStack.begin(), g_dispatchStack.end(), callbackIt->get()) != g_dispatchStack.end())
+        if (OnDispatchStack(callbackIt->get()))
             return 0;
         removed = *callbackIt;
         found->second.callbacks.erase(callbackIt);
         if (RestoreIfUnused(window, found->second))
-            g_windows.erase(found);
+            Windows().erase(found);
     }
     WaitUntilIdle(removed);
     return 1;
@@ -206,8 +230,8 @@ intptr_t WindowMessage_CallOriginal(void *windowValue, uint32_t message, uintptr
     WNDPROC original = nullptr;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
-        const auto found = g_windows.find(window);
-        if (found != g_windows.end())
+        const auto found = Windows().find(window);
+        if (found != Windows().end())
             original = found->second.original;
     }
     return original ? CallWindowProc(original, window, message, wparam, lparam)
@@ -222,15 +246,15 @@ int WindowMessage_UnregisterModule(void *moduleValue) {
     std::vector<std::shared_ptr<CallbackRecord>> removed;
     {
         std::lock_guard<std::mutex> lock(g_mutex);
-        for (const auto &[window, record] : g_windows) {
+        for (const auto &[window, record] : Windows()) {
             (void)window;
             for (const auto &callback : record.callbacks) {
                 if (callback->owner == module &&
-                    std::find(g_dispatchStack.begin(), g_dispatchStack.end(), callback.get()) != g_dispatchStack.end())
+                    OnDispatchStack(callback.get()))
                     return -1;
             }
         }
-        for (auto windowIt = g_windows.begin(); windowIt != g_windows.end();) {
+        for (auto windowIt = Windows().begin(); windowIt != Windows().end();) {
             WindowRecord &windowRecord = windowIt->second;
             auto callbackIt = windowRecord.callbacks.begin();
             while (callbackIt != windowRecord.callbacks.end()) {
@@ -242,7 +266,7 @@ int WindowMessage_UnregisterModule(void *moduleValue) {
                 }
             }
             if (RestoreIfUnused(windowIt->first, windowRecord))
-                windowIt = g_windows.erase(windowIt);
+                windowIt = Windows().erase(windowIt);
             else
                 ++windowIt;
         }

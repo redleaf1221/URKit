@@ -34,8 +34,12 @@ struct LoadedNativeMod {
     std::string path;
 };
 
-std::mutex g_loadedModsMutex;
-std::vector<LoadedNativeMod> g_loadedMods;
+std::mutex LoadedModsMutex;
+std::vector<LoadedNativeMod> &LoadedMods() {
+    // Constructed on first use, not during DLL attach (loader-lock safety).
+    static std::vector<LoadedNativeMod> loadedMods;
+    return loadedMods;
+}
 std::atomic_bool g_shutdownStarted{false};
 
 std::string ModulePath(HMODULE module, const char *fallback) {
@@ -56,11 +60,11 @@ void RegisterLoadedNativeMod(HMODULE module, const char *path) {
         reinterpret_cast<URK_OnObjectDestroyRequestedFn>(GetProcAddress(module, "OnObjectDestroyRequested"));
     const std::string modulePath = ModulePath(module, path);
 
-    std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-    auto existing = std::find_if(g_loadedMods.begin(), g_loadedMods.end(),
+    std::lock_guard<std::mutex> lock(LoadedModsMutex);
+    auto existing = std::find_if(LoadedMods().begin(), LoadedMods().end(),
                                  [module](const LoadedNativeMod &mod) { return mod.module == module; });
 
-    if (existing != g_loadedMods.end()) {
+    if (existing != LoadedMods().end()) {
         existing->shutdown = shutdown;
         existing->onSceneLoaded = onSceneLoaded;
         existing->onSceneChanged = onSceneChanged;
@@ -69,7 +73,7 @@ void RegisterLoadedNativeMod(HMODULE module, const char *path) {
         return;
     }
 
-    g_loadedMods.push_back(
+    LoadedMods().push_back(
         {module, shutdown, onSceneLoaded, onSceneChanged, onObjectDestroyRequested, modulePath});
 
         Log(shutdown ? "  [SUCCESS][lifecycle] %s: optional ModShutdown resolved." : "  [INFO][lifecycle] %s: no ModShutdown export.",
@@ -88,20 +92,20 @@ void UnregisterLoadedNativeMod(HMODULE module) {
     if (!module)
         return;
 
-    std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-    g_loadedMods.erase(std::remove_if(g_loadedMods.begin(), g_loadedMods.end(),
+    std::lock_guard<std::mutex> lock(LoadedModsMutex);
+    LoadedMods().erase(std::remove_if(LoadedMods().begin(), LoadedMods().end(),
                                       [module](const LoadedNativeMod &mod) { return mod.module == module; }),
-                       g_loadedMods.end());
+                       LoadedMods().end());
 }
 
 void DeactivateLoadedNativeMod(HMODULE module) {
     if (!module)
         return;
 
-    std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-    auto mod = std::find_if(g_loadedMods.begin(), g_loadedMods.end(),
+    std::lock_guard<std::mutex> lock(LoadedModsMutex);
+    auto mod = std::find_if(LoadedMods().begin(), LoadedMods().end(),
                             [module](const LoadedNativeMod &candidate) { return candidate.module == module; });
-    if (mod == g_loadedMods.end())
+    if (mod == LoadedMods().end())
         return;
     mod->shutdown = nullptr;
     mod->onSceneLoaded = nullptr;
@@ -145,16 +149,16 @@ bool InvokeObjectDestroyRequestedSafely(const LoadedNativeMod &mod, const URK_Ob
 }
 
 std::vector<LoadedNativeMod> SnapshotLoadedMods() {
-    std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-    return g_loadedMods;
+    std::lock_guard<std::mutex> lock(LoadedModsMutex);
+    return LoadedMods();
 }
 } // namespace
 
 bool ModLifecycle_IsModModule(HMODULE module) {
     if (!module)
         return false;
-    std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-    for (const LoadedNativeMod &mod : g_loadedMods) {
+    std::lock_guard<std::mutex> lock(LoadedModsMutex);
+    for (const LoadedNativeMod &mod : LoadedMods()) {
         if (mod.module == module)
             return true;
     }
@@ -309,8 +313,8 @@ void Loader_Shutdown() {
 
     std::vector<LoadedNativeMod> mods;
     {
-        std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-        mods.swap(g_loadedMods);
+        std::lock_guard<std::mutex> lock(LoadedModsMutex);
+        mods.swap(LoadedMods());
     }
 
     ShutdownNativeMods(mods);
@@ -323,22 +327,22 @@ bool ModLifecycle_UnloadModule(HMODULE module, const char *reason) {
 
     LoadedNativeMod mod{};
     {
-        std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-        auto it = std::find_if(g_loadedMods.begin(), g_loadedMods.end(),
+        std::lock_guard<std::mutex> lock(LoadedModsMutex);
+        auto it = std::find_if(LoadedMods().begin(), LoadedMods().end(),
                                [module](const LoadedNativeMod &candidate) { return candidate.module == module; });
-        if (it == g_loadedMods.end())
+        if (it == LoadedMods().end())
             return false;
         mod = *it;
     }
 
     const bool unloaded = ShutdownOneNativeMod(mod, reason);
-    std::lock_guard<std::mutex> lock(g_loadedModsMutex);
-    auto it = std::find_if(g_loadedMods.begin(), g_loadedMods.end(),
+    std::lock_guard<std::mutex> lock(LoadedModsMutex);
+    auto it = std::find_if(LoadedMods().begin(), LoadedMods().end(),
                            [module](const LoadedNativeMod &candidate) { return candidate.module == module; });
-    if (it == g_loadedMods.end())
+    if (it == LoadedMods().end())
         return unloaded;
     if (unloaded) {
-        g_loadedMods.erase(it);
+        LoadedMods().erase(it);
     } else {
         // Already shut down; keep it tracked for a later unload but block callbacks.
         it->shutdown = nullptr;
