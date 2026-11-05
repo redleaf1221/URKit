@@ -123,31 +123,32 @@ if (URK_BUILD_APP)
     set(URK_EMBEDDED_MOD_SDK_HEADER ${URK_GENERATED_SDK_DIR}/embedded_mod_sdk.h)
     set(URK_EMBEDDED_DEV_TEST_HEADER ${URK_GENERATED_SDK_DIR}/embedded_dev_test.h)
 
-    add_custom_command(
-        OUTPUT ${URK_EMBEDDED_MOD_SDK_HEADER}
-        COMMAND ${CMAKE_COMMAND}
-            -DINPUT=${URK_SDK_DIR}/mod_sdk.h
-            -DOUTPUT=${URK_EMBEDDED_MOD_SDK_HEADER}
-            -DSYMBOL=kEmbeddedModSdkHeader
-            -DDELIMITER=URKMODSDKH
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake
-        DEPENDS ${URK_SDK_DIR}/mod_sdk.h ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake
-        COMMENT "Embedding canonical sdk/mod_sdk.h for distribution-safe SDK generation"
-        VERBATIM
-    )
+    # Embed the canonical SDK headers at configure time, not at build time: the
+    # generated files are include-dir headers, so an IDE that indexes the project
+    # before the first build would report them missing. CMAKE_CONFIGURE_DEPENDS
+    # re-runs the configure step whenever an embedded source changes.
+    file(MAKE_DIRECTORY ${URK_GENERATED_SDK_DIR})
+    function(urk_embed_sdk_header input output symbol delimiter)
+        execute_process(
+            COMMAND ${CMAKE_COMMAND}
+                -DINPUT=${input}
+                -DOUTPUT=${output}
+                -DSYMBOL=${symbol}
+                -DDELIMITER=${delimiter}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake
+            RESULT_VARIABLE embed_result
+        )
+        if (NOT embed_result EQUAL 0)
+            message(FATAL_ERROR "Failed to embed ${input}")
+        endif()
+    endfunction()
 
-    add_custom_command(
-        OUTPUT ${URK_EMBEDDED_DEV_TEST_HEADER}
-        COMMAND ${CMAKE_COMMAND}
-            -DINPUT=${URK_SDK_DIR}/dev_test.h
-            -DOUTPUT=${URK_EMBEDDED_DEV_TEST_HEADER}
-            -DSYMBOL=kEmbeddedDevTestHeader
-            -DDELIMITER=URKDEVTESTH
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake
-        DEPENDS ${URK_SDK_DIR}/dev_test.h ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake
-        COMMENT "Embedding canonical sdk/dev_test.h for generated mod runtime tests"
-        VERBATIM
-    )
+    urk_embed_sdk_header(${URK_SDK_DIR}/mod_sdk.h ${URK_EMBEDDED_MOD_SDK_HEADER} kEmbeddedModSdkHeader URKMODSDKH)
+    urk_embed_sdk_header(${URK_SDK_DIR}/dev_test.h ${URK_EMBEDDED_DEV_TEST_HEADER} kEmbeddedDevTestHeader URKDEVTESTH)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        ${URK_SDK_DIR}/mod_sdk.h
+        ${URK_SDK_DIR}/dev_test.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake)
 
     add_executable(URKitApp WIN32
         ${URK_APP_SRC}

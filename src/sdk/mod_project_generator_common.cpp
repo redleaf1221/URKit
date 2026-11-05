@@ -1,6 +1,6 @@
 #include "mod_project_generator_common.h"
-#include "embedded_mod_sdk.h"
 #include "embedded_dev_test.h"
+#include "embedded_mod_sdk.h"
 #include "mod_sdk.h"
 #include "project_ledger.h"
 #include "project_manifest.h"
@@ -258,7 +258,7 @@ std::string CMakePresets() {
       "name": "clang-relwithdebinfo",
       "displayName": "Clang x64 RelWithDebInfo",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "binaryDir": "${sourceDir}/cmake-build-relwithdebinfo",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_CXX_COMPILER": "clang++",
@@ -269,7 +269,7 @@ std::string CMakePresets() {
       "name": "clang-release",
       "displayName": "Clang x64 Release",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "binaryDir": "${sourceDir}/cmake-build-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "clang++",
@@ -280,7 +280,7 @@ std::string CMakePresets() {
       "name": "msvc-relwithdebinfo",
       "displayName": "MSVC x64 RelWithDebInfo",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "binaryDir": "${sourceDir}/cmake-build-relwithdebinfo",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_CXX_COMPILER": "cl",
@@ -291,7 +291,7 @@ std::string CMakePresets() {
       "name": "msvc-release",
       "displayName": "MSVC x64 Release",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "binaryDir": "${sourceDir}/cmake-build-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_CXX_COMPILER": "cl",
@@ -330,7 +330,7 @@ std::string VsCodeCppProperties() {
       "compilerPath": "C:/Program Files/LLVM/bin/clang++.exe",
       "intelliSenseMode": "windows-clang-x64",
       "cppStandard": "c++20",
-      "compileCommands": "${workspaceFolder}/out/build/clang-relwithdebinfo/compile_commands.json",
+      "compileCommands": "${workspaceFolder}/cmake-build-relwithdebinfo/compile_commands.json",
       "mergeConfigurations": true
     },
     {
@@ -338,7 +338,7 @@ std::string VsCodeCppProperties() {
       "compilerPath": "cl.exe",
       "intelliSenseMode": "windows-msvc-x64",
       "cppStandard": "c++20",
-      "compileCommands": "${workspaceFolder}/out/build/msvc-relwithdebinfo/compile_commands.json",
+      "compileCommands": "${workspaceFolder}/cmake-build-relwithdebinfo/compile_commands.json",
       "mergeConfigurations": true
     }
   ]
