@@ -26,7 +26,22 @@ struct Replacement {
     std::string value;
 };
 
-inline const Dictionary &english() {
+// Table for ModConfig::default_language, loaded from that language JSON file.
+// Every language -- including the default -- comes from a locale file, and
+// translate() resolves current language -> default language -> key.
+inline Dictionary &fallback_table() {
+    static Dictionary values;
+    return values;
+}
+inline std::string &fallback_language() {
+    static std::string value;
+    return value;
+}
+
+// Hardcoded labels for projects generated without localization support.
+// enableLocalization is a generation-time choice: when it is off there are no
+// locale files at all, so this table is the only source of UI text.
+inline const Dictionary &compiled_english() {
     static const Dictionary values = {
         {"about.title", "About"},
         {"about.default_description", "Small runtime menu for this mod."},
@@ -277,9 +292,11 @@ inline bool read_language(const std::string &language, Dictionary &output, std::
 }
 
 inline bool load_language(const char *language) {
-    if (!language || !language[0] || std::string(language) == "en") {
-        overrides().clear();
-        current_language() = "en";
+    if (!language || !language[0])
+        return false;
+    if (std::string(language) == fallback_language()) {
+        overrides().clear(); // the default table already holds these strings
+        current_language() = fallback_language();
         last_error().clear();
         return true;
     }
@@ -296,22 +313,42 @@ inline bool load_language(const char *language) {
 }
 
 inline void initialize() {
-    if (initialized() || !ModConfig::enable_localization)
+    if (initialized())
         return;
     initialized() = true;
-    languages().assign(1, "en");
+    languages().clear();
     last_error().clear();
-    const std::filesystem::path directory = locale_directory();
-    if (directory.empty())
-        return;
-    std::error_code error;
-    if (!std::filesystem::is_directory(directory, error)) {
-        report_error("locale directory is unavailable: " + directory.string());
+
+    if (!ModConfig::enable_localization) {
+        // No locale files were generated: every label is hardcoded English.
+        fallback_language() = "en";
+        fallback_table() = compiled_english();
+        current_language() = "en";
+        languages().push_back("en");
         return;
     }
-    const std::filesystem::directory_iterator entries(directory, error);
-    if (error) {
-        report_error("cannot enumerate locale directory: " + error.message());
+
+    const char *configured = ModConfig::default_language && ModConfig::default_language[0]
+                                 ? ModConfig::default_language
+                                 : "en";
+    fallback_language() = configured;
+
+    const std::filesystem::path directory = locale_directory();
+    if (directory.empty()) {
+        languages().push_back(fallback_language());
+        return;
+    }
+
+    std::error_code directory_error;
+    if (!std::filesystem::is_directory(directory, directory_error)) {
+        report_error("locale directory is unavailable: " + directory.string());
+        languages().push_back(fallback_language());
+        return;
+    }
+    const std::filesystem::directory_iterator entries(directory, directory_error);
+    if (directory_error) {
+        report_error("cannot enumerate locale directory: " + directory_error.message());
+        languages().push_back(fallback_language());
         return;
     }
     for (const auto &entry : entries) {
@@ -324,19 +361,28 @@ inline void initialize() {
         if (entry.path().extension() != ".json")
             continue;
         const std::string language = entry.path().stem().string();
-        if (language.empty() || language == "en")
+        if (language.empty())
             continue;
         Dictionary parsed;
         std::string load_error;
-        if (read_language(language, parsed, load_error)) {
-            languages().push_back(language);
-        } else {
+        if (!read_language(language, parsed, load_error)) {
             report_error(load_error);
+            continue;
         }
+        if (language == fallback_language())
+            fallback_table() = std::move(parsed);
+        languages().push_back(language);
     }
-    std::sort(languages().begin() + 1, languages().end());
-    if (ModConfig::default_language && std::string(ModConfig::default_language) != "en")
-        load_language(ModConfig::default_language);
+    std::sort(languages().begin(), languages().end());
+    languages().erase(std::unique(languages().begin(), languages().end()), languages().end());
+    if (languages().empty())
+        languages().push_back(fallback_language());
+
+    if (fallback_table().empty())
+        report_error("default locale is missing: " + fallback_language() + ".json; labels fall back to keys");
+
+    overrides().clear();
+    current_language() = fallback_language();
 }
 
 inline const std::vector<std::string> &available_languages() {
@@ -363,8 +409,8 @@ inline const char *translate(const char *key) {
     const auto override_it = overrides().find(key);
     if (override_it != overrides().end())
         return override_it->second.c_str();
-    const auto english_it = english().find(key);
-    return english_it != english().end() ? english_it->second.c_str() : key;
+    const auto english_it = fallback_table().find(key);
+    return english_it != fallback_table().end() ? english_it->second.c_str() : key;
 }
 
 inline std::string format(const char *key, std::initializer_list<Replacement> replacements) {
