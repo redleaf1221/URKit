@@ -35,7 +35,8 @@ std::int32_t FirstOffsetPastHeader(const ObjectOffsets &offsets) {
         if (field != kOffsetNotFound && field > highest)
             highest = field;
     }
-    return AlignUp(highest + static_cast<std::int32_t>(sizeof(std::int32_t)), static_cast<std::int32_t>(sizeof(Address)));
+    return AlignUp(highest + static_cast<std::int32_t>(sizeof(std::int32_t)),
+                   static_cast<std::int32_t>(sizeof(Address)));
 }
 
 std::uint64_t CastFlagsOf(const ObjectFinder &finder, const StructOffsets &structs, Address object) {
@@ -44,8 +45,7 @@ std::uint64_t CastFlagsOf(const ObjectFinder &finder, const StructOffsets &struc
     const Address classObject = finder.ClassOf(object);
     if (classObject == kNullAddress)
         return 0;
-    const std::optional<std::uint64_t> flags =
-        finder.Reader().ReadAs<std::uint64_t>(classObject + structs.castFlags);
+    const std::optional<std::uint64_t> flags = finder.Reader().ReadAs<std::uint64_t>(classObject + structs.castFlags);
     return flags ? *flags : 0;
 }
 

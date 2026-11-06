@@ -103,9 +103,13 @@ const URK_UnrealApi *UnrealSdkApi(const HookInstaller &installer) {
     return &table;
 }
 
-void UnrealSdk_SetLog(LogSink log) { g_log.store(log, std::memory_order_release); }
+void UnrealSdk_SetLog(LogSink log) {
+    g_log.store(log, std::memory_order_release);
+}
 
-void UnrealSdk_SetNativeFromBlueprint(bool enabled) { g_nativeFromBlueprint.store(enabled, std::memory_order_release); }
+void UnrealSdk_SetNativeFromBlueprint(bool enabled) {
+    g_nativeFromBlueprint.store(enabled, std::memory_order_release);
+}
 
 void UnrealSdk_ReleasePending() {
     if (!UnrealEngine::Instance().Available() || !OnGameThread())
@@ -128,7 +132,9 @@ void UnrealSdk_ReleasePending() {
     ReleasePending();
 }
 
-const EnumNames *UnrealSdk_Enums() { return Enums(); }
+const EnumNames *UnrealSdk_Enums() {
+    return Enums();
+}
 
 std::string UnrealSdk_DescribeDefaults(Address classObject) {
     if (!UnrealEngine::Instance().Available() || !OnGameThread())
@@ -147,9 +153,10 @@ std::string UnrealSdk_DescribeScript(Address function, int &state) {
     const bool measured = describer.Measured();
     const ScriptDescriber::Result result = describer.Describe(function);
     if (!measured && describer.Measured())
-        Report(kNullAddress, describer.Offset() != kOffsetNotFound
-                                 ? "Blueprint bytecode: UStruct.Script at " + std::to_string(describer.Offset())
-                                 : "Blueprint bytecode not dumped: UStruct.Script not found (" + describer.Failure() + ")");
+        Report(kNullAddress,
+               describer.Offset() != kOffsetNotFound
+                   ? "Blueprint bytecode: UStruct.Script at " + std::to_string(describer.Offset())
+                   : "Blueprint bytecode not dumped: UStruct.Script not found (" + describer.Failure() + ")");
     state = !result.present ? 0 : result.complete ? 1 : 2;
     return result.lines;
 }

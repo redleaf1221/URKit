@@ -49,9 +49,12 @@ class Places {
   public:
     Places(UnrealEngine &engine, OwnedValues &owned, EnumNames &enums)
         : engine_(&engine), owned_(&owned), enums_(&enums),
-          delegates_(engine.Finder(), engine.Chain(), engine.Values(), owned) {}
+          delegates_(engine.Finder(), engine.Chain(), engine.Values(), owned) {
+    }
 
-    const std::string &Failure() const { return failure_; }
+    const std::string &Failure() const {
+        return failure_;
+    }
 
     std::optional<PlaceTarget> Walk(std::uint8_t *root, const PropertyInfo &rootInfo, const URK_UnrealStep *steps,
                                     std::uint32_t count, bool describe, bool gameThread = false);

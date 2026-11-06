@@ -22,7 +22,9 @@ struct HookInstaller {
     void *(*attach)(void *context, void *target, void *detour, void **trampoline) = nullptr;
     bool (*detach)(void *context, void *handle) = nullptr;
 
-    bool Valid() const { return attach != nullptr && detach != nullptr; }
+    bool Valid() const {
+        return attach != nullptr && detach != nullptr;
+    }
 };
 
 class ProcessEventHook {
@@ -71,9 +73,13 @@ class ProcessEventHook {
     // GFrameCounter write hooks; the site that alone advances it is the frame boundary.
     static constexpr std::size_t kMaxBoundarySites = 16;
     void FrameBoundary(std::size_t site);
-    bool FrameBoundaryProven() const { return boundarySite_.load(std::memory_order_acquire) >= 0; }
+    bool FrameBoundaryProven() const {
+        return boundarySite_.load(std::memory_order_acquire) >= 0;
+    }
     // The elected site, -1 before one is.
-    std::int32_t ElectedBoundary() const { return boundarySite_.load(std::memory_order_acquire); }
+    std::int32_t ElectedBoundary() const {
+        return boundarySite_.load(std::memory_order_acquire);
+    }
 
     // Innermost ProcessEvent call on this thread, or null.
     struct Call {

@@ -37,7 +37,9 @@ struct DecodedScript {
     std::int32_t failedAt = -1;
     std::string failure;
 
-    bool Complete() const { return failedAt < 0; }
+    bool Complete() const {
+        return failedAt < 0;
+    }
 };
 
 DecodedScript DecodeScript(std::span<const std::uint8_t> code, const ScriptSymbols &symbols,
@@ -63,10 +65,16 @@ class ScriptDescriber {
         bool complete = false;
     };
     Result Describe(Address function);
-    std::int32_t Offset() const { return offset_; }
+    std::int32_t Offset() const {
+        return offset_;
+    }
     // Why the Script offset was not found; empty until measured or when found.
-    const std::string &Failure() const { return failure_; }
-    bool Measured() const { return measured_; }
+    const std::string &Failure() const {
+        return failure_;
+    }
+    bool Measured() const {
+        return measured_;
+    }
 
   private:
     std::pair<std::string, std::string> ObjectOf(Address object) const;

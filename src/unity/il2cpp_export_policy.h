@@ -11,8 +11,8 @@ struct Il2CppExportBindingDecision {
 };
 
 // Optional export failures disable only their own entry.
-constexpr Il2CppExportBindingDecision
-Il2CppExportPolicy_Decide(Il2CppExportRequirement requirement, bool present, bool targetValid) {
+constexpr Il2CppExportBindingDecision Il2CppExportPolicy_Decide(Il2CppExportRequirement requirement, bool present,
+                                                                bool targetValid) {
     if (!present || !targetValid)
         return {false, requirement == Il2CppExportRequirement::Required};
     return {true, false};

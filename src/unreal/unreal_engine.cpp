@@ -139,9 +139,9 @@ bool UnrealEngine::EnsureBootstrapped() {
     profile_.offsetsMs = lap();
     functions_ = FindFunctionOffsets(*finder_, structs_, fields_, tail_, codeRegions);
     profile_.functionsMs = lap();
-    processEvent_ = FindProcessEvent(*finder_, *types_, structs_, functions_, codeRegions, functionTable_,
-                                     &processEventFailure_)
-                       .value_or(ProcessEventLocation{});
+    processEvent_ =
+        FindProcessEvent(*finder_, *types_, structs_, functions_, codeRegions, functionTable_, &processEventFailure_)
+            .value_or(ProcessEventLocation{});
     profile_.processEventMs = lap();
     if (!processEvent_.Resolved()) {
         const std::uint64_t checked = GetTickCount64();
@@ -194,12 +194,15 @@ std::vector<std::string> UnrealEngine::ExplainFailure() {
         return lines;
     }
     if (!fields_.Resolved()) {
-        const std::pair<const char *, std::int32_t> fields[] = {
-            {"UStruct::ChildProperties", fields_.childProperties}, {"FField::ClassPrivate", fields_.fieldClass},
-            {"FField::Next", fields_.fieldNext},                   {"FField::NamePrivate", fields_.fieldName},
-            {"FFieldClass::CastFlags", fields_.fieldClassCastFlags}, {"FProperty::ArrayDim", fields_.arrayDim},
-            {"FProperty::ElementSize", fields_.elementSize},       {"FProperty::PropertyFlags", fields_.propertyFlags},
-            {"FProperty::Offset_Internal", fields_.offsetInternal}};
+        const std::pair<const char *, std::int32_t> fields[] = {{"UStruct::ChildProperties", fields_.childProperties},
+                                                                {"FField::ClassPrivate", fields_.fieldClass},
+                                                                {"FField::Next", fields_.fieldNext},
+                                                                {"FField::NamePrivate", fields_.fieldName},
+                                                                {"FFieldClass::CastFlags", fields_.fieldClassCastFlags},
+                                                                {"FProperty::ArrayDim", fields_.arrayDim},
+                                                                {"FProperty::ElementSize", fields_.elementSize},
+                                                                {"FProperty::PropertyFlags", fields_.propertyFlags},
+                                                                {"FProperty::Offset_Internal", fields_.offsetInternal}};
         std::string missing = "FField layout: not measured:";
         for (const auto &[name, offset] : fields)
             missing += offset == kOffsetNotFound ? std::string(" ") + name : std::string();
@@ -302,9 +305,13 @@ const UnrealPresence &UnrealEngine::Presence() {
     return *presence_;
 }
 
-bool UnrealEngine::RuledOut() const { return ruledOut_.load(std::memory_order_acquire); }
+bool UnrealEngine::RuledOut() const {
+    return ruledOut_.load(std::memory_order_acquire);
+}
 
-bool UnrealEngine::Available() const { return available_.load(std::memory_order_acquire); }
+bool UnrealEngine::Available() const {
+    return available_.load(std::memory_order_acquire);
+}
 
 std::vector<std::pair<std::string, Address>> UnrealEngine::Globals() const {
     std::vector<std::pair<std::string, Address>> globals;

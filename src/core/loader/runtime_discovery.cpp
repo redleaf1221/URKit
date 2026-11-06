@@ -73,28 +73,29 @@ RuntimeModuleSnapshot RuntimeDiscovery_Snapshot() {
 
 const char *RuntimeDiscovery_QualificationReason(const RuntimeModuleSnapshot &snapshot) {
     switch (RuntimeDiscovery_SelectRuntime(snapshot)) {
-    case RuntimeModuleKind::Il2Cpp:
-        return "GameAssembly.dll loaded";
-    case RuntimeModuleKind::Mono:
-        return "Mono runtime module loaded";
-    case RuntimeModuleKind::Unreal:
-        return UnrealReason();
-    case RuntimeModuleKind::None:
-        return snapshot.unityPlayerLoaded ? "UnityPlayer.dll loaded" : "no supported runtime in the current process";
+        case RuntimeModuleKind::Il2Cpp:
+            return "GameAssembly.dll loaded";
+        case RuntimeModuleKind::Mono:
+            return "Mono runtime module loaded";
+        case RuntimeModuleKind::Unreal:
+            return UnrealReason();
+        case RuntimeModuleKind::None:
+            return snapshot.unityPlayerLoaded ? "UnityPlayer.dll loaded"
+                                              : "no supported runtime in the current process";
     }
     return "no supported runtime in the current process";
 }
 
 const char *RuntimeDiscovery_RuntimeReason(const RuntimeModuleSnapshot &snapshot) {
     switch (RuntimeDiscovery_SelectRuntime(snapshot)) {
-    case RuntimeModuleKind::Il2Cpp:
-        return "GameAssembly.dll loaded";
-    case RuntimeModuleKind::Mono:
-        return "Mono runtime module loaded";
-    case RuntimeModuleKind::Unreal:
-        return UnrealReason();
-    case RuntimeModuleKind::None:
-        return "no loaded scripting runtime module";
+        case RuntimeModuleKind::Il2Cpp:
+            return "GameAssembly.dll loaded";
+        case RuntimeModuleKind::Mono:
+            return "Mono runtime module loaded";
+        case RuntimeModuleKind::Unreal:
+            return UnrealReason();
+        case RuntimeModuleKind::None:
+            return "no loaded scripting runtime module";
     }
     return "no loaded scripting runtime module";
 }

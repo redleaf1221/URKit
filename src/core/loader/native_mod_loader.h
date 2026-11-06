@@ -10,7 +10,9 @@
 struct NativeModLoadPlan {
     std::vector<std::string> paths;
 
-    bool Empty() const noexcept { return paths.empty(); }
+    bool Empty() const noexcept {
+        return paths.empty();
+    }
 };
 
 constexpr bool NativeMods_RequiresRuntimeEvents(bool safeMode, std::size_t candidateCount) noexcept {

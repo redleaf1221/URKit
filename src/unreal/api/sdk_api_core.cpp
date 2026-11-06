@@ -61,7 +61,9 @@ class MemberCache {
   private:
     struct MemberHash {
         using is_transparent = void;
-        std::size_t operator()(std::string_view name) const { return std::hash<std::string_view>{}(name); }
+        std::size_t operator()(std::string_view name) const {
+            return std::hash<std::string_view>{}(name);
+        }
     };
 
     struct ClassEntry {
@@ -123,7 +125,9 @@ std::optional<ResolvedMember> Resolve(UnrealEngine &engine, Address object, cons
     return ResolvedMember{*info};
 }
 
-int Unreal_IsAvailable() { return UnrealEngine::Instance().EnsureBootstrapped() ? 1 : 0; }
+int Unreal_IsAvailable() {
+    return UnrealEngine::Instance().EnsureBootstrapped() ? 1 : 0;
+}
 
 void Unreal_EngineVersion(std::int32_t *major, std::int32_t *minor, std::int32_t *patch) {
     const EngineVersion &version = UnrealEngine::Instance().Version();

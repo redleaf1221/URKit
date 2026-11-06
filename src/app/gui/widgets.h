@@ -29,11 +29,14 @@ std::unique_ptr<wxGraphicsContext> MakeGc(wxDC &dc);
 // Eased value that moves towards a target over a fixed time; read it while painting.
 class Tween {
   public:
-    explicit Tween(double value = 0.0) : from_(value), to_(value) {}
+    explicit Tween(double value = 0.0) : from_(value), to_(value) {
+    }
     void Set(double target, double durationMs);
     void Jump(double value);
     double Value() const;
-    double Target() const { return to_; }
+    double Target() const {
+        return to_;
+    }
     bool Running() const;
 
   private:
@@ -46,7 +49,8 @@ class Tween {
 // Repaints its owner every frame while step() returns true.
 class Ticker : public wxTimer {
   public:
-    Ticker(wxWindow *owner, std::function<bool()> step) : owner_(owner), step_(std::move(step)) {}
+    Ticker(wxWindow *owner, std::function<bool()> step) : owner_(owner), step_(std::move(step)) {
+    }
     void Kick();
     void Notify() override;
 
@@ -71,10 +75,16 @@ class Button : public wxControl {
     Button(wxWindow *parent, const wxString &label, Kind kind = Kind::Secondary, wchar_t icon = 0);
 
     void SetBusy(bool busy);
-    bool IsBusy() const { return busy_; }
+    bool IsBusy() const {
+        return busy_;
+    }
     bool Enable(bool enable = true) override;
-    bool AcceptsFocus() const override { return IsEnabled() && !busy_; }
-    bool AcceptsFocusFromKeyboard() const override { return AcceptsFocus(); }
+    bool AcceptsFocus() const override {
+        return IsEnabled() && !busy_;
+    }
+    bool AcceptsFocusFromKeyboard() const override {
+        return AcceptsFocus();
+    }
     void SetLabel(const wxString &label) override;
 
   protected:
@@ -99,7 +109,9 @@ class Button : public wxControl {
 class Surface : public wxPanel {
   public:
     explicit Surface(wxWindow *parent, int padding = 16);
-    wxBoxSizer *Body() const { return body_; }
+    wxBoxSizer *Body() const {
+        return body_;
+    }
 
   private:
     wxBoxSizer *body_ = nullptr;
@@ -115,10 +127,16 @@ class Segmented : public wxControl {
 
     Segmented(wxWindow *parent, std::vector<wxString> items, Style style, std::function<void(int)> onSelect);
     void Select(int index, bool animate = true);
-    int Selection() const { return selected_; }
+    int Selection() const {
+        return selected_;
+    }
     bool Enable(bool enable = true) override;
-    bool AcceptsFocus() const override { return IsEnabled(); }
-    bool AcceptsFocusFromKeyboard() const override { return IsEnabled(); }
+    bool AcceptsFocus() const override {
+        return IsEnabled();
+    }
+    bool AcceptsFocusFromKeyboard() const override {
+        return IsEnabled();
+    }
 
   protected:
     wxSize DoGetBestClientSize() const override;
@@ -151,8 +169,12 @@ class ChoiceTiles : public wxControl {
 
     ChoiceTiles(wxWindow *parent, std::vector<Item> items, std::function<void(int)> onSelect);
     void Select(int index, bool animate = true);
-    int Selection() const { return selected_; }
-    bool AcceptsFocus() const override { return true; }
+    int Selection() const {
+        return selected_;
+    }
+    bool AcceptsFocus() const override {
+        return true;
+    }
 
   protected:
     wxSize DoGetBestClientSize() const override;
@@ -177,11 +199,17 @@ class ChoiceTiles : public wxControl {
 class Toggle : public wxControl {
   public:
     Toggle(wxWindow *parent, const wxString &label, std::function<void(bool)> onChange = {});
-    bool GetValue() const { return value_; }
+    bool GetValue() const {
+        return value_;
+    }
     void SetValue(bool value, bool animate = false);
     bool Enable(bool enable = true) override;
-    bool AcceptsFocus() const override { return IsEnabled(); }
-    bool AcceptsFocusFromKeyboard() const override { return IsEnabled(); }
+    bool AcceptsFocus() const override {
+        return IsEnabled();
+    }
+    bool AcceptsFocusFromKeyboard() const override {
+        return IsEnabled();
+    }
 
   protected:
     wxSize DoGetBestClientSize() const override;
@@ -201,7 +229,9 @@ class Toggle : public wxControl {
 class TextField : public wxPanel {
   public:
     TextField(wxWindow *parent, const wxString &value, const wxString &hint = {});
-    wxTextCtrl *Ctrl() const { return ctrl_; }
+    wxTextCtrl *Ctrl() const {
+        return ctrl_;
+    }
 
   private:
     void OnPaint(wxPaintEvent &event);
@@ -224,7 +254,9 @@ class DropZone : public wxControl {
     void SetFilled(const wxString &path, const wxString &title, const wxString &chip, const wxColour &chipColour);
     void SetDragging(bool dragging);
     void Browse();
-    bool AcceptsFocus() const override { return true; }
+    bool AcceptsFocus() const override {
+        return true;
+    }
 
   protected:
     wxSize DoGetBestClientSize() const override;
@@ -262,8 +294,12 @@ class StatusCard : public wxPanel {
 
     explicit StatusCard(wxWindow *parent);
     void Set(Tone tone, const wxString &title, const wxString &text = {}, wchar_t icon = 0);
-    Tone GetTone() const { return tone_; }
-    wxBoxSizer *Actions() const { return actions_; }
+    Tone GetTone() const {
+        return tone_;
+    }
+    wxBoxSizer *Actions() const {
+        return actions_;
+    }
     // Call after adding, removing or relabelling buttons.
     void Refit();
 
@@ -287,9 +323,13 @@ class StatusCard : public wxPanel {
 class Collapsible : public wxPanel {
   public:
     Collapsible(wxWindow *parent, const wxString &title);
-    wxPanel *Content() const { return content_; }
+    wxPanel *Content() const {
+        return content_;
+    }
     void SetExpanded(bool expanded, bool animate = true);
-    bool IsExpanded() const { return expanded_; }
+    bool IsExpanded() const {
+        return expanded_;
+    }
     void SyncHeight();
 
   private:
@@ -307,7 +347,9 @@ class Collapsible : public wxPanel {
 class LinkRow : public wxControl {
   public:
     LinkRow(wxWindow *parent, wchar_t icon, const wxString &label, const wxString &display, const wxString &url);
-    bool AcceptsFocus() const override { return true; }
+    bool AcceptsFocus() const override {
+        return true;
+    }
 
   protected:
     wxSize DoGetBestClientSize() const override;

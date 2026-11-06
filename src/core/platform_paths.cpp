@@ -3,7 +3,6 @@
 #include <windows.h>
 
 #include <cstdio>
-#include <cstring>
 #include <string>
 #include <vector>
 
@@ -32,8 +31,7 @@ std::string Platform_GameName() {
     char path[MAX_PATH]{};
     GetModuleFileNameA(nullptr, path, MAX_PATH);
     DWORD ignored = 0;
-    const DWORD bytes = GetFileVersionInfoSizeA(path, &ignored);
-    if (bytes) {
+    if (const DWORD bytes = GetFileVersionInfoSizeA(path, &ignored)) {
         std::vector<unsigned char> data(bytes);
         if (GetFileVersionInfoA(path, 0, bytes, data.data())) {
             struct Translation {

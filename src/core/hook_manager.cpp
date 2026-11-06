@@ -55,7 +55,7 @@ struct DetoursResult {
     DWORD thread_id = 0;
 };
 
-HookRecord *FindRecord(void **original, void *detour) {
+HookRecord *FindRecord(void **original, const void *detour) {
     for (auto &record : Hooks()) {
         if (record && record->original_slot == original && record->detour == detour) {
             return record.get();
@@ -65,16 +65,16 @@ HookRecord *FindRecord(void **original, void *detour) {
     return nullptr;
 }
 
-HMODULE ModuleForAddress(void *address) {
+HMODULE ModuleForAddress(const void *address) {
     HMODULE module = nullptr;
     if (!address)
         return nullptr;
     GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                       reinterpret_cast<LPCSTR>(address), &module);
+                       static_cast<LPCSTR>(address), &module);
     return module;
 }
 
-bool IsExecutableAddress(void *address) {
+bool IsExecutableAddress(const void *address) {
     MEMORY_BASIC_INFORMATION info{};
     if (!address || !VirtualQuery(address, &info, sizeof(info)) || info.State != MEM_COMMIT ||
         (info.Protect & (PAGE_GUARD | PAGE_NOACCESS))) {
@@ -101,7 +101,8 @@ void ConfigureDetoursAddressPolicy() {
 // Hold the heap lock across suspension so no suspended thread owns it. No logging while held.
 class ProcessHeapHold {
   public:
-    ProcessHeapHold() : heap_(GetProcessHeap()), held_(heap_ && HeapLock(heap_)) {}
+    ProcessHeapHold() : heap_(GetProcessHeap()), held_(heap_ && HeapLock(heap_)) {
+    }
     ~ProcessHeapHold() {
         if (held_)
             HeapUnlock(heap_);
@@ -209,8 +210,7 @@ constexpr int kTransactionAttempts = 4;
 bool IsRetriableTransactionStage(const DetoursResult &result) {
     if (result.error == NO_ERROR || !result.stage)
         return false;
-    return std::string_view(result.stage) == "DetourUpdateThread" ||
-           std::string_view(result.stage) == "OpenThread" ||
+    return std::string_view(result.stage) == "DetourUpdateThread" || std::string_view(result.stage) == "OpenThread" ||
            std::string_view(result.stage) == "DetourTransactionBegin";
 }
 
@@ -327,7 +327,7 @@ DetoursResult RunDetoursBatch(const std::vector<HookRecord *> &records, bool att
     return result;
 }
 
-std::vector<HookRecord *> RecordsForTarget(void *target) {
+std::vector<HookRecord *> RecordsForTarget(const void *target) {
     std::vector<HookRecord *> records;
     for (const auto &record : Hooks()) {
         if (record && record->target == target)
@@ -382,19 +382,16 @@ std::vector<HookRecord *> RecordsExcept(const std::vector<HookRecord *> &records
                                         const std::vector<HookRecord *> &removed) {
     std::vector<HookRecord *> remaining;
     for (HookRecord *record : records) {
-        if (std::find(removed.begin(), removed.end(), record) == removed.end())
+        if (std::ranges::find(removed, record) == removed.end())
             remaining.push_back(record);
     }
     return remaining;
 }
 
 void DropRecords(const std::vector<HookRecord *> &removed) {
-    Hooks().erase(std::remove_if(Hooks().begin(), Hooks().end(),
-                                 [&removed](const auto &record) {
-                                     return record && std::find(removed.begin(), removed.end(), record.get()) !=
-                                                          removed.end();
-                                 }),
-                  Hooks().end());
+    std::erase_if(Hooks(), [&removed](const auto &record) {
+        return record && std::find(removed.begin(), removed.end(), record.get()) != removed.end();
+    });
 }
 
 bool RebuildSafetyHookTargetWithout(void *target, const std::vector<HookRecord *> &removed) {
@@ -449,7 +446,7 @@ bool RebuildTargetWithout(void *target, const std::vector<HookRecord *> &removed
 
     std::vector<HookRecord *> remaining;
     for (HookRecord *record : current) {
-        if (std::find(removed.begin(), removed.end(), record) == removed.end())
+        if (std::ranges::find(removed, record) == removed.end())
             remaining.push_back(record);
     }
 
@@ -473,9 +470,7 @@ bool RebuildTargetWithout(void *target, const std::vector<HookRecord *> &removed
             if (record->original_slot)
                 *record->original_slot = target;
         }
-        Hooks().erase(std::remove_if(Hooks().begin(), Hooks().end(),
-                                     [target](const auto &record) { return record && record->target == target; }),
-                      Hooks().end());
+        std::erase_if(Hooks(), [target](const auto &record) { return record && record->target == target; });
         return true;
     }
 
@@ -484,10 +479,9 @@ bool RebuildTargetWithout(void *target, const std::vector<HookRecord *> &removed
         if (record && record->original_slot)
             *record->original_slot = target;
     }
-    Hooks().erase(std::remove_if(Hooks().begin(), Hooks().end(), [&removed](const auto &record) {
-                      return record && std::find(removed.begin(), removed.end(), record.get()) != removed.end();
-                  }),
-                  Hooks().end());
+    std::erase_if(Hooks(), [&removed](const auto &record) {
+        return record && std::find(removed.begin(), removed.end(), record.get()) != removed.end();
+    });
     Log("[hooks] rebuilt target=%p chain: removed=%zu remaining=%zu.", target, removed.size(), remaining.size());
     return true;
 }
@@ -678,13 +672,13 @@ int HookManager_Attach(void **original, void *detour, const URK_HookOptions *opt
     return AttachWithBackend(original, detour, backend);
 }
 
-int HookManager_Detach(void **original, void *detour) {
+int HookManager_Detach(void **original, const void *detour) {
     if (!original || !detour)
         return 0;
 
     std::scoped_lock lock(g_hook_mutex);
 
-    auto it = std::find_if(Hooks().begin(), Hooks().end(), [&](const std::unique_ptr<HookRecord> &record) {
+    const auto it = std::ranges::find_if(Hooks(), [&](const std::unique_ptr<HookRecord> &record) {
         return record && record->original_slot == original && record->detour == detour;
     });
 
@@ -707,7 +701,7 @@ int HookManager_DetachModule(void *module) {
     std::vector<void *> targets;
     for (const auto &record : Hooks()) {
         if (record && ModuleForAddress(record->detour) == targetModule &&
-            std::find(targets.begin(), targets.end(), record->target) == targets.end()) {
+            std::ranges::find(targets, record->target) == targets.end()) {
             targets.push_back(record->target);
         }
     }

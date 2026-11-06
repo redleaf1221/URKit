@@ -223,8 +223,8 @@ void PublishModInfo(HMODULE module, const std::string &path) {
             Log("  [ERROR][metadata ignored] %s: URKGetModInfo threw a C++ exception: %s.", path.c_str(),
                 cppError.c_str());
         } else {
-            Log("  [ERROR][metadata ignored] %s: URKGetModInfo crashed with native exception 0x%08lX.",
-                path.c_str(), exceptionCode);
+            Log("  [ERROR][metadata ignored] %s: URKGetModInfo crashed with native exception 0x%08lX.", path.c_str(),
+                exceptionCode);
         }
         return;
     }
@@ -290,7 +290,8 @@ void NativeMods_Load(const NativeModLoadPlan &plan, const URK_ModContext &contex
         HMODULE h = LoadLibraryExA(path.c_str(), nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
         if (!h) {
             const DWORD error = GetLastError();
-            Log("  [ERROR][FAILED] %s: LoadLibrary error %lu (%s)", path.c_str(), error, Loader_WindowsError(error).c_str());
+            Log("  [ERROR][FAILED] %s: LoadLibrary error %lu (%s)", path.c_str(), error,
+                Loader_WindowsError(error).c_str());
             if (error == ERROR_BAD_EXE_FORMAT)
                 Log("[WARNING]           The mod and game must use the same architecture "
                     "(normally x64).");
@@ -318,22 +319,21 @@ void NativeMods_Load(const NativeModLoadPlan &plan, const URK_ModContext &contex
         DWORD exceptionCode = 0;
         int initializationStatus = 0;
         std::string cppError;
-        const bool invoked =
-            InvokeModInitExSafely(initEx, context, &initializationStatus, &exceptionCode, &cppError);
+        const bool invoked = InvokeModInitExSafely(initEx, context, &initializationStatus, &exceptionCode, &cppError);
         if (invoked && initializationStatus != 0) {
             ++totals.loaded;
             Log("  [SUCCESS][LOADED] %s", path.c_str());
         } else {
             if (!invoked) {
                 if (!cppError.empty()) {
-                    Log("  [ERROR][FAILED] %s: ModInitEx threw a C++ exception: %s.", path.c_str(),
-                        cppError.c_str());
+                    Log("  [ERROR][FAILED] %s: ModInitEx threw a C++ exception: %s.", path.c_str(), cppError.c_str());
                 } else {
                     Log("  [ERROR][FAILED] %s: ModInitEx crashed with native exception 0x%08lX.", path.c_str(),
                         exceptionCode);
                 }
             } else {
-                Log("  [ERROR][FAILED] %s: ModInitEx reported initialization failure; module was not activated.", path.c_str());
+                Log("  [ERROR][FAILED] %s: ModInitEx reported initialization failure; module was not activated.",
+                    path.c_str());
             }
             FreeLibrary(h);
             ++totals.failed;
@@ -346,6 +346,5 @@ void NativeMods_Load(const NativeModLoadPlan &plan, const URK_ModContext &contex
     PublishModProgress("", totals, false, finalStatus);
     Log(totals.failed == 0 ? "[SUCCESS][mods] %d loaded, %d failed, %zu discovered"
                            : "[WARNING][mods] %d loaded, %d failed, %zu discovered",
-        totals.loaded, totals.failed,
-        static_cast<size_t>(totals.discovered));
+        totals.loaded, totals.failed, static_cast<size_t>(totals.discovered));
 }

@@ -8,7 +8,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstring>
 #include <filesystem>
 #include <gdiplus.h>
 #include <iterator>
@@ -91,7 +90,7 @@ float ProgressForMods(int discovered, int loaded, int failed, bool loading) {
 
     const int rawCompleted = loaded + failed;
     const int completed = rawCompleted < 0 ? 0 : (std::min)(rawCompleted, discovered);
-    const float span = kProgressModsEnd - kProgressModsStart;
+    constexpr float span = kProgressModsEnd - kProgressModsStart;
     float value = kProgressModsStart + span * (static_cast<float>(completed) / static_cast<float>(discovered));
 
     if (loading && completed < discovered)
@@ -193,8 +192,8 @@ Gdiplus::Image *LoadImageFromBytes(const std::vector<BYTE> &bytes) {
 }
 
 Gdiplus::Image *LoadEmbeddedSplashImage() {
-    return LoadImageFromBytes(std::vector<BYTE>(std::begin(IntroSplashEmbedded::kImagePng),
-                                                std::end(IntroSplashEmbedded::kImagePng)));
+    return LoadImageFromBytes(
+        std::vector<BYTE>(std::begin(IntroSplashEmbedded::kImagePng), std::end(IntroSplashEmbedded::kImagePng)));
 }
 
 void LoadSplashImage() {
@@ -267,7 +266,7 @@ void FillRounded(Gdiplus::Graphics &graphics, const Gdiplus::Brush &brush, Gdipl
     graphics.FillPath(&brush, &path);
 }
 
-float TextWidth(Gdiplus::Graphics &graphics, const std::wstring &text, const Gdiplus::Font &font) {
+float TextWidth(const Gdiplus::Graphics &graphics, const std::wstring &text, const Gdiplus::Font &font) {
     Gdiplus::RectF bounds;
     graphics.MeasureString(text.c_str(), static_cast<INT>(text.size()), &font, Gdiplus::PointF(0, 0), &bounds);
     return bounds.Width;
@@ -336,9 +335,10 @@ void RenderFrame(Gdiplus::Graphics &graphics, const Snapshot &state, DWORD now) 
         const float grow = static_cast<float>(step);
         const BYTE alpha = static_cast<BYTE>(std::clamp(10.0f * (1.0f - grow / margin) + 1.0f, 0.0f, 255.0f));
         Gdiplus::SolidBrush shadow(Gdiplus::Color(alpha, 0, 0, 0));
-        FillRounded(graphics, shadow,
-                    Gdiplus::RectF(card.X - grow, card.Y - grow + 4.0f * s, card.Width + grow * 2, card.Height + grow * 2),
-                    radius + grow);
+        FillRounded(
+            graphics, shadow,
+            Gdiplus::RectF(card.X - grow, card.Y - grow + 4.0f * s, card.Width + grow * 2, card.Height + grow * 2),
+            radius + grow);
     }
 
     Gdiplus::GraphicsPath cardPath;
@@ -384,14 +384,13 @@ void RenderFrame(Gdiplus::Graphics &graphics, const Snapshot &state, DWORD now) 
     std::wstring status = state.status.empty() ? L"Preparing runtime and mods" : state.status;
     std::wstring counters;
     if (state.discovered > 0 || state.loaded > 0 || state.failed > 0) {
-        counters = std::to_wstring(state.loaded) + L" of " + std::to_wstring((std::max)(state.discovered, 1)) +
-                   L" loaded";
+        counters =
+            std::to_wstring(state.loaded) + L" of " + std::to_wstring((std::max)(state.discovered, 1)) + L" loaded";
         if (state.failed > 0)
             counters += L"  ·  " + std::to_wstring(state.failed) + L" failed";
     }
     const float countersWidth = counters.empty() ? 0.0f : TextWidth(graphics, counters, detailFont) + 12.0f * s;
-    DrawText(graphics, status, statusFont, Gdiplus::Color(255, 240, 242, 245), left, statusY,
-             width - countersWidth);
+    DrawText(graphics, status, statusFont, Gdiplus::Color(255, 240, 242, 245), left, statusY, width - countersWidth);
     if (!state.currentMod.empty()) {
         const float statusWidth = (std::min)(TextWidth(graphics, status, statusFont), width - countersWidth);
         DrawText(graphics, state.currentMod, detailFont, Gdiplus::Color(255, 150, 158, 168),
@@ -436,7 +435,8 @@ void RenderFrame(Gdiplus::Graphics &graphics, const Snapshot &state, DWORD now) 
     std::wstring context = state.game.empty() ? L"Unknown game" : state.game;
     if (!state.backend.empty())
         context += L"  ·  " + state.backend;
-    const std::wstring percent = std::to_wstring(static_cast<int>(std::lround(ClampProgress(g_shownProgress) * 100.0f))) + L"%";
+    const std::wstring percent =
+        std::to_wstring(static_cast<int>(std::lround(ClampProgress(g_shownProgress) * 100.0f))) + L"%";
     const std::wstring release = L"URKit " + Widen(std::string(UrkVersion::kReleaseVersion));
     const float rightWidth = TextWidth(graphics, release + L"    " + percent, smallFont) + 8.0f * s;
     DrawText(graphics, context, smallFont, Gdiplus::Color(255, 120, 128, 138), left, detailY, width - rightWidth);

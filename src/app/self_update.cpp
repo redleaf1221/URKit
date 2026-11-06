@@ -9,7 +9,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <fstream>
 #include <limits>
 #include <string_view>
@@ -47,9 +46,8 @@ bool ParseSemanticVersion(std::string_view text, SemanticVersion *version) {
     for (size_t partIndex = 0; partIndex < version->parts.size(); ++partIndex) {
         const size_t separator = text.find('.');
         const std::string_view part = separator == std::string_view::npos ? text : text.substr(0, separator);
-        if (part.empty() || !std::all_of(part.begin(), part.end(), [](unsigned char character) {
-                return std::isdigit(character) != 0;
-            })) {
+        if (part.empty() || !std::ranges::all_of(part,
+                                         [](const unsigned char character) { return std::isdigit(character) != 0; })) {
             return false;
         }
         uint64_t parsed = 0;
@@ -77,9 +75,8 @@ bool IsNewer(std::string_view candidate, std::string_view current) {
 }
 
 bool IsHexDigest(std::string_view value) {
-    return value.size() == 64 && std::all_of(value.begin(), value.end(), [](unsigned char character) {
-               return std::isxdigit(character) != 0;
-           });
+    return value.size() == 64 && std::ranges::all_of(value,
+                                             [](unsigned char character) { return std::isxdigit(character) != 0; });
 }
 
 std::string WindowsError(DWORD code) {
@@ -89,8 +86,8 @@ std::string WindowsError(DWORD code) {
 std::wstring Widen(std::string_view value) {
     if (value.empty())
         return {};
-    const int length = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()),
-                                           nullptr, 0);
+    const int length =
+        MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, value.data(), static_cast<int>(value.size()), nullptr, 0);
     if (length <= 0)
         return {};
     std::wstring output(static_cast<size_t>(length), L'\0');
@@ -102,7 +99,8 @@ std::wstring Widen(std::string_view value) {
 class InternetHandle {
   public:
     InternetHandle() = default;
-    explicit InternetHandle(HINTERNET value) : value_(value) {}
+    explicit InternetHandle(HINTERNET value) : value_(value) {
+    }
     ~InternetHandle() {
         if (value_)
             WinHttpCloseHandle(value_);
@@ -118,8 +116,12 @@ class InternetHandle {
         }
         return *this;
     }
-    HINTERNET get() const { return value_; }
-    explicit operator bool() const { return value_ != nullptr; }
+    HINTERNET get() const {
+        return value_;
+    }
+    explicit operator bool() const {
+        return value_ != nullptr;
+    }
 
   private:
     HINTERNET value_ = nullptr;
@@ -138,7 +140,8 @@ bool ParseHttpsUrl(std::string_view value, std::wstring *host, std::wstring *pat
     value.remove_prefix(prefix.size());
     const size_t pathStart = value.find('/');
     const std::string_view hostText = pathStart == std::string_view::npos ? value : value.substr(0, pathStart);
-    const std::string_view pathText = pathStart == std::string_view::npos ? std::string_view("/") : value.substr(pathStart);
+    const std::string_view pathText =
+        pathStart == std::string_view::npos ? std::string_view("/") : value.substr(pathStart);
     if (hostText.empty() || hostText.find_first_of("?#@:") != std::string_view::npos)
         return false;
     *host = Widen(hostText);
@@ -158,14 +161,15 @@ bool OpenGet(const std::wstring &host, const std::wstring &path, HttpsRequest *h
         return false;
     }
     WinHttpSetTimeouts(http->session.get(), 5000, 10000, 15000, 60000);
-    http->connection = InternetHandle(WinHttpConnect(http->session.get(), host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0));
+    http->connection =
+        InternetHandle(WinHttpConnect(http->session.get(), host.c_str(), INTERNET_DEFAULT_HTTPS_PORT, 0));
     if (!http->connection) {
         *error = "cannot connect to the release server: " + WindowsError(GetLastError());
         return false;
     }
-    http->request = InternetHandle(WinHttpOpenRequest(http->connection.get(), L"GET", path.c_str(), nullptr,
-                                                      WINHTTP_NO_REFERER, WINHTTP_DEFAULT_ACCEPT_TYPES,
-                                                      WINHTTP_FLAG_SECURE));
+    http->request =
+        InternetHandle(WinHttpOpenRequest(http->connection.get(), L"GET", path.c_str(), nullptr, WINHTTP_NO_REFERER,
+                                          WINHTTP_DEFAULT_ACCEPT_TYPES, WINHTTP_FLAG_SECURE));
     if (!http->request) {
         *error = "cannot create the HTTPS request: " + WindowsError(GetLastError());
         return false;
@@ -191,8 +195,7 @@ bool OpenGet(const std::wstring &host, const std::wstring &path, HttpsRequest *h
     return true;
 }
 
-template <typename Write>
-bool ReadBody(HttpsRequest &http, size_t maximumBytes, Write &&write, std::string *error) {
+template <typename Write> bool ReadBody(HttpsRequest &http, size_t maximumBytes, Write &&write, std::string *error) {
     size_t total = 0;
     std::vector<char> buffer;
     for (;;) {
@@ -233,7 +236,7 @@ std::wstring Quote(const fs::path &path) {
 }
 
 std::string LowerHex(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(),
+    std::ranges::transform(value, value.begin(),
                    [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
     return value;
 }
@@ -402,7 +405,8 @@ bool DownloadAndRestart(const AvailableUpdate &update, const LogSink &log, bool 
     }
     CloseHandle(process.hThread);
     CloseHandle(process.hProcess);
-    log(LogLevel::Success, "Update to " + update.availableVersion + " is staged; it is installed when this urk.exe exits");
+    log(LogLevel::Success,
+        "Update to " + update.availableVersion + " is staged; it is installed when this urk.exe exits");
     return true;
 }
 
@@ -432,8 +436,7 @@ bool ApplyDownloadedUpdate(const fs::path &source, const fs::path &target, const
         return false;
     }
     if (waitForProcessId != 0) {
-        HANDLE process = OpenProcess(SYNCHRONIZE, FALSE, waitForProcessId);
-        if (process) {
+        if (const HANDLE process = OpenProcess(SYNCHRONIZE, FALSE, waitForProcessId)) {
             const DWORD wait = WaitForSingleObject(process, 120000);
             CloseHandle(process);
             if (wait != WAIT_OBJECT_0) {

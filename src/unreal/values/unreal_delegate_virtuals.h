@@ -18,11 +18,14 @@ class DelegateVirtuals {
   public:
     DelegateVirtuals(const ObjectFinder &finder, const PropertyChain &chain, const PropertyValues &values,
                      OwnedValues &owned)
-        : finder_(&finder), chain_(&chain), values_(&values), owned_(&owned) {}
+        : finder_(&finder), chain_(&chain), values_(&values), owned_(&owned) {
+    }
 
     // Game thread. Measured on first use with a probe list the engine fills and empties.
     bool Ready();
-    const std::string &Failure() const { return failure_; }
+    const std::string &Failure() const {
+        return failure_;
+    }
 
     // The bindings list (FMulticastScriptDelegate), null when none is bound.
     const std::uint8_t *List(const PropertyInfo &property, const std::uint8_t *value);

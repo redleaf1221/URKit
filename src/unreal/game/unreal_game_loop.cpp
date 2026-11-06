@@ -16,17 +16,17 @@ FunctionRange BodyAt(const FunctionTable &bounds, Address entry) {
     if (const std::optional<FunctionRange> range = bounds.Containing(entry); range && range->begin == entry)
         return *range;
     const Address next = bounds.NextBegin(entry);
-    const Address end = next != kNullAddress && next > entry ? std::min(next, entry + kMaxThunkBytes)
-                                                             : entry + kMaxThunkBytes;
+    const Address end =
+        next != kNullAddress && next > entry ? std::min(next, entry + kMaxThunkBytes) : entry + kMaxThunkBytes;
     return FunctionRange{.begin = entry, .end = end};
 }
 
 // Target of a `++global`-style write to [rip+disp32], if any.
 std::optional<Address> RipWriteTarget(const std::uint8_t *code, std::size_t length, Address at) {
     std::size_t i = 0;
-    while (i < length && (code[i] == 0xF0 || code[i] == 0xF2 || code[i] == 0xF3 || code[i] == 0x2E ||
-                          code[i] == 0x36 || code[i] == 0x3E || code[i] == 0x26 || code[i] == 0x64 ||
-                          code[i] == 0x65 || code[i] == 0x66 || code[i] == 0x67))
+    while (i < length && (code[i] == 0xF0 || code[i] == 0xF2 || code[i] == 0xF3 || code[i] == 0x2E || code[i] == 0x36 ||
+                          code[i] == 0x3E || code[i] == 0x26 || code[i] == 0x64 || code[i] == 0x65 || code[i] == 0x66 ||
+                          code[i] == 0x67))
         ++i;
     if (i < length && (code[i] & 0xF0) == 0x40)
         ++i;
@@ -124,7 +124,8 @@ std::vector<Address> GameLoop::FindFrameCounterWrites(const MemoryReader &reader
         const std::optional<FunctionRange> range = bounds.Containing(at);
         if (!range || range->end <= range->begin)
             continue;
-        if (std::any_of(decoded.begin(), decoded.end(), [&](const FunctionRange &r) { return r.begin == range->begin; }))
+        if (std::any_of(decoded.begin(), decoded.end(),
+                        [&](const FunctionRange &r) { return r.begin == range->begin; }))
             continue;
         decoded.push_back(*range);
         body.assign(static_cast<std::size_t>(range->end - range->begin) + kMaxInstruction, 0);
@@ -216,7 +217,9 @@ WorldState GameLoop::CurrentWorld() {
     return state;
 }
 
-std::string GameLoop::MapName(Address world) const { return finder_->NameOf(world).value_or(std::string{}); }
+std::string GameLoop::MapName(Address world) const {
+    return finder_->NameOf(world).value_or(std::string{});
+}
 
 std::int32_t GameLoop::ObjectIndex(Address object) const {
     const std::int32_t offset = finder_->Offsets().index;

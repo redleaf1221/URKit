@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <cstdio>
-#include <cstring>
 #include <string>
 
 namespace {
@@ -881,7 +880,7 @@ void Mono_gchandle_free(uint32_t gchandle) {
     g_mono->gchandle_free(gchandle);
 }
 
-const URK_MonoApi g_monoApi = [] {
+constexpr URK_MonoApi g_monoApi = [] {
     URK_MonoApi api{};
 
     api.version = URK_MONO_API_VERSION;

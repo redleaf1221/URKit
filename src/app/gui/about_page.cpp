@@ -29,15 +29,15 @@ AboutPage::AboutPage(wxWindow *parent, MainFrame *frame)
         name->SetFont(Theme::DisplayFont(16));
         name->SetForegroundColour(Theme::kText);
         text->Add(name);
-        text->Add(MakeLabel(hero, "Version " + FromUtf8(std::string(UrkVersion::kReleaseVersion)), true, 10), 0,
-                  wxTOP, FromDIP(1));
-        auto *apis = MakeLabel(hero,
-                               wxString::Format(L"SDK %d  ·  Runtime %d  ·  Mono %d  ·  IL2CPP %d  "
-                                                L"·  Unreal %d  ·  Network %d",
-                                                URK_SDK_VERSION, URK_RUNTIME_API_VERSION, URK_MONO_API_VERSION,
-                                                URK_IL2CPP_API_VERSION, URK_UNREAL_API_VERSION,
-                                                URK_NETWORK_API_VERSION),
-                               false, 8.5);
+        text->Add(MakeLabel(hero, "Version " + FromUtf8(std::string(UrkVersion::kReleaseVersion)), true, 10), 0, wxTOP,
+                  FromDIP(1));
+        auto *apis =
+            MakeLabel(hero,
+                      wxString::Format(L"SDK %d  ·  Runtime %d  ·  Mono %d  ·  IL2CPP %d  "
+                                       L"·  Unreal %d  ·  Network %d",
+                                       URK_SDK_VERSION, URK_RUNTIME_API_VERSION, URK_MONO_API_VERSION,
+                                       URK_IL2CPP_API_VERSION, URK_UNREAL_API_VERSION, URK_NETWORK_API_VERSION),
+                      false, 8.5);
         apis->SetForegroundColour(Theme::kTextFaint);
         text->Add(apis, 0, wxTOP, FromDIP(6));
         row->Add(text, 1, wxALIGN_CENTER_VERTICAL);

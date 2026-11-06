@@ -44,7 +44,9 @@ class NativeCall {
     bool Bind(const ObjectFinder &finder, const PropertyChain &chain, const PropertyValues &values,
               const FunctionOffsets &functions, const TypeQueries &types, const char *library, const char *function,
               std::initializer_list<ParameterSpec> parameters, std::string *failure);
-    bool Bound() const { return function_ != kNullAddress; }
+    bool Bound() const {
+        return function_ != kNullAddress;
+    }
 
     std::uint8_t *At(const char *parameter);
     std::int32_t SizeOf(const char *parameter) const;
@@ -63,11 +65,14 @@ class EngineCalls {
     EngineCalls(const ObjectFinder &finder, const PropertyChain &chain, const PropertyValues &values,
                 const FunctionOffsets &functions, const TypeQueries &types, const StructOffsets &structs,
                 const ProcessEventLocation &processEvent, const FunctionTable &bounds)
-        : finder_(&finder), chain_(&chain), values_(&values), functions_(&functions), types_(&types),
-          structs_(structs), processEvent_(processEvent), bounds_(&bounds) {}
+        : finder_(&finder), chain_(&chain), values_(&values), functions_(&functions), types_(&types), structs_(structs),
+          processEvent_(processEvent), bounds_(&bounds) {
+    }
 
     // Why the last operation failed.
-    const std::string &Failure() const { return failure_; }
+    const std::string &Failure() const {
+        return failure_;
+    }
 
     struct Block {
         std::uint8_t *data = nullptr;
@@ -116,14 +121,22 @@ class EngineCalls {
     bool MakeWeak(Address object, std::uint8_t *weak);
     Address WeakTarget(const std::uint8_t *weak);
     // Serial offset is measured once on the game thread; reads are plain after.
-    bool WeakReady() const { return weakState_ == State::Ready; }
-    bool MeasureWeakNow() { return MeasureWeak(); }
+    bool WeakReady() const {
+        return weakState_ == State::Ready;
+    }
+    bool MeasureWeakNow() {
+        return MeasureWeak();
+    }
 
     // FName to text through the engine, for checking name reads.
     std::optional<std::string> EnumeratorName(Address enumObject, std::uint8_t value);
 
   private:
-    enum class State { Unbound, Ready, Failed };
+    enum class State {
+        Unbound,
+        Ready,
+        Failed
+    };
     bool Ensure(State &state, NativeCall &call, const char *library, const char *function,
                 std::initializer_list<ParameterSpec> parameters);
     bool Fail(State &state, std::string why);

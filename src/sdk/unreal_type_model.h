@@ -91,7 +91,9 @@ struct ExportFile {
 std::vector<ExportFile> ReverseEngineeringFiles(const TypeMap &types, const Globals &globals,
                                                 const std::string &project);
 
-inline std::string Key(const std::string &package, const std::string &name) { return package + '\t' + name; }
+inline std::string Key(const std::string &package, const std::string &name) {
+    return package + '\t' + name;
+}
 
 // Pseudo-code for a class's Blueprint bytecode; empty when none of its functions has any.
 std::string RenderBlueprint(const Type &entry, const TypeMap &types);

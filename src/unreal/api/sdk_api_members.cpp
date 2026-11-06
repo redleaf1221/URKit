@@ -119,10 +119,10 @@ std::int32_t Unreal_StructSize(URK_UnrealObject structObject) {
         return 0;
     // GetStructureSize(): what a member of this type occupies.
     const std::int32_t size = engine.Reader().ReadInt32(structObject + structs.propertiesSize).value_or(0);
-    const std::int32_t alignment = structs.minAlignment == kOffsetNotFound
-                                       ? 1
-                                       : engine.Reader().ReadAs<std::int16_t>(structObject + structs.minAlignment)
-                                             .value_or(1);
+    const std::int32_t alignment =
+        structs.minAlignment == kOffsetNotFound
+            ? 1
+            : engine.Reader().ReadAs<std::int16_t>(structObject + structs.minAlignment).value_or(1);
     if (size <= 0 || alignment <= 0)
         return size > 0 ? size : 0;
     return (size + alignment - 1) / alignment * alignment;

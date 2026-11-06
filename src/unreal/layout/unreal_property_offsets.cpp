@@ -266,8 +266,7 @@ std::int32_t FindPropertyFlagsOffset(const ObjectFinder &finder, const NameTable
         {colorR, kPodMemberFlags | kPropertyFlagBlueprintVisible},
     };
 
-    const std::int32_t offset =
-        FindAnchoredOffset(finder.Reader(), anchors, fields.fieldName + 8, kMaxPropertyOffset);
+    const std::int32_t offset = FindAnchoredOffset(finder.Reader(), anchors, fields.fieldName + 8, kMaxPropertyOffset);
     if (offset != kOffsetNotFound)
         return offset;
 

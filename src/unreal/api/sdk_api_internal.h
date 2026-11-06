@@ -40,7 +40,8 @@ struct Services {
         : calls(engine.Finder(), engine.Chain(), engine.Values(), engine.Functions(), engine.Types(), engine.Structs(),
                 engine.ProcessEvent(), engine.Bounds()),
           owned(engine.Finder(), engine.Chain(), engine.Values(), engine.Types(), calls),
-          enums(engine.Finder(), engine.Structs()), places(engine, owned, enums) {}
+          enums(engine.Finder(), engine.Structs()), places(engine, owned, enums) {
+    }
     EngineCalls calls;
     OwnedValues owned;
     EnumNames enums;
@@ -50,10 +51,12 @@ struct Services {
 // Mod-held frame: parameter block plus which parameters own engine memory.
 struct LoaderFrame {
     explicit LoaderFrame(FunctionInfo info)
-        : frame(std::move(info)), engineOwned(frame.Function().parameters.size(), 0) {}
+        : frame(std::move(info)), engineOwned(frame.Function().parameters.size(), 0) {
+    }
     // A hooked call's own block: the engine made it and gives it back.
     LoaderFrame(std::shared_ptr<const FunctionInfo> info, void *data, void *returned)
-        : frame(std::move(info), data, returned), engineOwned(frame.Function().parameters.size(), 0) {}
+        : frame(std::move(info), data, returned), engineOwned(frame.Function().parameters.size(), 0) {
+    }
     CallFrame frame;
     // Made through a place, or written by a call.
     std::vector<char> engineOwned;
@@ -145,8 +148,7 @@ URK_UnrealObject Unreal_FindFunction(URK_UnrealObject ownerClass, const char *na
 URK_UnrealCallFrame *Unreal_CallFrameCreate(URK_UnrealObject function);
 void Unreal_CallFrameDestroy(URK_UnrealCallFrame *frame);
 int Unreal_CallFrameSet(URK_UnrealCallFrame *frame, const char *parameterName, const void *value, std::size_t size);
-int Unreal_CallFrameGet(const URK_UnrealCallFrame *frame, const char *parameterName, void *output,
-                        std::size_t size);
+int Unreal_CallFrameGet(const URK_UnrealCallFrame *frame, const char *parameterName, void *output, std::size_t size);
 int Unreal_Call(URK_UnrealObject object, URK_UnrealCallFrame *frame);
 std::optional<PlaceContext> ResolvePlace(const URK_UnrealPlace *place, bool describe);
 int Unreal_PlaceDescribe(const URK_UnrealPlace *place, URK_UnrealPropertyInfo *info);
@@ -201,8 +203,7 @@ std::int32_t IndexOf(const URK_UnrealPlace &place, Address object);
 Address TheGameInstance();
 Address MakeListener(std::string *why);
 void ReleaseListener(void *user);
-std::uint64_t Unreal_DelegateSubscribe(const URK_UnrealPlace *place, URK_UnrealFunctionHookFn callback,
-                                       void *userData);
+std::uint64_t Unreal_DelegateSubscribe(const URK_UnrealPlace *place, URK_UnrealFunctionHookFn callback, void *userData);
 int Unreal_DelegateUnsubscribe(std::uint64_t id);
 
 // On success a frame parameter may now own engine memory.

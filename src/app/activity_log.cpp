@@ -50,8 +50,7 @@ const char *LogLevelName(LogLevel level) {
 
 std::string FormatLogTime(std::chrono::system_clock::time_point time) {
     const std::tm local = LocalTime(time);
-    const auto millis =
-        std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count() % 1000;
+    const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(time.time_since_epoch()).count() % 1000;
     char buffer[32]{};
     std::snprintf(buffer, sizeof(buffer), "%02d:%02d:%02d.%03d", local.tm_hour, local.tm_min, local.tm_sec,
                   static_cast<int>(millis));
@@ -84,7 +83,8 @@ ActivityLog &ActivityLog::Instance() {
     return log;
 }
 
-ActivityLog::ActivityLog() : directory_(LocalDataDirectory() / L"logs"), path_(directory_ / L"urk.log") {}
+ActivityLog::ActivityLog() : directory_(LocalDataDirectory() / L"logs"), path_(directory_ / L"urk.log") {
+}
 
 fs::path ActivityLog::FilePath() const {
     return path_;

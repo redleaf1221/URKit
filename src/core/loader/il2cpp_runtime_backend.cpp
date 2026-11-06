@@ -80,7 +80,7 @@ bool RunIl2Cpp(Config &config) {
     return true;
 }
 
-const RuntimeBackendDescriptor kIl2CppBackend{"IL2CPP", true, RunIl2Cpp};
+constexpr RuntimeBackendDescriptor kIl2CppBackend{"IL2CPP", true, RunIl2Cpp};
 } // namespace
 
 const RuntimeBackendDescriptor &RuntimeBackend_Il2Cpp() {

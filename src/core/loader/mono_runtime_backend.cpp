@@ -56,7 +56,7 @@ bool RunMono(Config &config) {
     }
     auto detachLoaderThread = [](MonoThread *thread) { Mono_DetachThread(g_monoApi, thread); };
     std::unique_ptr<MonoThread, decltype(detachLoaderThread)> loaderThreadAttachment(attachedThread,
-                                                                                    detachLoaderThread);
+                                                                                     detachLoaderThread);
 
     IntroStage(kIntroRuntimeAttached, "Mono loader thread attached");
     if (config.initDelayMs) {
@@ -93,7 +93,7 @@ bool RunMono(Config &config) {
     return true;
 }
 
-const RuntimeBackendDescriptor kMonoBackend{
+constexpr RuntimeBackendDescriptor kMonoBackend{
     "Mono",
     true,
     RunMono,

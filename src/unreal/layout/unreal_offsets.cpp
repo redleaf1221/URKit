@@ -30,7 +30,9 @@ constexpr std::int32_t kMaxNamesWithLowComparisonIndex = 0x40;
 // Objects near a page end may have fewer readable header bytes; skip them.
 constexpr Address kPageSize = 0x1000;
 
-bool HasRoomForHeader(Address object) { return (object & (kPageSize - 1)) <= (kPageSize - kMaxHeaderOffset); }
+bool HasRoomForHeader(Address object) {
+    return (object & (kPageSize - 1)) <= (kPageSize - kMaxHeaderOffset);
+}
 
 // First offset at or after start where both objects hold an object pointer.
 std::int32_t FindSharedPointerOffset(const MemoryReader &reader, Address objectA, Address objectB, std::int32_t start,
@@ -52,9 +54,8 @@ std::int32_t FindFlagsOffset(const ObjectArray &objects) {
         return kOffsetNotFound;
 
     // Scaled to the sample so a short array is judged by the same proportion.
-    const std::int32_t required =
-        static_cast<std::int32_t>(static_cast<std::int64_t>(sampleCount) * kMinObjectsCarryingCommonFlag /
-                                  kFlagSampleCount);
+    const std::int32_t required = static_cast<std::int32_t>(static_cast<std::int64_t>(sampleCount) *
+                                                            kMinObjectsCarryingCommonFlag / kFlagSampleCount);
 
     for (std::int32_t offset = sizeof(Address); offset < kMaxHeaderOffset; offset += 4) {
         std::int32_t carrying = 0;

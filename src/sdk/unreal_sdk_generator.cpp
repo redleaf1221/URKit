@@ -49,7 +49,9 @@ std::string UnrealSdkReadme(const std::string &details) {
            "`VK_LBUTTON`), read while the game has focus, once per frame.\n\n"
         << "## Typed headers\n\n"
         << "Set `DumpTypes=1` under `[Unreal]` in the game's `URKit_config.ini` and play: every map that loads "
-           "adds its classes to `" << UnrealTypeCodegen::kDumpFileName << "` beside the game. Generating or updating "
+           "adds its classes to `"
+        << UnrealTypeCodegen::kDumpFileName
+        << "` beside the game. Generating or updating "
            "the project then writes `types/<Folder>/<Name>.h`, one per class, struct and enum, in a folder that "
            "mirrors its package (`/Script/Engine` is `types/Engine/`, `/Game/Doors/BP_Door` is `types/Game/Doors/`). "
            "`types/INDEX.md` lists every folder, the game's own first. Functions the Blueprint compiler made "
@@ -134,7 +136,8 @@ bool HasUsableOutput(const std::string &directory) {
 }
 
 std::string TypeDumpPath(const std::string &gameDirectory) {
-    return gameDirectory.empty() ? std::string() : (fs::path(gameDirectory) / UnrealTypeCodegen::kDumpFileName).string();
+    return gameDirectory.empty() ? std::string()
+                                 : (fs::path(gameDirectory) / UnrealTypeCodegen::kDumpFileName).string();
 }
 
 bool Generate(const std::string &directory, const std::string &reportDetails, const std::string &typeDumpPath,
@@ -153,8 +156,13 @@ bool Generate(const std::string &directory, const std::string &reportDetails, co
         if (!UnrealTypeCodegen::Build(typeDumpPath, &headers, error))
             return false;
         for (UnrealTypeCodegen::Header &header : headers)
-            plan.files.push_back({fs::path(header.folder) / header.fileName, {}, std::move(header.contents),
-                                  mpg::OutputFilePolicy::GeneratedOverwrite, true, false, false});
+            plan.files.push_back({fs::path(header.folder) / header.fileName,
+                                  {},
+                                  std::move(header.contents),
+                                  mpg::OutputFilePolicy::GeneratedOverwrite,
+                                  true,
+                                  false,
+                                  false});
     }
     sdk::OutputResult output;
     return sdk::PublishOutputPlanAtomically(plan, &output, error);
@@ -203,12 +211,13 @@ bool GenerateModProject(const std::string &projectRoot, const std::string &unrea
             for (fs::recursive_directory_iterator it(sdkRoot / folder, ec), end; !ec && it != end; it.increment(ec)) {
                 if (!it->is_regular_file(ec))
                     continue;
-                backendFiles.files.push_back({profile.sdkSubdirectory / folder / it->path().lexically_relative(sdkRoot / folder),
-                                              it->path(),
-                                              {},
-                                              mpg::OutputFilePolicy::GeneratedOverwrite,
-                                              true,
-                                              false});
+                backendFiles.files.push_back(
+                    {profile.sdkSubdirectory / folder / it->path().lexically_relative(sdkRoot / folder),
+                     it->path(),
+                     {},
+                     mpg::OutputFilePolicy::GeneratedOverwrite,
+                     true,
+                     false});
             }
             ec.clear();
         }

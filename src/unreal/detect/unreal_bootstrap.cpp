@@ -114,7 +114,10 @@ bool Better(const Runtime &candidate, const Runtime &incumbent) {
     return candidate.objectArrayAddress > incumbent.objectArrayAddress;
 }
 
-enum class Looking { ObjectArray, NameTable };
+enum class Looking {
+    ObjectArray,
+    NameTable
+};
 
 // Globals are word aligned; read in chunks.
 constexpr std::size_t kChunkWords = 0x8000;
@@ -303,8 +306,8 @@ std::vector<std::string> ExplainNoPair(const MemoryReader &reader, std::span<con
     for (std::size_t a = 0; a < resolvedArrays.size() && a < kShown; ++a) {
         const ObjectArray objects(reader, resolvedArrays[a].first, resolvedArrays[a].second);
         const ObjectOffsets header = FindObjectOffsets(objects);
-        const std::string array = "object array " + hex(resolvedArrays[a].first) + " (" +
-                                  std::to_string(objects.Num()) + " objects)";
+        const std::string array =
+            "object array " + hex(resolvedArrays[a].first) + " (" + std::to_string(objects.Num()) + " objects)";
         if (!header.Resolved()) {
             char offsets[128];
             std::snprintf(offsets, sizeof(offsets), "flags=%d index=%d class=%d outer=%d name=%d", header.flags,

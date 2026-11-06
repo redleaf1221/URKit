@@ -13,12 +13,20 @@ namespace {
 thread_local std::int32_t g_depth = 0;
 
 struct DepthGuard {
-    DepthGuard() { ++g_depth; }
-    ~DepthGuard() { --g_depth; }
-    bool Outermost() const { return g_depth == 1; }
+    DepthGuard() {
+        ++g_depth;
+    }
+    ~DepthGuard() {
+        --g_depth;
+    }
+    bool Outermost() const {
+        return g_depth == 1;
+    }
 };
 
-std::uint32_t CurrentThread() { return static_cast<std::uint32_t>(GetCurrentThreadId()); }
+std::uint32_t CurrentThread() {
+    return static_cast<std::uint32_t>(GetCurrentThreadId());
+}
 
 thread_local ProcessEventHook::Call g_current;
 thread_local bool g_inCall = false;
@@ -39,7 +47,9 @@ struct CurrentScope {
 
 } // namespace
 
-const ProcessEventHook::Call *ProcessEventHook::CurrentCall() { return g_inCall ? &g_current : nullptr; }
+const ProcessEventHook::Call *ProcessEventHook::CurrentCall() {
+    return g_inCall ? &g_current : nullptr;
+}
 
 bool ProcessEventHook::ClaimScriptEntry(Address object, Address function) {
     if (!g_inCall || g_current.scriptClaimed || g_current.object != object || g_current.function != function)
@@ -129,7 +139,9 @@ bool ProcessEventHook::Remove(std::uint32_t timeoutMs) {
     return true;
 }
 
-bool ProcessEventHook::Installed() const { return installed_.load(std::memory_order_acquire); }
+bool ProcessEventHook::Installed() const {
+    return installed_.load(std::memory_order_acquire);
+}
 
 void ProcessEventHook::Observe(Observer observer, void *user) {
     observerUser_.store(user, std::memory_order_release);
@@ -154,9 +166,15 @@ void ProcessEventHook::TickFrame() {
     tick(frameTickUser_.load(std::memory_order_acquire));
 }
 
-std::uint32_t ProcessEventHook::GameThreadId() const { return gameThread_.load(std::memory_order_acquire); }
-std::uint64_t ProcessEventHook::Calls() const { return calls_.load(std::memory_order_relaxed); }
-std::uint64_t ProcessEventHook::Dropped() const { return dropped_.load(std::memory_order_relaxed); }
+std::uint32_t ProcessEventHook::GameThreadId() const {
+    return gameThread_.load(std::memory_order_acquire);
+}
+std::uint64_t ProcessEventHook::Calls() const {
+    return calls_.load(std::memory_order_relaxed);
+}
+std::uint64_t ProcessEventHook::Dropped() const {
+    return dropped_.load(std::memory_order_relaxed);
+}
 std::size_t ProcessEventHook::Pending() const {
     const std::uint64_t posted = posted_.load(std::memory_order_acquire);
     const std::uint64_t drained = drained_.load(std::memory_order_acquire);
@@ -174,8 +192,7 @@ bool ProcessEventHook::Post(Work work, void *user) {
     for (;;) {
         if (ticket - drained_.load(std::memory_order_acquire) >= kMaxQueued)
             return false;
-        if (posted_.compare_exchange_weak(ticket, ticket + 1, std::memory_order_acq_rel,
-                                          std::memory_order_acquire))
+        if (posted_.compare_exchange_weak(ticket, ticket + 1, std::memory_order_acq_rel, std::memory_order_acquire))
             break;
     }
 
@@ -257,9 +274,13 @@ void ProcessEventHook::Drain() {
     drained_.store(at, std::memory_order_release);
 }
 
-ProcessEventHook::PassThrough::PassThrough() { ++g_depth; }
+ProcessEventHook::PassThrough::PassThrough() {
+    ++g_depth;
+}
 
-ProcessEventHook::PassThrough::~PassThrough() { --g_depth; }
+ProcessEventHook::PassThrough::~PassThrough() {
+    --g_depth;
+}
 
 void ProcessEventHook::Dispatch(ProcessEventFn original, void *object, void *function, void *parms) {
     calls_.fetch_add(1, std::memory_order_relaxed);
@@ -273,8 +294,8 @@ void ProcessEventHook::Dispatch(ProcessEventFn original, void *object, void *fun
                                 g_current.function == reinterpret_cast<Address>(function) && g_current.parms == parms;
         // Reentrant: pass through rather than run posted work mid-call.
         const CurrentScope current(object, function, parms);
-        if ((continuing || hooks.Before(pending, reinterpret_cast<Address>(object),
-                                        reinterpret_cast<Address>(function), parms, nullptr)) &&
+        if ((continuing || hooks.Before(pending, reinterpret_cast<Address>(object), reinterpret_cast<Address>(function),
+                                        parms, nullptr)) &&
             original)
             original(object, function, parms);
         hooks.After(pending);

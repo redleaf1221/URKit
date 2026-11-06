@@ -47,7 +47,9 @@ struct ObjectItemLayout {
     std::int32_t pointerOffset = kOffsetNotFound;
     std::int32_t stride = kOffsetNotFound;
 
-    bool Resolved() const { return pointerOffset != kOffsetNotFound && stride != kOffsetNotFound; }
+    bool Resolved() const {
+        return pointerOffset != kOffsetNotFound && stride != kOffsetNotFound;
+    }
 };
 
 struct ObjectArrayLayout {
@@ -72,12 +74,19 @@ std::optional<ObjectArrayLayout> ResolveObjectArrayLayout(const MemoryReader &re
 class ObjectArray {
   public:
     ObjectArray(const MemoryReader &reader, Address address, const ObjectArrayLayout &layout)
-        : reader_(&reader), address_(address), layout_(layout) {}
+        : reader_(&reader), address_(address), layout_(layout) {
+    }
 
-    const MemoryReader &Reader() const { return *reader_; }
-    const ObjectArrayLayout &Layout() const { return layout_; }
+    const MemoryReader &Reader() const {
+        return *reader_;
+    }
+    const ObjectArrayLayout &Layout() const {
+        return layout_;
+    }
     // GUObjectArray's ObjObjects.
-    Address BaseAddress() const { return address_; }
+    Address BaseAddress() const {
+        return address_;
+    }
 
     std::int32_t Num() const;
 

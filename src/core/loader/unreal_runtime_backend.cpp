@@ -79,19 +79,19 @@ GameLoopState g_gameLoop;
 URK::Unreal::TypeDumpImage MainImage(const URK::Unreal::EngineVersion &version) {
     URK::Unreal::TypeDumpImage image;
     const auto *dos = reinterpret_cast<const IMAGE_DOS_HEADER *>(GetModuleHandleA(nullptr));
-    const auto *nt = reinterpret_cast<const IMAGE_NT_HEADERS *>(reinterpret_cast<const std::uint8_t *>(dos) +
-                                                                 dos->e_lfanew);
+    const auto *nt =
+        reinterpret_cast<const IMAGE_NT_HEADERS *>(reinterpret_cast<const std::uint8_t *>(dos) + dos->e_lfanew);
     image.timeDateStamp = nt->FileHeader.TimeDateStamp;
     image.sizeOfImage = nt->OptionalHeader.SizeOfImage;
-    image.engine = std::to_string(version.major) + "." + std::to_string(version.minor) + "." +
-                   std::to_string(version.patch);
+    image.engine =
+        std::to_string(version.major) + "." + std::to_string(version.minor) + "." + std::to_string(version.patch);
     HMODULE loader = nullptr;
     if (GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                            reinterpret_cast<LPCSTR>(&MainImage), &loader)) {
         const auto *ours = reinterpret_cast<const IMAGE_DOS_HEADER *>(loader);
-        image.loaderStamp = reinterpret_cast<const IMAGE_NT_HEADERS *>(reinterpret_cast<const std::uint8_t *>(ours) +
-                                                                       ours->e_lfanew)
-                                ->FileHeader.TimeDateStamp;
+        image.loaderStamp =
+            reinterpret_cast<const IMAGE_NT_HEADERS *>(reinterpret_cast<const std::uint8_t *>(ours) + ours->e_lfanew)
+                ->FileHeader.TimeDateStamp;
     }
     return image;
 }
@@ -227,7 +227,8 @@ void StepTypes() {
                 ++state.blueprintsLoaded;
                 state.dumper->DescribeNow(loaded);
             }
-        } while (state.blueprintNext < state.blueprints.size() && URK::Unreal::NowMilliseconds() - started < kBlueprintBudgetMs);
+        } while (state.blueprintNext < state.blueprints.size() &&
+                 URK::Unreal::NowMilliseconds() - started < kBlueprintBudgetMs);
         if (state.blueprintNext == state.blueprints.size()) {
             Log("[Unreal] Blueprint classes preloaded for the dump: %zu of %zu listed, in %llums.",
                 state.blueprintsLoaded, state.blueprints.size(), GetTickCount64() - state.blueprintsStarted);
@@ -390,9 +391,11 @@ void OnGameFrame(void *) {
         Log("[Unreal] frames now tick at the engine's frame boundary (GFrameCounter), game thread %lu.", thread);
         const std::int32_t elected = ProcessEventHook::Instance().ElectedBoundary();
         if (!g_gameLoop.tickFound)
-            Log("[Unreal] the frame boundary (site %d) is not cross-checked: FEngineLoop::Tick was not found.", elected);
+            Log("[Unreal] the frame boundary (site %d) is not cross-checked: FEngineLoop::Tick was not found.",
+                elected);
         else if (elected == g_gameLoop.tickSite)
-            Log("[Unreal] the frame boundary (site %d) is FEngineLoop::Tick's counter write, found both ways.", elected);
+            Log("[Unreal] the frame boundary (site %d) is FEngineLoop::Tick's counter write, found both ways.",
+                elected);
         else
             Log("[Unreal][WARNING] the elected frame boundary (site %d) is not FEngineLoop::Tick's write (site %d).",
                 elected, g_gameLoop.tickSite);
@@ -449,7 +452,7 @@ void OnFrameBoundary(URK_HookRegisters *, void *site) {
 }
 
 // Measured offsets under UE4SS table names, for check-layout.py.
-std::string MeasuredLayout(URK::Unreal::UnrealEngine &engine) {
+std::string MeasuredLayout(const URK::Unreal::UnrealEngine &engine) {
     using namespace URK::Unreal;
     std::string text;
     const auto add = [&text](const char *name, std::int32_t offset) {
@@ -591,8 +594,7 @@ bool WaitForEngine(URK::Unreal::UnrealEngine &engine) {
             return false;
         }
 
-        HANDLE stopEvent = LoaderLifecycle_StopEvent();
-        if (stopEvent) {
+        if (HANDLE stopEvent = LoaderLifecycle_StopEvent()) {
             if (WaitForSingleObject(stopEvent, kBootstrapRetryMs) == WAIT_OBJECT_0)
                 return false;
         } else {
@@ -654,7 +656,8 @@ bool RunUnreal(Config &config) {
     const NameLayout &names = engine.Finder().Names().Layout();
     Log("[Unreal] FName: %d bytes, display index %s, number %s.", names.size,
         names.displayIndexOffset == kOffsetNotFound ? "none" : "at +4",
-        names.numberOffset == kOffsetNotFound ? "kept in the name pool" : (names.numberOffset == 8 ? "at +8" : "at +4"));
+        names.numberOffset == kOffsetNotFound ? "kept in the name pool"
+                                              : (names.numberOffset == 8 ? "at +8" : "at +4"));
     IntroStage(kIntroRuntimeReady, "Unreal reflection ready");
 
     if (config.safeMode) {
@@ -691,8 +694,8 @@ bool RunUnreal(Config &config) {
     if (dumpTypes && !gameLoop)
         Log("[Unreal][ERROR] DumpTypes needs the game loop; nothing will be dumped.");
     if (dumpTypes && gameLoop) {
-        TypeDumpSources sources{engine.Finder(), engine.Structs(), engine.Chain(), engine.Values(),
-                                engine.Functions(), engine.Types(), nullptr, &UnrealSdk_DescribeDefaults,
+        TypeDumpSources sources{engine.Finder(),          engine.Structs(), engine.Chain(), engine.Values(),
+                                engine.Functions(),       engine.Types(),   nullptr,        &UnrealSdk_DescribeDefaults,
                                 &UnrealSdk_DescribeScript};
         sources.imageBase = MainModuleBase();
         sources.imageSize = MainImage(engine.Version()).sizeOfImage;
@@ -708,7 +711,7 @@ bool RunUnreal(Config &config) {
     return true;
 }
 
-const RuntimeBackendDescriptor kUnrealBackend{"Unreal", true, RunUnreal};
+constexpr RuntimeBackendDescriptor kUnrealBackend{"Unreal", true, RunUnreal};
 } // namespace
 
 const RuntimeBackendDescriptor &RuntimeBackend_Unreal() {

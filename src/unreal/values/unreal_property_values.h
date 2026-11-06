@@ -103,16 +103,28 @@ struct PropertyTailOffsets {
     // Why the tail did not resolve: the closest offset and what refused it.
     std::string failure;
 
-    bool Resolved() const { return tail != kOffsetNotFound; }
+    bool Resolved() const {
+        return tail != kOffsetNotFound;
+    }
 
     // FBoolProperty: FieldSize, ByteOffset, ByteMask, FieldMask, one byte each.
-    std::int32_t boolFieldSize() const { return tail; }
-    std::int32_t boolByteOffset() const { return tail + 1; }
-    std::int32_t boolByteMask() const { return tail + 2; }
-    std::int32_t boolFieldMask() const { return tail + 3; }
+    std::int32_t boolFieldSize() const {
+        return tail;
+    }
+    std::int32_t boolByteOffset() const {
+        return tail + 1;
+    }
+    std::int32_t boolByteMask() const {
+        return tail + 2;
+    }
+    std::int32_t boolFieldMask() const {
+        return tail + 3;
+    }
 
     // First pointer of the tail-sharing kinds: PropertyClass, Struct, UnderlyingProp.
-    std::int32_t firstPointer() const { return tail; }
+    std::int32_t firstPointer() const {
+        return tail;
+    }
 };
 
 // Lowest offset satisfying every kind, plus the array element slot. Needs two kinds.
@@ -126,7 +138,9 @@ struct BoolLayout {
     std::uint8_t fieldMask = 0;
 
     // A bool of its own byte rather than a bit of a bitfield.
-    bool Native() const { return fieldMask == 0xFF; }
+    bool Native() const {
+        return fieldMask == 0xFF;
+    }
 };
 
 // Everything needed to read or write one member, gathered once.
@@ -149,7 +163,9 @@ struct PropertyInfo {
     // UEnum, delegate signature, or inner when it is an object.
     Address typeObject = kNullAddress;
 
-    bool Resolved() const { return field != kNullAddress && offset != kOffsetNotFound; }
+    bool Resolved() const {
+        return field != kNullAddress && offset != kOffsetNotFound;
+    }
 };
 
 // A TArray's three fields, which FString shares.
@@ -171,10 +187,13 @@ class PropertyValues {
   public:
     PropertyValues(const MemoryReader &reader, const NameTable &names, const StructOffsets &structs,
                    const FieldOffsets &fields, const PropertyTailOffsets &tail)
-        : reader_(&reader), names_(&names), structs_(structs), fields_(fields), tail_(tail) {}
+        : reader_(&reader), names_(&names), structs_(structs), fields_(fields), tail_(tail) {
+    }
 
     std::optional<PropertyInfo> Describe(Address field) const;
-    const PropertyTailOffsets &Tail() const { return tail_; }
+    const PropertyTailOffsets &Tail() const {
+        return tail_;
+    }
 
     // Required alignment: the kind's C++ alignment or the struct's MinAlignment.
     std::int32_t AlignmentOf(const PropertyInfo &info) const;

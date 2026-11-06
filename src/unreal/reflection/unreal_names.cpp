@@ -191,8 +191,9 @@ void NameTable::CalibrateBlockOffsetBits(const ObjectArray &objects, std::int32_
         if (!comparisonIndex)
             continue;
 
-        while (layout_.pool.blockOffsetBits < kMaxBits &&
-               static_cast<std::int32_t>(*comparisonIndex >> layout_.pool.blockOffsetBits) > *blockCount) {
+        while (layout_.pool.blockOffsetBits<kMaxBits &&static_cast<std::int32_t>(*comparisonIndex >>
+                                                                                 layout_.pool.blockOffsetBits)> *
+               blockCount) {
             ++layout_.pool.blockOffsetBits;
         }
     }

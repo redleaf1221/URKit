@@ -136,8 +136,7 @@ std::set<Address> KnownFunctionEntries(const ObjectFinder &finder, const StructO
         const Address object = objects.ObjectAt(i);
         if (object == kNullAddress || !ObjectIs(finder, structs, object, kCastFlagFunction))
             continue;
-        const std::optional<Address> entry =
-            finder.Reader().ReadPointer(object + static_cast<Address>(functions.func));
+        const std::optional<Address> entry = finder.Reader().ReadPointer(object + static_cast<Address>(functions.func));
         if (entry && *entry != kNullAddress && InRegions(code, *entry))
             entries.insert(*entry);
     }
@@ -221,7 +220,8 @@ std::optional<ProcessEventLocation> FindProcessEvent(const ObjectFinder &finder,
     }
 
     if (candidates.empty())
-        return fail("none of UObject's " + std::to_string(slots.size()) + " slots reads ParmsSize, ReturnValueOffset "
+        return fail("none of UObject's " + std::to_string(slots.size()) +
+                    " slots reads ParmsSize, ReturnValueOffset "
                     "and FunctionFlags");
 
     ProcessEventLocation found = candidates.front();
@@ -249,8 +249,7 @@ Address ProcessEventFor(const MemoryReader &reader, const ProcessEventLocation &
 }
 
 std::vector<Address> ProcessEventImplementations(const ObjectFinder &finder, const TypeQueries &types,
-                                                 const StructOffsets &structs,
-                                                 const ProcessEventLocation &location) {
+                                                 const StructOffsets &structs, const ProcessEventLocation &location) {
     std::vector<Address> implementations;
     if (!location.Resolved())
         return implementations;
@@ -279,7 +278,9 @@ std::vector<Address> ProcessEventImplementations(const ObjectFinder &finder, con
     return implementations;
 }
 
-const FunctionParameter *CallFrame::Find(std::string_view name) const { return info_->Parameter(name); }
+const FunctionParameter *CallFrame::Find(std::string_view name) const {
+    return info_->Parameter(name);
+}
 
 const std::uint8_t *CallFrame::Slot(const FunctionParameter &parameter) const {
     const PropertyInfo &info = parameter.info;
@@ -287,8 +288,9 @@ const std::uint8_t *CallFrame::Slot(const FunctionParameter &parameter) const {
         return nullptr;
     if (parameter.returned && returned_)
         return returned_;
-    const std::size_t end = static_cast<std::size_t>(info.offset) +
-                            static_cast<std::size_t>(info.elementSize) * static_cast<std::size_t>(std::max(info.arrayDim, 1));
+    const std::size_t end =
+        static_cast<std::size_t>(info.offset) +
+        static_cast<std::size_t>(info.elementSize) * static_cast<std::size_t>(std::max(info.arrayDim, 1));
     if (end > Size() || !Data())
         return nullptr;
     return static_cast<const std::uint8_t *>(Data()) + info.offset;

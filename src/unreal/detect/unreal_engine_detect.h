@@ -22,10 +22,14 @@ struct EngineVersion {
     // Where the numbers came from, for logs.
     std::string source;
 
-    bool Known() const { return major > 0; }
+    bool Known() const {
+        return major > 0;
+    }
 
     // 4.25 moved properties to FField; it is also URKit's floor.
-    bool UsesFieldProperties() const { return major > 4 || (major == 4 && minor >= 25); }
+    bool UsesFieldProperties() const {
+        return major > 4 || (major == 4 && minor >= 25);
+    }
 };
 
 enum class UnrealLayout {
@@ -63,8 +67,12 @@ struct UnrealPresence {
     std::string reason;
 
     // A maybe counts: packed titles look like nothing and often are Unreal.
-    bool WorthScanning() const { return confidence != DetectionConfidence::None; }
-    bool Confirmed() const { return confidence == DetectionConfidence::Confirmed; }
+    bool WorthScanning() const {
+        return confidence != DetectionConfidence::None;
+    }
+    bool Confirmed() const {
+        return confidence == DetectionConfidence::Confirmed;
+    }
 };
 
 // Version resource of a mapped image; empty when it carries none.

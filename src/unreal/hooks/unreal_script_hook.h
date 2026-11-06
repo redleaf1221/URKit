@@ -25,19 +25,35 @@ class ScriptCallHook {
     // Once; later calls return the first answer.
     bool Install(const ObjectFinder &finder, const TypeQueries &types, const FunctionOffsets &functions,
                  const FunctionTable &bounds, std::span<const ScanRegion> code, const HookInstaller &installer);
-    bool Installed() const { return installed_.load(std::memory_order_acquire); }
-    const std::string &Failure() const { return failure_; }
+    bool Installed() const {
+        return installed_.load(std::memory_order_acquire);
+    }
+    const std::string &Failure() const {
+        return failure_;
+    }
 
     void Observe(Observer observer, void *user);
 
     // FFrame offsets once measured, -1 before.
-    std::int32_t NodeOffset() const { return nodeOffset_.load(std::memory_order_acquire); }
-    std::int32_t LocalsOffset() const { return localsOffset_.load(std::memory_order_acquire); }
-    Address ProcessInternal() const { return processInternal_; }
-    Address ProcessLocalScriptFunction() const { return processLocal_; }
+    std::int32_t NodeOffset() const {
+        return nodeOffset_.load(std::memory_order_acquire);
+    }
+    std::int32_t LocalsOffset() const {
+        return localsOffset_.load(std::memory_order_acquire);
+    }
+    Address ProcessInternal() const {
+        return processInternal_;
+    }
+    Address ProcessLocalScriptFunction() const {
+        return processLocal_;
+    }
     // Calls through each entry point so far.
-    std::uint64_t InternalCalls() const { return internalCalls_.load(std::memory_order_relaxed); }
-    std::uint64_t LocalCalls() const { return localCalls_.load(std::memory_order_relaxed); }
+    std::uint64_t InternalCalls() const {
+        return internalCalls_.load(std::memory_order_relaxed);
+    }
+    std::uint64_t LocalCalls() const {
+        return localCalls_.load(std::memory_order_relaxed);
+    }
     // Where measuring stands, for a log line.
     std::string MeasureState() const;
 

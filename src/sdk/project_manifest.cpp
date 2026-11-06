@@ -97,12 +97,12 @@ bool Require(const std::unordered_map<std::string, std::string> &fields, const c
 
 const char *BackendName(Backend backend) {
     switch (backend) {
-    case Backend::Il2Cpp:
-        return "il2cpp";
-    case Backend::Unreal:
-        return "unreal";
-    case Backend::Mono:
-        break;
+        case Backend::Il2Cpp:
+            return "il2cpp";
+        case Backend::Unreal:
+            return "unreal";
+        case Backend::Mono:
+            break;
     }
     return "mono";
 }
@@ -207,9 +207,10 @@ bool WriteManifest(const fs::path &projectRoot, const Manifest &manifest, std::s
             *error = "project root is empty";
         return false;
     }
-    if (manifest.schemaVersion != kProjectManifestSchemaVersion || manifest.sdkVersion <= 0 || manifest.projectName.empty() ||
-        manifest.gameDirectory.empty() || manifest.modsDirectory.empty() || !IsSafeValue(manifest.projectName) ||
-        !IsSafeValue(manifest.gameDirectory.string()) || !IsSafeValue(manifest.modsDirectory)) {
+    if (manifest.schemaVersion != kProjectManifestSchemaVersion || manifest.sdkVersion <= 0 ||
+        manifest.projectName.empty() || manifest.gameDirectory.empty() || manifest.modsDirectory.empty() ||
+        !IsSafeValue(manifest.projectName) || !IsSafeValue(manifest.gameDirectory.string()) ||
+        !IsSafeValue(manifest.modsDirectory)) {
         if (error)
             *error = "refusing to write an invalid project manifest";
         return false;

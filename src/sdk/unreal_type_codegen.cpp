@@ -47,12 +47,13 @@ bool CompilerFunction(const Function &function) {
         return name.size() >= suffix.size() && name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0;
     };
     // Input and bound-event thunks, timeline callbacks, async-load continuations.
-    return starts("EvaluateGraphExposedInputs_") || name.find("K2Node_") != std::string::npos ||
-           starts("BndEvt__") || starts("OnLoaded_") || ends("__UpdateFunc") || ends("__FinishedFunc") ||
-           ends("__EventFunc");
+    return starts("EvaluateGraphExposedInputs_") || name.find("K2Node_") != std::string::npos || starts("BndEvt__") ||
+           starts("OnLoaded_") || ends("__UpdateFunc") || ends("__FinishedFunc") || ends("__EventFunc");
 }
 
-std::string Key(const std::string &package, const std::string &name) { return package + '\t' + name; }
+std::string Key(const std::string &package, const std::string &name) {
+    return package + '\t' + name;
+}
 
 std::vector<std::string> Split(const std::string &line) {
     std::vector<std::string> fields(1);
@@ -237,23 +238,157 @@ bool Parse(const std::filesystem::path &path, TypeMap *types, Globals *globals, 
 
 // C++ keywords, breaking Windows macros and names the runtime already uses.
 const std::unordered_set<std::string> &Reserved() {
-    static const std::unordered_set<std::string> words = {
-        "alignas", "alignof", "and", "and_eq", "asm", "auto", "bitand", "bitor", "bool", "break", "case", "catch",
-        "char", "char8_t", "char16_t", "char32_t", "class", "compl", "concept", "const", "consteval", "constexpr",
-        "constinit", "const_cast", "continue", "co_await", "co_return", "co_yield", "decltype", "default", "delete",
-        "do", "double", "dynamic_cast", "else", "enum", "explicit", "export", "extern", "false", "final", "float",
-        "for", "friend", "goto", "if", "import", "inline", "int", "long", "module", "mutable", "namespace", "new",
-        "noexcept", "not", "not_eq", "nullptr", "operator", "or", "or_eq", "override", "private", "protected",
-        "public", "register", "reinterpret_cast", "requires", "return", "short", "signed", "sizeof", "static",
-        "static_assert", "static_cast", "struct", "switch", "template", "this", "thread_local", "throw", "true", "try",
-        "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual", "void", "volatile", "wchar_t",
-        "while", "xor", "xor_eq",
-        "min", "max", "interface", "small", "near", "far", "IN", "OUT", "OPTIONAL", "DELETE", "ERROR", "TRUE",
-        "FALSE", "CONST", "VOID", "TEXT", "PURE", "THIS", "NULL", "errno", "assert", "offsetof",
-        "handle", "valid", "name", "klass", "outer", "is_a", "is_child_of", "default_object", "function", "describe",
-        "get_int", "get_float", "get_bool", "get_object", "get_name", "get_string", "set_int", "set_float",
-        "set_bool", "set_object", "static_class", "cast", "instances", "class_default", "load_class", "kName", "kPackage",
-        "kSize", "kFields", "value", "UrkR", "std", "URK"};
+    static const std::unordered_set<std::string> words = {"alignas",
+                                                          "alignof",
+                                                          "and",
+                                                          "and_eq",
+                                                          "asm",
+                                                          "auto",
+                                                          "bitand",
+                                                          "bitor",
+                                                          "bool",
+                                                          "break",
+                                                          "case",
+                                                          "catch",
+                                                          "char",
+                                                          "char8_t",
+                                                          "char16_t",
+                                                          "char32_t",
+                                                          "class",
+                                                          "compl",
+                                                          "concept",
+                                                          "const",
+                                                          "consteval",
+                                                          "constexpr",
+                                                          "constinit",
+                                                          "const_cast",
+                                                          "continue",
+                                                          "co_await",
+                                                          "co_return",
+                                                          "co_yield",
+                                                          "decltype",
+                                                          "default",
+                                                          "delete",
+                                                          "do",
+                                                          "double",
+                                                          "dynamic_cast",
+                                                          "else",
+                                                          "enum",
+                                                          "explicit",
+                                                          "export",
+                                                          "extern",
+                                                          "false",
+                                                          "final",
+                                                          "float",
+                                                          "for",
+                                                          "friend",
+                                                          "goto",
+                                                          "if",
+                                                          "import",
+                                                          "inline",
+                                                          "int",
+                                                          "long",
+                                                          "module",
+                                                          "mutable",
+                                                          "namespace",
+                                                          "new",
+                                                          "noexcept",
+                                                          "not",
+                                                          "not_eq",
+                                                          "nullptr",
+                                                          "operator",
+                                                          "or",
+                                                          "or_eq",
+                                                          "override",
+                                                          "private",
+                                                          "protected",
+                                                          "public",
+                                                          "register",
+                                                          "reinterpret_cast",
+                                                          "requires",
+                                                          "return",
+                                                          "short",
+                                                          "signed",
+                                                          "sizeof",
+                                                          "static",
+                                                          "static_assert",
+                                                          "static_cast",
+                                                          "struct",
+                                                          "switch",
+                                                          "template",
+                                                          "this",
+                                                          "thread_local",
+                                                          "throw",
+                                                          "true",
+                                                          "try",
+                                                          "typedef",
+                                                          "typeid",
+                                                          "typename",
+                                                          "union",
+                                                          "unsigned",
+                                                          "using",
+                                                          "virtual",
+                                                          "void",
+                                                          "volatile",
+                                                          "wchar_t",
+                                                          "while",
+                                                          "xor",
+                                                          "xor_eq",
+                                                          "min",
+                                                          "max",
+                                                          "interface",
+                                                          "small",
+                                                          "near",
+                                                          "far",
+                                                          "IN",
+                                                          "OUT",
+                                                          "OPTIONAL",
+                                                          "DELETE",
+                                                          "ERROR",
+                                                          "TRUE",
+                                                          "FALSE",
+                                                          "CONST",
+                                                          "VOID",
+                                                          "TEXT",
+                                                          "PURE",
+                                                          "THIS",
+                                                          "NULL",
+                                                          "errno",
+                                                          "assert",
+                                                          "offsetof",
+                                                          "handle",
+                                                          "valid",
+                                                          "name",
+                                                          "klass",
+                                                          "outer",
+                                                          "is_a",
+                                                          "is_child_of",
+                                                          "default_object",
+                                                          "function",
+                                                          "describe",
+                                                          "get_int",
+                                                          "get_float",
+                                                          "get_bool",
+                                                          "get_object",
+                                                          "get_name",
+                                                          "get_string",
+                                                          "set_int",
+                                                          "set_float",
+                                                          "set_bool",
+                                                          "set_object",
+                                                          "static_class",
+                                                          "cast",
+                                                          "instances",
+                                                          "class_default",
+                                                          "load_class",
+                                                          "kName",
+                                                          "kPackage",
+                                                          "kSize",
+                                                          "kFields",
+                                                          "value",
+                                                          "UrkR",
+                                                          "std",
+                                                          "URK"};
     return words;
 }
 
@@ -295,12 +430,12 @@ std::string Unique(std::string base, std::set<std::string> &taken, const std::st
 std::string FolderSegment(const std::string &segment) {
     std::string out;
     for (const char ch : segment) {
-        const bool keep = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') ||
-                          ch == '_' || ch == '-';
+        const bool keep =
+            (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-';
         out += keep ? ch : '_';
     }
-    static const std::set<std::string> reserved = {"con", "prn", "aux", "nul", "com1", "com2", "com3", "com4",
-                                                   "lpt1", "lpt2", "lpt3", "lpt4"};
+    static const std::set<std::string> reserved = {"con",  "prn",  "aux",  "nul",  "com1", "com2",
+                                                   "com3", "com4", "lpt1", "lpt2", "lpt3", "lpt4"};
     return reserved.count(Lower(out)) ? out + '_' : out;
 }
 
@@ -526,11 +661,18 @@ std::vector<std::string> ClassWords(std::uint32_t flags) {
     std::vector<std::string> out;
     const auto has = [flags](std::uint32_t bit) { return (flags & bit) != 0; };
     out.push_back(has(0x40000) ? "Blueprint" : has(0x80) ? "native" : "script");
-    const std::pair<std::uint32_t, const char *> words[] = {
-        {0x1, "Abstract"},           {0x4000, "Interface"},       {0x4, "Config"},
-        {0x2, "DefaultConfig"},      {0x8000000, "GlobalUserConfig"}, {0x400, "PerObjectConfig"},
-        {0x8, "Transient"},          {0x200, "NotPlaceable"},     {0x1000, "EditInlineNew"},
-        {0x200000, "DefaultToInstanced"}, {0x10000, "Const"},     {0x2000000, "Deprecated"}};
+    const std::pair<std::uint32_t, const char *> words[] = {{0x1, "Abstract"},
+                                                            {0x4000, "Interface"},
+                                                            {0x4, "Config"},
+                                                            {0x2, "DefaultConfig"},
+                                                            {0x8000000, "GlobalUserConfig"},
+                                                            {0x400, "PerObjectConfig"},
+                                                            {0x8, "Transient"},
+                                                            {0x200, "NotPlaceable"},
+                                                            {0x1000, "EditInlineNew"},
+                                                            {0x200000, "DefaultToInstanced"},
+                                                            {0x10000, "Const"},
+                                                            {0x2000000, "Deprecated"}};
     for (const auto &[bit, word] : words) {
         if (has(bit))
             out.push_back(word);
@@ -542,37 +684,67 @@ std::vector<std::string> ClassWords(std::uint32_t flags) {
 
 // URK_UnrealPropertyKind, by the dump's kind names.
 int KindId(const std::string &kind) {
-    static const std::map<std::string, int> ids = {
-        {"bool", 1},         {"byte", 2},         {"int8", 3},     {"int16", 4},  {"int32", 5},  {"int64", 6},
-        {"uint16", 7},       {"uint32", 8},       {"uint64", 9},   {"float", 10}, {"double", 11}, {"enum", 12},
-        {"name", 13},        {"string", 14},      {"text", 15},    {"object", 16}, {"class", 17},
-        {"weak object", 18}, {"soft object", 19}, {"interface", 20}, {"struct", 21}, {"array", 22},
-        {"set", 23},         {"map", 24},         {"delegate", 25}, {"multicast delegate", 26},
-        {"sparse delegate", 27}, {"lazy object", 28}, {"utf8 string", 29}, {"ansi string", 30},
-        {"field path", 31},      {"optional", 32}};
+    static const std::map<std::string, int> ids = {{"bool", 1},
+                                                   {"byte", 2},
+                                                   {"int8", 3},
+                                                   {"int16", 4},
+                                                   {"int32", 5},
+                                                   {"int64", 6},
+                                                   {"uint16", 7},
+                                                   {"uint32", 8},
+                                                   {"uint64", 9},
+                                                   {"float", 10},
+                                                   {"double", 11},
+                                                   {"enum", 12},
+                                                   {"name", 13},
+                                                   {"string", 14},
+                                                   {"text", 15},
+                                                   {"object", 16},
+                                                   {"class", 17},
+                                                   {"weak object", 18},
+                                                   {"soft object", 19},
+                                                   {"interface", 20},
+                                                   {"struct", 21},
+                                                   {"array", 22},
+                                                   {"set", 23},
+                                                   {"map", 24},
+                                                   {"delegate", 25},
+                                                   {"multicast delegate", 26},
+                                                   {"sparse delegate", 27},
+                                                   {"lazy object", 28},
+                                                   {"utf8 string", 29},
+                                                   {"ansi string", 30},
+                                                   {"field path", 31},
+                                                   {"optional", 32}};
     const auto found = ids.find(kind);
     return found == ids.end() ? 0 : found->second;
 }
 
 // Kinds whose bytes a call frame or a struct copies as they are.
 std::optional<std::string> ValueType(const Shape &shape) {
-    static const std::map<std::string, std::pair<std::string, int>> fixed = {
-        {"bool", {"bool", 1}},          {"byte", {"std::uint8_t", 1}},   {"int8", {"std::int8_t", 1}},
-        {"int16", {"std::int16_t", 2}}, {"int32", {"std::int32_t", 4}},  {"int64", {"std::int64_t", 8}},
-        {"uint16", {"std::uint16_t", 2}}, {"uint32", {"std::uint32_t", 4}}, {"uint64", {"std::uint64_t", 8}},
-        {"float", {"float", 4}},        {"double", {"double", 8}}};
+    static const std::map<std::string, std::pair<std::string, int>> fixed = {{"bool", {"bool", 1}},
+                                                                             {"byte", {"std::uint8_t", 1}},
+                                                                             {"int8", {"std::int8_t", 1}},
+                                                                             {"int16", {"std::int16_t", 2}},
+                                                                             {"int32", {"std::int32_t", 4}},
+                                                                             {"int64", {"std::int64_t", 8}},
+                                                                             {"uint16", {"std::uint16_t", 2}},
+                                                                             {"uint32", {"std::uint32_t", 4}},
+                                                                             {"uint64", {"std::uint64_t", 8}},
+                                                                             {"float", {"float", 4}},
+                                                                             {"double", {"double", 8}}};
     if (shape.kind == "enum") {
         switch (shape.size) {
-        case 1:
-            return "std::uint8_t";
-        case 2:
-            return "std::uint16_t";
-        case 4:
-            return "std::uint32_t";
-        case 8:
-            return "std::uint64_t";
-        default:
-            return std::nullopt;
+            case 1:
+                return "std::uint8_t";
+            case 2:
+                return "std::uint16_t";
+            case 4:
+                return "std::uint32_t";
+            case 8:
+                return "std::uint64_t";
+            default:
+                return std::nullopt;
         }
     }
     const auto found = fixed.find(shape.kind);
@@ -611,7 +783,9 @@ class Generator {
         return entry.isStruct ? EmitStruct(entry) : EmitClass(entry);
     }
 
-    bool Emittable(const Type &entry) { return entry.isEnum || !entry.isStruct || LayoutOf(entry).usable; }
+    bool Emittable(const Type &entry) {
+        return entry.isEnum || !entry.isStruct || LayoutOf(entry).usable;
+    }
 
   private:
     const Type *Find(const std::string &package, const std::string &name) const {
@@ -723,14 +897,16 @@ class Generator {
         if ((shape.kind == "array" || shape.kind == "set") && shape.elements.size() == 1) {
             if (shape.kind == "set" && !Keyable(shape.elements[0]))
                 return std::nullopt;
-            const std::optional<std::string> element = PlaceType(shape.elements[0], includes, forwards, depth + 1, untyped);
+            const std::optional<std::string> element =
+                PlaceType(shape.elements[0], includes, forwards, depth + 1, untyped);
             return element ? std::optional<std::string>("std::vector<" + *element + ">") : std::nullopt;
         }
         if (shape.kind == "multicast delegate")
             return "std::vector<" + std::string(kRuntime) + "Binding>";
         if (shape.kind == "map" && shape.elements.size() == 2 && Keyable(shape.elements[0])) {
             const std::optional<std::string> key = PlaceType(shape.elements[0], includes, forwards, depth + 1, untyped);
-            const std::optional<std::string> value = PlaceType(shape.elements[1], includes, forwards, depth + 1, untyped);
+            const std::optional<std::string> value =
+                PlaceType(shape.elements[1], includes, forwards, depth + 1, untyped);
             if (key && value)
                 return "std::vector<std::pair<" + *key + ", " + *value + ">>";
         }
@@ -739,16 +915,16 @@ class Generator {
 
     // What the loader can hash and compare as a set element or map key.
     static bool Keyable(const Shape &shape) {
-        static const std::set<std::string> keys = {"bool",   "byte",   "int8",   "int16",  "int32",       "int64",
-                                                   "uint16", "uint32", "uint64", "float",  "double",      "enum",
-                                                   "name",   "string", "object", "class",  "struct",      "soft object",
-                                                   "weak object"};
+        static const std::set<std::string> keys = {
+            "bool",   "byte", "int8", "int16",  "int32",  "int64", "uint16", "uint32",      "uint64",     "float",
+            "double", "enum", "name", "string", "object", "class", "struct", "soft object", "weak object"};
         return keys.count(shape.kind) != 0;
     }
 
     // An object reference's generated class; weak and lazy references name it too.
     std::string ObjectTypeNamed(const Shape &shape, std::set<std::string> &forwards) {
-        if (const Type *target = Find(shape.innerPackage, shape.inner); target && !target->isStruct && !target->isEnum) {
+        if (const Type *target = Find(shape.innerPackage, shape.inner);
+            target && !target->isStruct && !target->isEnum) {
             forwards.insert(target->ident);
             return kTypes + target->ident;
         }
@@ -817,7 +993,8 @@ class Generator {
             return layout;
         layout.visiting = true;
         // A power of two or unknown; a wrong one shows up as a size mismatch at runtime.
-        const bool sane = entry.alignment > 0 && entry.alignment <= 256 && (entry.alignment & (entry.alignment - 1)) == 0;
+        const bool sane =
+            entry.alignment > 0 && entry.alignment <= 256 && (entry.alignment & (entry.alignment - 1)) == 0;
         const int alignment = sane ? entry.alignment : 1;
         layout.size = entry.size > 0 ? (entry.size + alignment - 1) / alignment * alignment : 0;
         layout.align = alignment;
@@ -845,8 +1022,8 @@ class Generator {
             layout.fields.push_back("{\"" + Escape(member->name) + "\", " + std::to_string(member->offset) + ", " +
                                     std::to_string(shape.size) + ", " + std::to_string(shape.dim) + ", " +
                                     std::to_string(KindId(shape.kind)) + ", " + std::to_string(member->boolByte) +
-                                    ", " + std::to_string(member->boolMask) + ", " +
-                                    std::to_string(member->fieldMask) + "}");
+                                    ", " + std::to_string(member->boolMask) + ", " + std::to_string(member->fieldMask) +
+                                    "}");
             if (!ok)
                 continue;
             if (member->offset < 0 || shape.size <= 0 || shape.dim < 1) {
@@ -953,12 +1130,16 @@ class Generator {
     static std::string Include(const Type &from, const std::string &path) {
         return std::filesystem::path(path).lexically_relative(from.folder).generic_string();
     }
-    static std::string RuntimeInclude(const Type &from) { return Include(from, "../unreal_runtime.h"); }
+    static std::string RuntimeInclude(const Type &from) {
+        return Include(from, "../unreal_runtime.h");
+    }
     std::string IncludeOf(const Type &from, const std::string &ident) const {
         const auto found = byIdent_.find(ident);
         return Include(from, (found != byIdent_.end() ? found->second->folder : from.folder) + "/" + ident + ".h");
     }
-    static std::string FileOf(const Type &entry) { return entry.folder + "/" + entry.ident + ".h"; }
+    static std::string FileOf(const Type &entry) {
+        return entry.folder + "/" + entry.ident + ".h";
+    }
 
     static std::string Preamble(const Type &entry, const std::string &what) {
         return "// Generated by urk.exe from " + std::string(kDumpFileName) + "; regenerated with it, do not edit.\n" +
@@ -983,7 +1164,8 @@ class Generator {
             << "    static constexpr const char *kName = \"" << Escape(entry.name) << "\";\n"
             << "    static constexpr const char *kPackage = \"" << Escape(entry.package) << "\";\n"
             << "    static constexpr std::int32_t kSize = " << layout.size << ";\n"
-            << "    static constexpr std::array<" << kRuntime << "FieldLayout, " << layout.fields.size() << "> kFields{";
+            << "    static constexpr std::array<" << kRuntime << "FieldLayout, " << layout.fields.size()
+            << "> kFields{";
         if (!layout.fields.empty()) {
             out << "{\n";
             for (const std::string &field : layout.fields)
@@ -1106,8 +1288,8 @@ class Generator {
             super = nullptr;
         const std::string base = super ? kTypes + super->ident : std::string(kRuntime) + "Object";
         std::ostringstream out;
-        out << Preamble(entry, "")
-            << "#include \"" << (super ? IncludeOf(entry, super->ident) : RuntimeInclude(entry)) << "\"\n";
+        out << Preamble(entry, "") << "#include \"" << (super ? IncludeOf(entry, super->ident) : RuntimeInclude(entry))
+            << "\"\n";
         for (const std::string &include : context.includes)
             out << "#include \"" << IncludeOf(entry, include) << "\"\n";
         out << "\nnamespace URK::unreal::types {\n";
@@ -1136,7 +1318,8 @@ class Generator {
         if (!body.str().empty())
             out << '\n' << body.str();
         if (!hooks.str().empty())
-            out << "\n    // hook_<Function>(before, after): the callbacks get a typed view of the call.\n" << hooks.str();
+            out << "\n    // hook_<Function>(before, after): the callbacks get a typed view of the call.\n"
+                << hooks.str();
         if (!compiler.str().empty())
             out << "\n    // Blueprint compiler output, not authored in the Blueprint.\n" << compiler.str();
         if (!entry.defaults.empty() || !entry.components.empty())
@@ -1178,8 +1361,8 @@ class Generator {
     void EmitView(const Type &owner, const std::string &view, const std::vector<Member> &parameters,
                   ClassContext &context, std::ostringstream &body) {
         // What HookedCall itself names.
-        std::set<std::string> names = {"self",     "object",     "function",   "after",     "skipped",   "valid",
-                                       "raw",      "set",        "get",        "set_struct", "get_struct", "parameter",
+        std::set<std::string> names = {"self",      "object",    "function",  "after",      "skipped",    "valid",
+                                       "raw",       "set",       "get",       "set_struct", "get_struct", "parameter",
                                        "set_value", "get_value", "TypedCall", "HookedCall", "FrameView"};
         body << "    struct " << view << " : " << kRuntime << "TypedCall<" << owner.ident << "> {"
              << (parameters.empty() ? " " : "\n        ") << "using TypedCall::TypedCall;";
@@ -1191,8 +1374,8 @@ class Generator {
         body << (parameters.empty() ? " };\n" : "\n    };\n");
     }
 
-    bool EmitFunction(const Type &owner, const Function &function, std::set<std::string> &taken,
-                      ClassContext &context, std::ostringstream &body) {
+    bool EmitFunction(const Type &owner, const Function &function, std::set<std::string> &taken, ClassContext &context,
+                      std::ostringstream &body) {
         const Member *returned = nullptr;
         std::vector<std::string> signature;
         std::vector<std::string> sets;
@@ -1215,7 +1398,8 @@ class Generator {
             // Kinds that go through a place.
             const bool object = shape.kind == "object" || shape.kind == "class";
             const std::optional<std::string> placed =
-                value || structValue || object ? std::nullopt : PlaceType(shape, context.includes, context.forwards, 0, true);
+                value || structValue || object ? std::nullopt
+                                               : PlaceType(shape, context.includes, context.forwards, 0, true);
             if ((shape.flags & kOutParm) && !(shape.flags & kConstParm)) {
                 if (Leaks(shape))
                     return false;
@@ -1230,7 +1414,8 @@ class Generator {
                 } else if (placed) {
                     signature.push_back(*placed + " *" + ident);
                     outs.push_back("        if (" + ident + ")\n            if (auto urk_out = urk_frame.get_value<" +
-                                   *placed + ">(" + name + "))\n                *" + ident + " = std::move(*urk_out);\n");
+                                   *placed + ">(" + name + "))\n                *" + ident +
+                                   " = std::move(*urk_out);\n");
                 } else if (value) {
                     signature.push_back(*value + " *" + ident);
                     outs.push_back("        if (" + ident + ")\n            if (const auto urk_out = urk_frame.get<" +
@@ -1238,8 +1423,9 @@ class Generator {
                 } else if (structValue) {
                     const std::string type = kTypes + structValue->ident;
                     signature.push_back(type + " *" + ident);
-                    outs.push_back("        if (" + ident + ")\n            if (const auto urk_out = urk_frame.get_struct<" +
-                                   type + ">(" + name + "))\n                *" + ident + " = *urk_out;\n");
+                    outs.push_back("        if (" + ident +
+                                   ")\n            if (const auto urk_out = urk_frame.get_struct<" + type + ">(" +
+                                   name + "))\n                *" + ident + " = *urk_out;\n");
                 } else {
                     return false;
                 }
@@ -1311,8 +1497,8 @@ class Generator {
         for (std::size_t i = 0; i < signature.size(); ++i)
             body << (i ? ", " : "") << signature[i];
         body << ')' << (isStatic ? "" : " const") << " {\n"
-             << "        const " << kRuntime << "Object urk_self = "
-             << (isStatic ? "static_class().default_object()" : "*this") << ";\n"
+             << "        const " << kRuntime
+             << "Object urk_self = " << (isStatic ? "static_class().default_object()" : "*this") << ";\n"
              << "        " << kRuntime << "CallFrame urk_frame(urk_self.function(\"" << Escape(function.name)
              << "\"));\n        if (!(";
         for (const std::string &set : sets)

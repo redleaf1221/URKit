@@ -61,7 +61,7 @@ void RegisterLoadedNativeMod(HMODULE module, const char *path) {
     const std::string modulePath = ModulePath(module, path);
 
     std::lock_guard<std::mutex> lock(LoadedModsMutex);
-    auto existing = std::find_if(LoadedMods().begin(), LoadedMods().end(),
+    auto existing = std::ranges::find_if(LoadedMods(),
                                  [module](const LoadedNativeMod &mod) { return mod.module == module; });
 
     if (existing != LoadedMods().end()) {
@@ -73,10 +73,10 @@ void RegisterLoadedNativeMod(HMODULE module, const char *path) {
         return;
     }
 
-    LoadedMods().push_back(
-        {module, shutdown, onSceneLoaded, onSceneChanged, onObjectDestroyRequested, modulePath});
+    LoadedMods().push_back({module, shutdown, onSceneLoaded, onSceneChanged, onObjectDestroyRequested, modulePath});
 
-        Log(shutdown ? "  [SUCCESS][lifecycle] %s: optional ModShutdown resolved." : "  [INFO][lifecycle] %s: no ModShutdown export.",
+    Log(shutdown ? "  [SUCCESS][lifecycle] %s: optional ModShutdown resolved."
+                 : "  [INFO][lifecycle] %s: no ModShutdown export.",
         modulePath.c_str());
     if (onSceneLoaded || onSceneChanged) {
         Log("  [SUCCESS][lifecycle] %s: scene callbacks resolved (OnSceneLoaded=%s, "
@@ -93,9 +93,7 @@ void UnregisterLoadedNativeMod(HMODULE module) {
         return;
 
     std::lock_guard<std::mutex> lock(LoadedModsMutex);
-    LoadedMods().erase(std::remove_if(LoadedMods().begin(), LoadedMods().end(),
-                                      [module](const LoadedNativeMod &mod) { return mod.module == module; }),
-                       LoadedMods().end());
+    std::erase_if(LoadedMods(), [module](const LoadedNativeMod &mod) { return mod.module == module; });
 }
 
 void DeactivateLoadedNativeMod(HMODULE module) {
@@ -103,7 +101,7 @@ void DeactivateLoadedNativeMod(HMODULE module) {
         return;
 
     std::lock_guard<std::mutex> lock(LoadedModsMutex);
-    auto mod = std::find_if(LoadedMods().begin(), LoadedMods().end(),
+    auto mod = std::ranges::find_if(LoadedMods(),
                             [module](const LoadedNativeMod &candidate) { return candidate.module == module; });
     if (mod == LoadedMods().end())
         return;
@@ -140,7 +138,7 @@ bool InvokeSceneChangedSafely(const LoadedNativeMod &mod, const URK_SceneInfo &p
 }
 
 bool InvokeObjectDestroyRequestedSafely(const LoadedNativeMod &mod, const URK_ObjectDestroyRequest &request,
-                                         DWORD *exceptionCode, std::string *cppError) {
+                                        DWORD *exceptionCode, std::string *cppError) {
     __try {
         return urk::guard::InvokeCpp([&] { mod.onObjectDestroyRequested(&request); }, cppError);
     } __except ((*exceptionCode = GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER)) {
@@ -328,7 +326,8 @@ bool ModLifecycle_UnloadModule(HMODULE module, const char *reason) {
     LoadedNativeMod mod{};
     {
         std::lock_guard<std::mutex> lock(LoadedModsMutex);
-        auto it = std::find_if(LoadedMods().begin(), LoadedMods().end(),
+        auto it = std::ranges::find_if(
+            LoadedMods(),
                                [module](const LoadedNativeMod &candidate) { return candidate.module == module; });
         if (it == LoadedMods().end())
             return false;
@@ -337,7 +336,7 @@ bool ModLifecycle_UnloadModule(HMODULE module, const char *reason) {
 
     const bool unloaded = ShutdownOneNativeMod(mod, reason);
     std::lock_guard<std::mutex> lock(LoadedModsMutex);
-    auto it = std::find_if(LoadedMods().begin(), LoadedMods().end(),
+    auto it = std::ranges::find_if(LoadedMods(),
                            [module](const LoadedNativeMod &candidate) { return candidate.module == module; });
     if (it == LoadedMods().end())
         return unloaded;
@@ -408,8 +407,8 @@ void ModLifecycle_DispatchObjectDestroyRequested(const URK_ObjectDestroyRequest 
                 Log("  [FAILED] %s: OnObjectDestroyRequested threw a C++ exception: %s.", mod.path.c_str(),
                     cppError.c_str());
             else
-                Log("  [FAILED] %s: OnObjectDestroyRequested crashed with native exception 0x%08lX.",
-                    mod.path.c_str(), exceptionCode);
+                Log("  [FAILED] %s: OnObjectDestroyRequested crashed with native exception 0x%08lX.", mod.path.c_str(),
+                    exceptionCode);
         }
     }
 }

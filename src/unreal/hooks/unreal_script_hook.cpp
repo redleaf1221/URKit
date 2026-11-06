@@ -122,8 +122,7 @@ bool ScriptCallHook::Install(const ObjectFinder &finder, const TypeQueries &type
         std::int32_t displacement = 0;
         std::memcpy(&displacement, bytes.data() + i + 1, sizeof(displacement));
         const Address target = internal + i + 5 + static_cast<Address>(static_cast<std::int64_t>(displacement));
-        if (bounds.PrimaryBegin(target) == target &&
-            std::find(callees.begin(), callees.end(), target) == callees.end())
+        if (bounds.PrimaryBegin(target) == target && std::find(callees.begin(), callees.end(), target) == callees.end())
             callees.push_back(target);
     }
     const std::vector<std::size_t> taken = AddressTakenCounts(reader, code, callees);
@@ -235,8 +234,8 @@ void ScriptCallHook::Measure(void *context, const std::uint8_t *stack) {
     objectOffset_.store(object, std::memory_order_release);
     localsOffset_.store(locals, std::memory_order_release);
     nodeOffset_.store(node, std::memory_order_release);
-    NoteMemory("Blueprint calls are observable: FFrame Node +" + Hex(node) + ", Object +" + Hex(object) +
-               ", Code +" + Hex(code) + " (the function's bytecode at +" + Hex(script) + "), Locals +" + Hex(locals) +
+    NoteMemory("Blueprint calls are observable: FFrame Node +" + Hex(node) + ", Object +" + Hex(object) + ", Code +" +
+               Hex(code) + " (the function's bytecode at +" + Hex(script) + "), Locals +" + Hex(locals) +
                " (parameters seen there in " + std::to_string(parmsChecked_.load()) + " calls)");
 }
 

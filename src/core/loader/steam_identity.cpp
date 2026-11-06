@@ -33,10 +33,9 @@ HMODULE LoadedSteamApi() {
 void *ResolveSteamUser(HMODULE module) {
     // Probe newest-first; older SteamUser revisions remain compatible.
     constexpr std::array<const char *, 14> accessors = {
-        "SteamAPI_SteamUser_v025", "SteamAPI_SteamUser_v024", "SteamAPI_SteamUser_v023",
-        "SteamAPI_SteamUser_v022", "SteamAPI_SteamUser_v021", "SteamAPI_SteamUser_v020",
-        "SteamAPI_SteamUser_v019", "SteamAPI_SteamUser_v018", "SteamAPI_SteamUser_v017",
-        "SteamAPI_SteamUser_v016", "SteamAPI_SteamUser_v015", "SteamAPI_SteamUser_v014",
+        "SteamAPI_SteamUser_v025", "SteamAPI_SteamUser_v024", "SteamAPI_SteamUser_v023", "SteamAPI_SteamUser_v022",
+        "SteamAPI_SteamUser_v021", "SteamAPI_SteamUser_v020", "SteamAPI_SteamUser_v019", "SteamAPI_SteamUser_v018",
+        "SteamAPI_SteamUser_v017", "SteamAPI_SteamUser_v016", "SteamAPI_SteamUser_v015", "SteamAPI_SteamUser_v014",
         "SteamAPI_SteamUser_v013", "SteamAPI_SteamUser_v012",
     };
     for (const char *name : accessors) {
@@ -49,10 +48,9 @@ void *ResolveSteamUser(HMODULE module) {
     }
 
     // Use the game's existing API context when the convenience accessor is not ready.
-    const auto getUserHandle =
-        reinterpret_cast<SteamGetUserHandle>(GetProcAddress(module, "SteamAPI_GetHSteamUser"));
-    const auto findUserInterface = reinterpret_cast<SteamFindUserInterface>(
-        GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
+    const auto getUserHandle = reinterpret_cast<SteamGetUserHandle>(GetProcAddress(module, "SteamAPI_GetHSteamUser"));
+    const auto findUserInterface =
+        reinterpret_cast<SteamFindUserInterface>(GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
     if (!getUserHandle || !findUserInterface)
         return nullptr;
 
@@ -66,9 +64,8 @@ void *ResolveSteamUser(HMODULE module) {
         return nullptr;
 
     constexpr std::array<const char *, 14> interfaceVersions = {
-        "SteamUser025", "SteamUser024", "SteamUser023", "SteamUser022", "SteamUser021", "SteamUser020",
-        "SteamUser019", "SteamUser018", "SteamUser017", "SteamUser016", "SteamUser015", "SteamUser014",
-        "SteamUser013", "SteamUser012",
+        "SteamUser025", "SteamUser024", "SteamUser023", "SteamUser022", "SteamUser021", "SteamUser020", "SteamUser019",
+        "SteamUser018", "SteamUser017", "SteamUser016", "SteamUser015", "SteamUser014", "SteamUser013", "SteamUser012",
     };
     for (const char *version : interfaceVersions) {
         void *steamUser = nullptr;

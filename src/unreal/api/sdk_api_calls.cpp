@@ -4,9 +4,13 @@
 
 namespace URK::Unreal::SdkApi {
 
-LoaderFrame *FrameOf(URK_UnrealCallFrame *frame) { return reinterpret_cast<LoaderFrame *>(frame); }
+LoaderFrame *FrameOf(URK_UnrealCallFrame *frame) {
+    return reinterpret_cast<LoaderFrame *>(frame);
+}
 
-const LoaderFrame *FrameOf(const URK_UnrealCallFrame *frame) { return reinterpret_cast<const LoaderFrame *>(frame); }
+const LoaderFrame *FrameOf(const URK_UnrealCallFrame *frame) {
+    return reinterpret_cast<const LoaderFrame *>(frame);
+}
 
 // The return value and non-const out parameters: what the engine assigns into.
 bool Written(const FunctionParameter &parameter) {
@@ -101,8 +105,8 @@ void Unreal_CallFrameDestroy(URK_UnrealCallFrame *frame) {
         return;
     }
     std::unique_ptr<LoaderFrame> loaderFrame(FrameOf(frame));
-    if (!loaderFrame ||
-        std::find(loaderFrame->engineOwned.begin(), loaderFrame->engineOwned.end(), 1) == loaderFrame->engineOwned.end())
+    if (!loaderFrame || std::find(loaderFrame->engineOwned.begin(), loaderFrame->engineOwned.end(), 1) ==
+                            loaderFrame->engineOwned.end())
         return;
     if (OnGameThread() && !t_releasing) {
         t_releasing = true;
@@ -173,8 +177,7 @@ int Unreal_CallFrameSet(URK_UnrealCallFrame *frame, const char *parameterName, c
     return callFrame->Set(parameterName, value, size) ? 1 : 0;
 }
 
-int Unreal_CallFrameGet(const URK_UnrealCallFrame *frame, const char *parameterName, void *output,
-                        std::size_t size) {
+int Unreal_CallFrameGet(const URK_UnrealCallFrame *frame, const char *parameterName, void *output, std::size_t size) {
     if (!frame || !parameterName)
         return 0;
     return FrameOf(frame)->frame.Get(parameterName, output, size) ? 1 : 0;

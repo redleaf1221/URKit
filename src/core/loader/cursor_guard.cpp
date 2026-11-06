@@ -99,8 +99,8 @@ BOOL WINAPI SetCursorPosDetour(int x, int y) {
     return g_setCursorPos.load(std::memory_order_acquire)(x, y);
 }
 
-template <typename Fn> bool Hook(HMODULE user32, const char *name, Fn detour, std::atomic<Fn> &original,
-                                 void *&handle) {
+template <typename Fn>
+bool Hook(HMODULE user32, const char *name, Fn detour, std::atomic<Fn> &original, void *&handle) {
     void *target = reinterpret_cast<void *>(GetProcAddress(user32, name));
     void *trampoline = nullptr;
     handle = target ? SafetyHookBackend_CreateInline(target, reinterpret_cast<void *>(detour), &trampoline) : nullptr;
@@ -182,7 +182,9 @@ void Release() {
     g_clipCursor.load(std::memory_order_acquire)(g_gameClipped ? &g_gameClip : nullptr);
 }
 
-bool Engaged() { return g_engaged.load(std::memory_order_acquire); }
+bool Engaged() {
+    return g_engaged.load(std::memory_order_acquire);
+}
 
 bool GameState(URK_CursorState *state) {
     if (!state)

@@ -19,8 +19,6 @@
 #include <map>
 #include <thread>
 
-#include <io.h>
-
 namespace UrkApp {
 namespace {
 
@@ -84,7 +82,9 @@ struct Arguments {
     std::vector<std::string> flags;
     std::string error;
 
-    bool Has(const std::string &flag) const { return std::find(flags.begin(), flags.end(), flag) != flags.end(); }
+    bool Has(const std::string &flag) const {
+        return std::ranges::find(flags, flag) != flags.end();
+    }
     std::string Value(const std::string &key, const std::string &fallback = {}) const {
         const auto found = values.find(key);
         return found == values.end() ? fallback : found->second;
@@ -104,7 +104,7 @@ Arguments Parse(const std::vector<std::wstring> &raw, size_t start, std::initial
             parsed.positional.push_back(argument);
             continue;
         }
-        if (std::find_if(valueOptions.begin(), valueOptions.end(),
+        if (std::ranges::find_if(valueOptions,
                          [&](const char *option) { return argument == option; }) != valueOptions.end()) {
             if (index + 1 >= raw.size()) {
                 parsed.error = "missing value for " + argument;
@@ -113,7 +113,7 @@ Arguments Parse(const std::vector<std::wstring> &raw, size_t start, std::initial
             parsed.values[argument] = Utf8(raw[++index]);
             continue;
         }
-        if (std::find_if(flagOptions.begin(), flagOptions.end(),
+        if (std::ranges::find_if(flagOptions,
                          [&](const char *option) { return argument == option; }) != flagOptions.end()) {
             parsed.flags.push_back(argument);
             continue;
@@ -143,8 +143,11 @@ bool ParsePid(const std::string &text, std::uint32_t *pid) {
 int RunNew(const std::vector<std::wstring> &raw, size_t start) {
     const Arguments args = Parse(raw, start, {"--game-exe", "--backend", "--name", "--loader", "--proxy"},
                                  {"--localization", "--replace-foreign"},
-                                 {{"-g", "--game-exe"}, {"--exe", "--game-exe"}, {"-b", "--backend"},
-                                  {"-n", "--name"}, {"--project-name", "--name"}});
+                                 {{"-g", "--game-exe"},
+                                  {"--exe", "--game-exe"},
+                                  {"-b", "--backend"},
+                                  {"-n", "--name"},
+                                  {"--project-name", "--name"}});
     if (!args.error.empty())
         return UsageError(args.error);
     if (!args.positional.empty())
@@ -184,9 +187,9 @@ int RunNew(const std::vector<std::wstring> &raw, size_t start) {
 }
 
 int RunUpdate(const std::vector<std::wstring> &raw, size_t start) {
-    const Arguments args = Parse(raw, start, {"--project"}, {"--check", "--apply", "--update", "--overwrite-conflicts",
-                                                            "--stage-sdk"},
-                                 {{"-p", "--project"}});
+    const Arguments args =
+        Parse(raw, start, {"--project"}, {"--check", "--apply", "--update", "--overwrite-conflicts", "--stage-sdk"},
+              {{"-p", "--project"}});
     if (!args.error.empty())
         return UsageError(args.error);
     std::string project = args.Value("--project");
@@ -242,8 +245,8 @@ int RunUpdate(const std::vector<std::wstring> &raw, size_t start) {
             return kExitOk;
         }
         log(LogLevel::Success, std::to_string(result.filesWritten) + " written, " +
-                                   std::to_string(result.filesRemoved) + " removed. Backup: " +
-                                   result.backupDirectory.string());
+                                   std::to_string(result.filesRemoved) +
+                                   " removed. Backup: " + result.backupDirectory.string());
         return kExitOk;
     } catch (const std::exception &exception) {
         log(LogLevel::Error, exception.what());
@@ -381,8 +384,7 @@ int RunMcp(const std::vector<std::wstring> &raw, size_t start) {
         std::fprintf(stderr, "Unknown or incomplete argument: %s\n", Utf8(argument).c_str());
         return kExitUsage;
     }
-    std::fprintf(stderr,
-                 "URKit Development MCP %s\nProject: %s\nTarget : %s\nTransport: stdio\n",
+    std::fprintf(stderr, "URKit Development MCP %s\nProject: %s\nTarget : %s\nTransport: stdio\n",
                  std::string(UrkVersion::kReleaseVersion).c_str(), projectRoot.string().c_str(),
                  gamePid ? ("game PID " + std::to_string(*gamePid)).c_str() : "automatic bridge discovery");
     std::fflush(stderr);

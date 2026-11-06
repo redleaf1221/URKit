@@ -57,8 +57,12 @@ class NameTable {
     // Probes the pool's header and entry layout at address; why says which step failed.
     static std::optional<NameTable> Resolve(const MemoryReader &reader, Address address, std::string *why = nullptr);
 
-    const NameLayout &Layout() const { return layout_; }
-    Address BaseAddress() const { return address_; }
+    const NameLayout &Layout() const {
+        return layout_;
+    }
+    Address BaseAddress() const {
+        return address_;
+    }
 
     // Raises blockOffsetBits until every object's name lands in a real block.
     void CalibrateBlockOffsetBits(const ObjectArray &objects, std::int32_t nameOffset);
@@ -77,7 +81,8 @@ class NameTable {
 
   private:
     NameTable(const MemoryReader &reader, Address address, const NameLayout &layout)
-        : reader_(&reader), address_(address), layout_(layout) {}
+        : reader_(&reader), address_(address), layout_(layout) {
+    }
 
     std::optional<std::string> ReadFromPool(std::uint32_t comparisonIndex, int depth) const;
 

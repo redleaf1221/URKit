@@ -33,7 +33,9 @@ int Unreal_HookInstall() {
     return 1;
 }
 
-int Unreal_HookInstalled() { return ProcessEventHook::Instance().Installed() ? 1 : 0; }
+int Unreal_HookInstalled() {
+    return ProcessEventHook::Instance().Installed() ? 1 : 0;
+}
 
 int Unreal_HookRemove() {
     std::lock_guard lock(g_hookMutex);
@@ -168,7 +170,8 @@ std::shared_ptr<const FunctionInfo> InfoFor(ModFunctionHook &hook, Address calle
     const std::lock_guard lock(hook.overridesMutex);
     ModFunctionHook::Override &known = hook.overrides[called];
     if (!known.info || known.stamp != stamp) {
-        std::optional<FunctionInfo> info = DescribeFunction(engine.Chain(), engine.Values(), engine.Functions(), called);
+        std::optional<FunctionInfo> info =
+            DescribeFunction(engine.Chain(), engine.Values(), engine.Functions(), called);
         if (!info)
             return nullptr;
         known = {stamp, std::make_shared<const FunctionInfo>(std::move(*info))};
@@ -277,7 +280,9 @@ int Unreal_FunctionHookRemove(std::uint64_t id) {
     return 1;
 }
 
-std::uint32_t Unreal_GameThreadId() { return ProcessEventHook::Instance().GameThreadId(); }
+std::uint32_t Unreal_GameThreadId() {
+    return ProcessEventHook::Instance().GameThreadId();
+}
 
 int Unreal_PostToGameThread(URK_UnrealPostedWorkFn work, void *userData) {
     if (!work)

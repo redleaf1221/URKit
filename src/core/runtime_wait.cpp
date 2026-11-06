@@ -61,8 +61,7 @@ RuntimeModule WaitForRuntime(const std::string_view runtimeName,
             }
 
             const std::string exportName(candidate.readinessExport);
-            FARPROC address = GetProcAddress(module, exportName.c_str());
-            if (address) {
+            if (FARPROC address = GetProcAddress(module, exportName.c_str())) {
                 const auto elapsed =
                     std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
                 Log("[runtime] Export available: %s!%s resolved at %p after %lld ms.", moduleName.c_str(),

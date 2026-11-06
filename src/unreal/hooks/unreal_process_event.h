@@ -31,7 +31,9 @@ struct ProcessEventLocation {
     // Any rival means the fields stopped naming one function; answer untrusted.
     std::vector<std::int32_t> rivalSlots;
 
-    bool Unique() const { return rivalSlots.empty(); }
+    bool Unique() const {
+        return rivalSlots.empty();
+    }
     bool Resolved() const {
         return vtableIndex != kOffsetNotFound && baseImplementation != kNullAddress && Unique();
     }
@@ -48,8 +50,7 @@ Address ProcessEventFor(const MemoryReader &reader, const ProcessEventLocation &
 
 // Every distinct implementation, base first; hooking only the base misses actors.
 std::vector<Address> ProcessEventImplementations(const ObjectFinder &finder, const TypeQueries &types,
-                                                 const StructOffsets &structs,
-                                                 const ProcessEventLocation &location);
+                                                 const StructOffsets &structs, const ProcessEventLocation &location);
 
 // Call parameter block, zeroed including padding.
 class CallFrame {
@@ -57,24 +58,38 @@ class CallFrame {
     // Owns its FunctionInfo; frames outlive the caller's copy across the ABI.
     explicit CallFrame(FunctionInfo info)
         : info_(std::make_shared<const FunctionInfo>(std::move(info))),
-          bytes_(static_cast<std::size_t>(info_->parmsSize), 0) {}
+          bytes_(static_cast<std::size_t>(info_->parmsSize), 0) {
+    }
 
     // View over an in-flight call; returned points at an external return value.
     CallFrame(std::shared_ptr<const FunctionInfo> info, void *data, void *returned)
         : info_(std::move(info)), view_(static_cast<std::uint8_t *>(data)),
-          returned_(static_cast<std::uint8_t *>(returned)) {}
+          returned_(static_cast<std::uint8_t *>(returned)) {
+    }
 
-    const FunctionInfo &Function() const { return *info_; }
-    bool View() const { return view_ != nullptr; }
-    void *Data() { return view_ ? view_ : bytes_.empty() ? nullptr : bytes_.data(); }
-    const void *Data() const { return view_ ? view_ : bytes_.empty() ? nullptr : bytes_.data(); }
-    std::size_t Size() const { return view_ ? static_cast<std::size_t>(info_->parmsSize) : bytes_.size(); }
+    const FunctionInfo &Function() const {
+        return *info_;
+    }
+    bool View() const {
+        return view_ != nullptr;
+    }
+    void *Data() {
+        return view_ ? view_ : bytes_.empty() ? nullptr : bytes_.data();
+    }
+    const void *Data() const {
+        return view_ ? view_ : bytes_.empty() ? nullptr : bytes_.data();
+    }
+    std::size_t Size() const {
+        return view_ ? static_cast<std::size_t>(info_->parmsSize) : bytes_.size();
+    }
 
     // Where a parameter's value lives; null when it does not fit the block.
     std::uint8_t *Slot(const FunctionParameter &parameter);
     const std::uint8_t *Slot(const FunctionParameter &parameter) const;
 
-    void Clear() { std::fill(bytes_.begin(), bytes_.end(), std::uint8_t{0}); }
+    void Clear() {
+        std::fill(bytes_.begin(), bytes_.end(), std::uint8_t{0});
+    }
 
     // Size must match the property's; a wrong-shaped frame corrupts later calls.
     bool Set(std::string_view name, const void *value, std::size_t size);

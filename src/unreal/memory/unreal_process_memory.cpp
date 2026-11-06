@@ -11,8 +11,8 @@ namespace {
 // Readable protections. PAGE_GUARD is rejected: touching it fires the game's exception.
 constexpr DWORD kReadableProtections = PAGE_READONLY | PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READ |
                                        PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
-constexpr DWORD kWritableProtections = PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE |
-                                       PAGE_EXECUTE_WRITECOPY;
+constexpr DWORD kWritableProtections =
+    PAGE_READWRITE | PAGE_WRITECOPY | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY;
 constexpr DWORD kBlockingProtections = PAGE_GUARD | PAGE_NOACCESS;
 
 // No destructors here (cl.exe C2712); clang needs -fasync-exceptions.
@@ -198,8 +198,12 @@ bool ProcessMemory::Write(Address address, const void *data, std::size_t size) {
     return false;
 }
 
-Address MainModuleBase() { return reinterpret_cast<Address>(GetModuleHandleW(nullptr)); }
+Address MainModuleBase() {
+    return reinterpret_cast<Address>(GetModuleHandleW(nullptr));
+}
 
-Address ModuleBase(const wchar_t *name) { return reinterpret_cast<Address>(GetModuleHandleW(name)); }
+Address ModuleBase(const wchar_t *name) {
+    return reinterpret_cast<Address>(GetModuleHandleW(name));
+}
 
 } // namespace URK::Unreal

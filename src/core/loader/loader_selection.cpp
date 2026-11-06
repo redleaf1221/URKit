@@ -69,8 +69,7 @@ void BrowseForMods(SelectionWindow *state) {
     const HRESULT apartment = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     const bool uninitialize = SUCCEEDED(apartment);
     if (FAILED(apartment) && apartment != RPC_E_CHANGED_MODE) {
-        MessageBoxW(state->window, L"Could not initialize the Windows file picker.", L"URKit",
-                    MB_OK | MB_ICONERROR);
+        MessageBoxW(state->window, L"Could not initialize the Windows file picker.", L"URKit", MB_OK | MB_ICONERROR);
         return;
     }
 
@@ -99,8 +98,7 @@ void BrowseForMods(SelectionWindow *state) {
         state->modPaths = {selectedPath};
         SetControlText(state->modsEdit, selectedPath);
     } else if (result != HRESULT_FROM_WIN32(ERROR_CANCELLED)) {
-        MessageBoxW(state->window, L"Could not open the mod DLL file picker.", L"URKit",
-                    MB_OK | MB_ICONERROR);
+        MessageBoxW(state->window, L"Could not open the mod DLL file picker.", L"URKit", MB_OK | MB_ICONERROR);
     }
 
     if (selectedPath)
@@ -131,8 +129,7 @@ bool ValidateSelection(SelectionWindow *state, std::wstring *configPath, std::ve
         return false;
     }
     if (_wcsicmp(config.extension().c_str(), L".ini") != 0) {
-        MessageBoxW(state->window, L"The selected configuration must be an .ini file.", L"URKit",
-                    MB_OK | MB_ICONERROR);
+        MessageBoxW(state->window, L"The selected configuration must be an .ini file.", L"URKit", MB_OK | MB_ICONERROR);
         return false;
     }
 
@@ -151,9 +148,9 @@ bool ValidateSelection(SelectionWindow *state, std::wstring *configPath, std::ve
 void CreateSelectionControls(SelectionWindow *state) {
     HFONT font = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
     auto create = [&](LPCWSTR className, LPCWSTR text, DWORD style, int id, int x, int y, int width, int height) {
-        HWND control = CreateWindowExW(0, className, text, WS_CHILD | WS_VISIBLE | style, x, y, width, height,
-                                       state->window, reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), state->instance,
-                                       nullptr);
+        HWND control =
+            CreateWindowExW(0, className, text, WS_CHILD | WS_VISIBLE | style, x, y, width, height, state->window,
+                            reinterpret_cast<HMENU>(static_cast<INT_PTR>(id)), state->instance, nullptr);
         if (control)
             SendMessageW(control, WM_SETFONT, reinterpret_cast<WPARAM>(font), TRUE);
         return control;
@@ -183,40 +180,40 @@ LRESULT CALLBACK SelectionWindowProc(HWND window, UINT message, WPARAM wParam, L
     }
 
     switch (message) {
-    case WM_CREATE:
-        CreateSelectionControls(state);
-        return 0;
-    case WM_COMMAND:
-        switch (LOWORD(wParam)) {
-        case kBrowseConfig:
-            BrowseForConfig(state);
+        case WM_CREATE:
+            CreateSelectionControls(state);
             return 0;
-        case kBrowseMods:
-            BrowseForMods(state);
-            return 0;
-        case kLoad: {
-            if (ValidateSelection(state, &state->configPath, &state->modPaths)) {
-                state->accepted = true;
-                DestroyWindow(window);
+        case WM_COMMAND:
+            switch (LOWORD(wParam)) {
+                case kBrowseConfig:
+                    BrowseForConfig(state);
+                    return 0;
+                case kBrowseMods:
+                    BrowseForMods(state);
+                    return 0;
+                case kLoad: {
+                    if (ValidateSelection(state, &state->configPath, &state->modPaths)) {
+                        state->accepted = true;
+                        DestroyWindow(window);
+                    }
+                    return 0;
+                }
+                case kCancel:
+                    DestroyWindow(window);
+                    return 0;
+                default:
+                    break;
             }
-            return 0;
-        }
-        case kCancel:
+            break;
+        case WM_CLOSE:
             DestroyWindow(window);
+            return 0;
+        case WM_DESTROY:
+            state->closed = true;
+            PostQuitMessage(0);
             return 0;
         default:
             break;
-        }
-        break;
-    case WM_CLOSE:
-        DestroyWindow(window);
-        return 0;
-    case WM_DESTROY:
-        state->closed = true;
-        PostQuitMessage(0);
-        return 0;
-    default:
-        break;
     }
     return DefWindowProcW(window, message, wParam, lParam);
 }
@@ -253,8 +250,8 @@ bool Loader_SelectPaths(LoaderSelection *selection) {
     SelectionWindow state;
     state.instance = instance;
     state.window = CreateWindowExW(WS_EX_APPWINDOW | WS_EX_TOPMOST, kWindowClass, L"URKit - Select content",
-                                   WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT,
-                                   680, 225, nullptr, nullptr, instance, &state);
+                                   WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT,
+                                   CW_USEDEFAULT, 680, 225, nullptr, nullptr, instance, &state);
     if (!state.window) {
         OutputDebugStringA("[URKit][selection][ERROR] CreateWindowExW failed.\n");
         MessageBoxW(nullptr, L"URKit could not create its selection window.", L"URKit", MB_OK | MB_ICONERROR);

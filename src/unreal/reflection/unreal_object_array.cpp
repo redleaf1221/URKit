@@ -39,7 +39,8 @@ constexpr std::array kChunkedLayouts = {
                              .numChunksOffset = 0x04},
 };
 
-constexpr FixedObjectArrayLayout kFixedLayout{.objectsOffset = 0x00, .maxObjectsOffset = 0x08, .numObjectsOffset = 0x0C};
+constexpr FixedObjectArrayLayout kFixedLayout{
+    .objectsOffset = 0x00, .maxObjectsOffset = 0x08, .numObjectsOffset = 0x0C};
 
 // Generous bounds: they exclude noise, not pin a particular game's numbers.
 constexpr std::int32_t kMaxPlausibleElements = 0x400000;
@@ -104,7 +105,9 @@ bool HeaderFits(std::span<const std::uint8_t> header, const FixedObjectArrayLayo
 
 } // namespace
 
-std::span<const ChunkedObjectArrayLayout> KnownChunkedLayouts() { return kChunkedLayouts; }
+std::span<const ChunkedObjectArrayLayout> KnownChunkedLayouts() {
+    return kChunkedLayouts;
+}
 
 bool HeaderMightBeObjectArray(std::span<const std::uint8_t> header) {
     if (header.size() < kObjectArrayHeaderBytes)
@@ -294,7 +297,7 @@ Address ObjectArray::ItemAt(std::int32_t index) const {
 }
 
 std::int32_t ObjectArray::ReadBlock(std::int32_t first, std::int32_t total, std::vector<Address> &objects,
-                                   std::vector<std::uint8_t> &bytes) const {
+                                    std::vector<std::uint8_t> &bytes) const {
     constexpr std::int32_t kBlockItems = 4096;
     if (first < 0 || first >= total || !layout_.item.Resolved())
         return 0;
@@ -309,8 +312,8 @@ std::int32_t ObjectArray::ReadBlock(std::int32_t first, std::int32_t total, std:
         } else if (layout_.elementsPerChunk > 0) {
             const std::int32_t indexInChunk = first % layout_.elementsPerChunk;
             count = std::min(count, layout_.elementsPerChunk - indexInChunk);
-            const std::optional<Address> chunk = reader_->ReadPointer(
-                *table + static_cast<Address>(first / layout_.elementsPerChunk) * sizeof(Address));
+            const std::optional<Address> chunk =
+                reader_->ReadPointer(*table + static_cast<Address>(first / layout_.elementsPerChunk) * sizeof(Address));
             if (chunk && *chunk != kNullAddress)
                 items = *chunk + static_cast<Address>(indexInChunk) * stride;
         }

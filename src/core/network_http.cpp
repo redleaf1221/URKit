@@ -2,9 +2,6 @@
 
 #include <algorithm>
 #include <atomic>
-#include <cctype>
-#include <cstddef>
-#include <cstring>
 #include <mutex>
 #include <string>
 
@@ -115,7 +112,7 @@ struct WriteState {
     bool truncated = false;
 };
 
-size_t WriteBody(char *ptr, size_t size, size_t nmemb, void *userdata) {
+size_t WriteBody(const char *ptr, size_t size, size_t nmemb, void *userdata) {
     auto *state = static_cast<WriteState *>(userdata);
     if (size != 0 && nmemb > static_cast<size_t>(-1) / size)
         return 0;

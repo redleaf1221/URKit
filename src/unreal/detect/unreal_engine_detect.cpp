@@ -59,8 +59,7 @@ std::vector<ResourceEntry> ReadResourceEntries(const MemoryReader &reader, Addre
         const std::optional<std::uint32_t> offset = reader.ReadUInt32(at + 4);
         if (!name || !offset)
             break;
-        entries.push_back({*name, *offset & ~kResourceSubdirectoryFlag,
-                           (*offset & kResourceSubdirectoryFlag) != 0});
+        entries.push_back({*name, *offset & ~kResourceSubdirectoryFlag, (*offset & kResourceSubdirectoryFlag) != 0});
     }
     return entries;
 }
@@ -124,7 +123,9 @@ std::string ValueForKey(const std::vector<std::uint8_t> &blob, const char *key) 
     return {};
 }
 
-bool StartsWith(const std::string &text, const char *prefix) { return text.rfind(prefix, 0) == 0; }
+bool StartsWith(const std::string &text, const char *prefix) {
+    return text.rfind(prefix, 0) == 0;
+}
 
 std::string Lowered(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(),
@@ -132,7 +133,9 @@ std::string Lowered(std::string text) {
     return text;
 }
 
-bool Contains(const std::string &text, const char *needle) { return text.find(needle) != std::string::npos; }
+bool Contains(const std::string &text, const char *needle) {
+    return text.find(needle) != std::string::npos;
+}
 
 // Digits at a position, stopping at the first thing that is not one.
 std::int64_t ReadNumber(const std::string &text, std::size_t &at) {
@@ -285,7 +288,9 @@ struct LayoutEvidence {
     bool targetBinaries = false;
     bool buildToolName = false;
 
-    bool Any() const { return engineBinaries || targetBinaries || buildToolName; }
+    bool Any() const {
+        return engineBinaries || targetBinaries || buildToolName;
+    }
 };
 
 LayoutEvidence ReadLayout(std::span<const ModuleCandidate> modules) {

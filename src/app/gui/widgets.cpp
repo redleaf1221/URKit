@@ -569,8 +569,8 @@ void Segmented::OnPaint(wxPaintEvent &) {
     for (int index = 0; index < static_cast<int>(rects.size()); ++index) {
         const wxRect &rect = rects[index];
         const wxSize extent = dc.GetTextExtent(items_[index]);
-        wxColour colour = index == selected_ ? Theme::kText
-                                             : Mix(Theme::kTextMuted, Theme::kText, hoverT_[index].Value() * 0.8);
+        wxColour colour =
+            index == selected_ ? Theme::kText : Mix(Theme::kTextMuted, Theme::kText, hoverT_[index].Value() * 0.8);
         if (!enabled)
             colour = index == selected_ ? Theme::kTextMuted : Theme::kTextFaint;
         DrawTextAt(dc, items_[index], rect.x + (rect.width - extent.x) / 2, rect.y + (rect.height - extent.y) / 2,
@@ -716,7 +716,8 @@ void ChoiceTiles::OnPaint(wxPaintEvent &) {
             FillRounded(*gc, icon.x, icon.y, icon.width, icon.height, FromDIP(9),
                         Mix(Mix(fill, Theme::kText, 0.07), Theme::kAccent, select * 0.22));
             gc->SetBrush(*wxTRANSPARENT_BRUSH);
-            gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(Mix(Theme::kBorderStrong, Theme::kAccent, select)).Width(Dip(this, 1.5))));
+            gc->SetPen(gc->CreatePen(
+                wxGraphicsPenInfo(Mix(Theme::kBorderStrong, Theme::kAccent, select)).Width(Dip(this, 1.5))));
             gc->DrawEllipse(radioX - FromDIP(8), radioY - FromDIP(8), FromDIP(16), FromDIP(16));
             if (select > 0.01) {
                 const double dot = Dip(this, 4.5) * select;
@@ -896,7 +897,8 @@ namespace {
 class DropZoneTarget : public wxFileDropTarget {
   public:
     explicit DropZoneTarget(DropZone *zone, std::function<void(const wxString &)> onPick)
-        : zone_(zone), onPick_(std::move(onPick)) {}
+        : zone_(zone), onPick_(std::move(onPick)) {
+    }
     wxDragResult OnEnter(wxCoord x, wxCoord y, wxDragResult result) override {
         zone_->SetDragging(true);
         return wxFileDropTarget::OnEnter(x, y, result);
@@ -919,7 +921,8 @@ class DropZoneTarget : public wxFileDropTarget {
 
 } // namespace
 
-DropZone::DropZone(wxWindow *parent, Mode mode, const wxString &emptyTitle, std::function<void(const wxString &)> onPick)
+DropZone::DropZone(wxWindow *parent, Mode mode, const wxString &emptyTitle,
+                   std::function<void(const wxString &)> onPick)
     : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS), mode_(mode),
       emptyTitle_(emptyTitle), onPick_(std::move(onPick)),
       ticker_(this, [this] { return hover_.Running() || drag_.Running() || fresh_.Running(); }) {
@@ -962,7 +965,8 @@ void DropZone::SetEmpty() {
     ticker_.Kick();
 }
 
-void DropZone::SetFilled(const wxString &path, const wxString &title, const wxString &chip, const wxColour &chipColour) {
+void DropZone::SetFilled(const wxString &path, const wxString &title, const wxString &chip,
+                         const wxColour &chipColour) {
     const bool changed = !filled_ || path != path_;
     const bool resized = !filled_;
     filled_ = true;
@@ -1026,12 +1030,13 @@ void DropZone::OnPaint(wxPaintEvent &) {
             std::unique_ptr<wxGraphicsContext> gc = MakeGc(dc);
             if (!gc)
                 return;
-            const wxColour fill = Mix(Mix(Theme::kWindow, Theme::kSurface, 0.55 + 0.45 * hover), Theme::kAccent,
-                                      drag * 0.08);
+            const wxColour fill =
+                Mix(Mix(Theme::kWindow, Theme::kSurface, 0.55 + 0.45 * hover), Theme::kAccent, drag * 0.08);
             gc->SetBrush(wxBrush(fill));
-            gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(Mix(Theme::kBorderStrong, Theme::kAccent, std::max(hover * 0.55, drag)))
-                           .Width(Dip(this, 1.5))
-                           .Style(wxPENSTYLE_SHORT_DASH)));
+            gc->SetPen(
+                gc->CreatePen(wxGraphicsPenInfo(Mix(Theme::kBorderStrong, Theme::kAccent, std::max(hover * 0.55, drag)))
+                                  .Width(Dip(this, 1.5))
+                                  .Style(wxPENSTYLE_SHORT_DASH)));
             gc->DrawRoundedRectangle(FromDIP(1), FromDIP(1), size.x - FromDIP(2), size.y - FromDIP(2), FromDIP(12));
             const double grow = lift * FromDIP(2);
             FillRounded(*gc, icon.x - grow, icon.y - grow, icon.width + 2 * grow, icon.height + 2 * grow,
@@ -1100,16 +1105,14 @@ void DropZone::OnPaint(wxPaintEvent &) {
         DrawTextAt(dc, chip_, chipRect.x + (chipRect.width - chipText.x) / 2,
                    chipRect.y + (chipRect.height - chipText.y) / 2, Mix(fillForText, chipColour_, fresh), chipFont);
     }
-    DrawTextAt(dc, change, changeX, (size.y - changeText.y) / 2, Mix(Theme::kTextMuted, Theme::kText, hover),
-               textFont);
+    DrawTextAt(dc, change, changeX, (size.y - changeText.y) / 2, Mix(Theme::kTextMuted, Theme::kText, hover), textFont);
 }
 
 // StatusCard
 
 StatusCard::StatusCard(wxWindow *parent)
-    : wxPanel(parent, wxID_ANY), ticker_(this, [this] {
-          return fresh_.Running() || tone_ == Tone::Busy || tone_ == Tone::Waiting;
-      }) {
+    : wxPanel(parent, wxID_ANY),
+      ticker_(this, [this] { return fresh_.Running() || tone_ == Tone::Busy || tone_ == Tone::Waiting; }) {
     wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
     wxWindowBase::SetBackgroundColour(Theme::kSurface);
     Bind(wxEVT_PAINT, &StatusCard::OnPaint, this);
@@ -1209,8 +1212,8 @@ void StatusCard::OnPaint(wxPaintEvent &) {
         std::unique_ptr<wxGraphicsContext> gc = MakeGc(dc);
         if (!gc)
             return;
-        const wxColour border = tone_ == Tone::Warning || tone_ == Tone::Error ? Mix(Theme::kBorder, colour, 0.3)
-                                                                                : Theme::kBorder;
+        const wxColour border =
+            tone_ == Tone::Warning || tone_ == Tone::Error ? Mix(Theme::kBorder, colour, 0.3) : Theme::kBorder;
         FillRounded(*gc, 0, 0, size.x, size.y, FromDIP(12), Theme::kSurface, border);
         const double scale = 0.8 + 0.2 * fresh;
         const double radius = iconSize / 2.0 * scale;
@@ -1219,8 +1222,8 @@ void StatusCard::OnPaint(wxPaintEvent &) {
             const double ring = iconSize / 2.0 * (0.55 + 0.55 * phase);
             gc->SetBrush(*wxTRANSPARENT_BRUSH);
             gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(wxColour(colour.Red(), colour.Green(), colour.Blue(),
-                                                  static_cast<unsigned char>(150 * (1.0 - phase))))
-                           .Width(Dip(this, 1.5))));
+                                                                static_cast<unsigned char>(150 * (1.0 - phase))))
+                                         .Width(Dip(this, 1.5))));
             gc->DrawEllipse(cx - ring, cy - ring, 2 * ring, 2 * ring);
             gc->SetPen(*wxTRANSPARENT_PEN);
             gc->SetBrush(wxBrush(Mix(Theme::kSurface, colour, 0.18)));
@@ -1286,7 +1289,9 @@ class Collapsible::Header : public wxControl {
         RefreshOnFocus(this);
         SetInitialSize();
     }
-    bool AcceptsFocus() const override { return true; }
+    bool AcceptsFocus() const override {
+        return true;
+    }
     void SetOpen(bool open, bool animate) {
         if (animate)
             open_.Set(open ? 1.0 : 0.0, 220);
@@ -1321,7 +1326,8 @@ class Collapsible::Header : public wxControl {
             gc->PushState();
             gc->Translate(cx, cy);
             gc->Rotate(angle);
-            gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(colour).Width(Dip(this, 1.5)).Cap(wxCAP_ROUND).Join(wxJOIN_ROUND)));
+            gc->SetPen(
+                gc->CreatePen(wxGraphicsPenInfo(colour).Width(Dip(this, 1.5)).Cap(wxCAP_ROUND).Join(wxJOIN_ROUND)));
             wxGraphicsPath path = gc->CreatePath();
             path.MoveToPoint(-arm / 2, -arm);
             path.AddLineToPoint(arm / 2, 0);
@@ -1572,9 +1578,9 @@ void StatusStrip::OnPaint(wxPaintEvent &) {
         gc->Translate(chevronX, cy);
         gc->Rotate(angle);
         gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(hovered_ ? Theme::kText : Theme::kTextMuted)
-                       .Width(Dip(this, 1.4))
-                       .Cap(wxCAP_ROUND)
-                       .Join(wxJOIN_ROUND)));
+                                     .Width(Dip(this, 1.4))
+                                     .Cap(wxCAP_ROUND)
+                                     .Join(wxJOIN_ROUND)));
         wxGraphicsPath path = gc->CreatePath();
         path.MoveToPoint(-arm / 2, -arm);
         path.AddLineToPoint(arm / 2, 0);
@@ -1593,7 +1599,9 @@ void StatusStrip::OnPaint(wxPaintEvent &) {
     const int available = size.x - toggleWidth - textX - FromDIP(12);
     const wxString shown = wxControl::Ellipsize(text, dc, wxELLIPSIZE_END, std::max(available, FromDIP(40)));
     const wxSize extent = dc.GetTextExtent(shown);
-    const wxColour colour = busy_ ? Theme::kText : level_ == UrkApp::LogLevel::Error ? Theme::kError : Theme::kTextMuted;
+    const wxColour colour = busy_                               ? Theme::kText
+                            : level_ == UrkApp::LogLevel::Error ? Theme::kError
+                                                                : Theme::kTextMuted;
     DrawTextAt(dc, shown, textX, (size.y - extent.y) / 2, Mix(Theme::kWindow, colour, fresh), font);
 }
 

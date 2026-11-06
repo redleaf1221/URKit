@@ -57,8 +57,12 @@ struct FunctionInfo {
     // Index into parameters, or -1 when the function answers with nothing.
     std::int32_t returnValue = -1;
 
-    bool Native() const { return (flags & kFunctionFlagNative) != 0; }
-    bool Static() const { return (flags & kFunctionFlagStatic) != 0; }
+    bool Native() const {
+        return (flags & kFunctionFlagNative) != 0;
+    }
+    bool Static() const {
+        return (flags & kFunctionFlagStatic) != 0;
+    }
 
     const FunctionParameter *Parameter(std::string_view name) const;
     const FunctionParameter *Returned() const {

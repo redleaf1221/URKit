@@ -193,7 +193,8 @@ bool SafetyHookBackend_DestroyInline(void *) {
     return false;
 }
 
-void SafetyHookBackend_SetMidDispatch(SafetyHookBackend_MidDispatchFn) {}
+void SafetyHookBackend_SetMidDispatch(SafetyHookBackend_MidDispatchFn) {
+}
 
 void *SafetyHookBackend_CreateMid(void *, unsigned) {
     return nullptr;

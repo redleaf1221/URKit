@@ -37,11 +37,15 @@ template <typename T> T Load(const std::uint8_t *at) {
     return value;
 }
 
-template <typename T> void Store(std::uint8_t *at, T value) { std::memcpy(at, &value, sizeof(T)); }
+template <typename T> void Store(std::uint8_t *at, T value) {
+    std::memcpy(at, &value, sizeof(T));
+}
 
 // Mod-side FString passed as const input; the thunk copies it, we keep the buffer.
 struct InputString {
-    explicit InputString(std::u16string_view text) : units(text) { units.push_back(u'\0'); }
+    explicit InputString(std::u16string_view text) : units(text) {
+        units.push_back(u'\0');
+    }
     void WriteHeader(std::uint8_t *at) const {
         if (units.size() == 1) {
             std::memset(at, 0, kArrayHeaderSize);
@@ -57,7 +61,6 @@ struct InputString {
 // Hidden result pointer (FReturnedRefCountValue); older builds ignore it.
 using CountFn = void *(__fastcall *)(const void *self, std::uint32_t *result);
 using AddRefFn = void(__fastcall *)(const void *self);
-
 
 std::uint32_t CallCount(void *function, const void *self) {
     alignas(8) std::uint32_t buffer[2] = {0xFFFFFFFFu, 0};
@@ -90,8 +93,9 @@ bool NativeCall::Bind(const ObjectFinder &finder, const PropertyChain &chain, co
     }
     for (const ParameterSpec &spec : parameters) {
         const FunctionParameter *parameter = info->Parameter(spec.name);
-        if (!parameter || parameter->info.kind != spec.kind || (spec.size && parameter->info.elementSize != spec.size) ||
-            parameter->info.offset < 0 || parameter->info.elementSize <= 0 ||
+        if (!parameter || parameter->info.kind != spec.kind ||
+            (spec.size && parameter->info.elementSize != spec.size) || parameter->info.offset < 0 ||
+            parameter->info.elementSize <= 0 ||
             parameter->info.offset + parameter->info.elementSize > info->parmsSize) {
             *failure = name + " has an unexpected parameter " + spec.name;
             return false;
@@ -119,7 +123,9 @@ bool NativeCall::Invoke(const ProcessEventLocation &processEvent) {
     return InvokeProcessEvent(processEvent, library_, function_, parms_.data());
 }
 
-void NativeCall::Clear() { std::fill(parms_.begin(), parms_.end(), std::uint8_t{0}); }
+void NativeCall::Clear() {
+    std::fill(parms_.begin(), parms_.end(), std::uint8_t{0});
+}
 
 // --- EngineCalls ------------------------------------------------------------
 
@@ -271,7 +277,9 @@ namespace {
 std::atomic<MemoryNote> memoryNote{nullptr};
 } // namespace
 
-void SetMemoryNote(MemoryNote note) { memoryNote.store(note, std::memory_order_release); }
+void SetMemoryNote(MemoryNote note) {
+    memoryNote.store(note, std::memory_order_release);
+}
 
 void NoteMemory(const std::string &message) {
     if (const MemoryNote note = memoryNote.load(std::memory_order_acquire))
@@ -407,8 +415,8 @@ bool EngineCalls::MeasureTextRelease() {
     auto **vtable = *reinterpret_cast<void ***>(data);
     for (int slot = 1; slot <= 3; ++slot) {
         if (!ImageCode(vtable[slot]))
-            return Fail(textReleaseState_, "the text's vtable slot " + std::to_string(slot) +
-                                               " is not code of a loaded image");
+            return Fail(textReleaseState_,
+                        "the text's vtable slot " + std::to_string(slot) + " is not code of a loaded image");
     }
     const std::uint32_t initial = CallCount(vtable[3], data);
     if (initial != 1)
@@ -431,7 +439,9 @@ bool EngineCalls::MeasureTextRelease() {
     return true;
 }
 
-bool EngineCalls::TextReleaseAvailable() { return MeasureTextRelease(); }
+bool EngineCalls::TextReleaseAvailable() {
+    return MeasureTextRelease();
+}
 
 bool EngineCalls::CanReleaseText(const std::uint8_t *text) {
     void *data = Load<void *>(text);
@@ -544,7 +554,9 @@ std::int32_t EngineCalls::SoftPathOffset() {
     return softPathOffset_;
 }
 
-Address EngineCalls::SoftPathStruct() { return SoftPathOffset() == kOffsetNotFound ? kNullAddress : softPathStruct_; }
+Address EngineCalls::SoftPathStruct() {
+    return SoftPathOffset() == kOffsetNotFound ? kNullAddress : softPathStruct_;
+}
 
 bool EngineCalls::AssignSoftObject(std::uint8_t *soft, std::size_t size, Address object, bool isClass) {
     NativeCall &call = softFromObject_[isClass ? 1 : 0];
@@ -690,8 +702,7 @@ bool EngineCalls::MakeWeak(Address object, std::uint8_t *weak) {
 bool EngineCalls::MeasureWeak() {
     if (weakState_ != State::Unbound)
         return weakState_ == State::Ready;
-    const char *libraries[] = {"KismetStringLibrary", "KismetSystemLibrary", "KismetTextLibrary",
-                               "KismetMathLibrary"};
+    const char *libraries[] = {"KismetStringLibrary", "KismetSystemLibrary", "KismetTextLibrary", "KismetMathLibrary"};
     const ObjectArray &objects = finder_->Objects();
     const ObjectItemLayout &item = objects.Layout().item;
     std::vector<std::int32_t> candidates;

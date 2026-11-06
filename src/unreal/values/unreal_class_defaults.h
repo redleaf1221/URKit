@@ -14,7 +14,8 @@ namespace URK::Unreal {
 
 class ClassDefaults {
   public:
-    ClassDefaults(UnrealEngine &engine, Places &places) : engine_(&engine), places_(&places) {}
+    ClassDefaults(UnrealEngine &engine, Places &places) : engine_(&engine), places_(&places) {
+    }
 
     // "D<TAB>path<TAB>value" and "K<TAB>component<TAB>class<TAB>path<TAB>value" lines. Game thread.
     std::string Describe(Address classObject);

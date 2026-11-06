@@ -95,11 +95,12 @@ inline BackendProjectProfile UnrealBackendProfile() {
     profile.description = "Generated URKit Unreal Engine native mod";
     profile.sdkSubdirectory = "sdk/unreal";
     profile.moduleFiles = {
-        "sdk/unreal/unreal_runtime.h",        "sdk/unreal/runtime/core.h",  "sdk/unreal/runtime/values.h",
-        "sdk/unreal/runtime/calls.h",         "sdk/unreal/runtime/world.h", "sdk/unreal/runtime/typed.h",
+        "sdk/unreal/unreal_runtime.h", "sdk/unreal/runtime/core.h",  "sdk/unreal/runtime/values.h",
+        "sdk/unreal/runtime/calls.h",  "sdk/unreal/runtime/world.h", "sdk/unreal/runtime/typed.h",
     };
     profile.readmeExtraLayoutLines = {
-        "`sdk/unreal/unreal_runtime.h`: generated Unreal runtime adapter header; its parts are in `sdk/unreal/runtime/`.",
+        "`sdk/unreal/unreal_runtime.h`: generated Unreal runtime adapter header; its parts are in "
+        "`sdk/unreal/runtime/`.",
     };
     return profile;
 }

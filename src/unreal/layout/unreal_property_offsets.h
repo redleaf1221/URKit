@@ -56,9 +56,12 @@ class PropertyChain {
   public:
     PropertyChain(const MemoryReader &reader, const NameTable &names, const StructOffsets &structs,
                   const FieldOffsets &fields)
-        : reader_(&reader), names_(&names), structs_(structs), fields_(fields) {}
+        : reader_(&reader), names_(&names), structs_(structs), fields_(fields) {
+    }
 
-    const MemoryReader &Reader() const { return *reader_; }
+    const MemoryReader &Reader() const {
+        return *reader_;
+    }
 
     Address First(Address structObject) const;
     Address Next(Address field) const;
@@ -77,8 +80,7 @@ class PropertyChain {
 };
 
 std::int32_t FindChildPropertiesOffset(const ObjectFinder &finder, const StructOffsets &structs);
-std::int32_t FindFieldClassOffset(const ObjectFinder &finder, const StructOffsets &structs,
-                                  const FieldOffsets &fields);
+std::int32_t FindFieldClassOffset(const ObjectFinder &finder, const StructOffsets &structs, const FieldOffsets &fields);
 std::int32_t FindFieldNextOffset(const ObjectFinder &finder, const StructOffsets &structs, const FieldOffsets &fields);
 std::int32_t FindFieldNameOffset(const ObjectFinder &finder, const NameTable &names, const StructOffsets &structs,
                                  const FieldOffsets &fields);

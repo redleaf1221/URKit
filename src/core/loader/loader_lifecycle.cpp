@@ -33,12 +33,12 @@ DWORD RunLoaderCppBoundary() noexcept {
         const LoaderRunStatus status = Loader_Run(g_mode);
         g_state.store(LifecycleState::Finished, std::memory_order_release);
         switch (status) {
-        case LoaderRunStatus::Succeeded:
-            return ERROR_SUCCESS;
-        case LoaderRunStatus::Skipped:
-            return ERROR_CANCELLED;
-        case LoaderRunStatus::Failed:
-            return ERROR_DLL_INIT_FAILED;
+            case LoaderRunStatus::Succeeded:
+                return ERROR_SUCCESS;
+            case LoaderRunStatus::Skipped:
+                return ERROR_CANCELLED;
+            case LoaderRunStatus::Failed:
+                return ERROR_DLL_INIT_FAILED;
         }
     } catch (const std::exception &exception) {
         Log("[loader][FATAL] Unhandled C++ exception escaped loader startup: %s", exception.what());
@@ -60,8 +60,7 @@ DWORD RunLoaderNativeBoundary() {
     } __except (EXCEPTION_EXECUTE_HANDLER) {
         char diagnostic[192]{};
         std::snprintf(diagnostic, sizeof(diagnostic),
-                      "[URKit][loader][FATAL] Native exception 0x%08lX escaped loader startup.\n",
-                      GetExceptionCode());
+                      "[URKit][loader][FATAL] Native exception 0x%08lX escaped loader startup.\n", GetExceptionCode());
         DebugLifecycleMessage(diagnostic);
         g_state.store(LifecycleState::Finished, std::memory_order_release);
         return GetExceptionCode();

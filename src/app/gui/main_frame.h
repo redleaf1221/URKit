@@ -51,7 +51,9 @@ class MainFrame : public wxFrame {
     explicit MainFrame(const std::wstring &openPath = {});
     ~MainFrame() override;
 
-    Settings &settings() { return settings_; }
+    Settings &settings() {
+        return settings_;
+    }
 
     // Shared game selection used by the New project and Loader pages.
     void SetGameExe(const wxString &path);
@@ -62,7 +64,9 @@ class MainFrame : public wxFrame {
 
     // Runs work on a background thread; done runs on the UI thread afterwards.
     bool RunTask(const wxString &status, std::function<void()> work, std::function<void()> done = {});
-    bool Busy() const { return busy_; }
+    bool Busy() const {
+        return busy_;
+    }
 
     static void Log(UrkApp::LogLevel level, const std::string &source, const std::string &message);
 

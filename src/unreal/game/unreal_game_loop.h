@@ -26,7 +26,8 @@ class GameLoop {
   public:
     GameLoop(const ObjectFinder &finder, const TypeQueries &types, const PropertyChain &chain,
              const PropertyValues &values)
-        : finder_(&finder), types_(&types), chain_(&chain), values_(&values) {}
+        : finder_(&finder), types_(&types), chain_(&chain), values_(&values) {
+    }
 
     // GFrameCounter from GetFrameCount's thunk, or null.
     static Address FindFrameCounter(const ObjectFinder &finder, const FunctionOffsets &functions,

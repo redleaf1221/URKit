@@ -53,8 +53,8 @@ void IntroStage(float value, const char *status) {
 void LogConfigSummary(const RuntimeBackendDescriptor &backend) {
     Log("=== URKit started (safeMode=%s, runtime=%s) ===", LoaderConfig().safeMode ? "on" : "off", backend.name);
     Log("[config] executableDir='%s', configPath='%s', selectedMods=%zu, initDelayMs=%d, console=%s.",
-        Loader_ExeDir().c_str(), LoaderConfig().configPath.c_str(), LoaderConfig().modPaths.size(), LoaderConfig().initDelayMs,
-        LoaderConfig().showConsole ? "on" : "off");
+        Loader_ExeDir().c_str(), LoaderConfig().configPath.c_str(), LoaderConfig().modPaths.size(),
+        LoaderConfig().initDelayMs, LoaderConfig().showConsole ? "on" : "off");
 }
 
 void DebugSkip(const std::string &reason) {
@@ -64,7 +64,9 @@ void DebugSkip(const std::string &reason) {
 
 class IntroSession {
   public:
-    void MarkShown() { shown_ = true; }
+    void MarkShown() {
+        shown_ = true;
+    }
     ~IntroSession() {
         if (shown_)
             Intro::Close();
@@ -76,8 +78,7 @@ class IntroSession {
 } // namespace
 
 LoaderRunStatus Loader_Run(LoaderStartMode mode) {
-    const ProcessQualification qualification =
-        ProcessQualification_WaitForRuntime(kProcessQualificationTimeoutMs);
+    const ProcessQualification qualification = ProcessQualification_WaitForRuntime(kProcessQualificationTimeoutMs);
     if (!qualification.isSupportedRuntime) {
         DebugSkip(qualification.reason);
         return LoaderRunStatus::Skipped;
@@ -97,8 +98,8 @@ LoaderRunStatus Loader_Run(LoaderStartMode mode) {
     }
 
     const std::string logDirectory = mode == LoaderStartMode::Injected
-                                          ? std::filesystem::path(LoaderConfig().configPath).parent_path().string()
-                                          : std::string();
+                                         ? std::filesystem::path(LoaderConfig().configPath).parent_path().string()
+                                         : std::string();
     Log_Init(LoaderConfig().showConsole, logDirectory);
     const RuntimeBackendDescriptor &backend = RuntimeBackend_Select(LoaderConfig());
 
@@ -111,9 +112,8 @@ LoaderRunStatus Loader_Run(LoaderStartMode mode) {
     for (const std::string &warning : LoaderConfig().warnings)
         Log("[config][WARNING] %s", warning.c_str());
     Log("[process] qualification=%s unityPlayer=%s gameAssembly=%s mono=%s unreal=%s.", qualification.reason.c_str(),
-        qualification.unityPlayerLoaded ? "loaded" : "not-loaded",
-        qualification.il2cppLoaded ? "loaded" : "not-loaded", qualification.monoLoaded ? "loaded" : "not-loaded",
-        qualification.unrealDetected ? "detected" : "not-detected");
+        qualification.unityPlayerLoaded ? "loaded" : "not-loaded", qualification.il2cppLoaded ? "loaded" : "not-loaded",
+        qualification.monoLoaded ? "loaded" : "not-loaded", qualification.unrealDetected ? "detected" : "not-detected");
     LogConfigSummary(backend);
     IntroStage(kIntroLogReady, "Runtime log ready");
 
@@ -122,8 +122,7 @@ LoaderRunStatus Loader_Run(LoaderStartMode mode) {
     const bool backendReady = RuntimeBackend_Run(backend, LoaderConfig());
 
     Intro::Progress(kIntroComplete);
-    HANDLE stopEvent = LoaderLifecycle_StopEvent();
-    if (stopEvent)
+    if (HANDLE stopEvent = LoaderLifecycle_StopEvent())
         WaitForSingleObject(stopEvent, kIntroFinalHoldMs);
     else
         Sleep(kIntroFinalHoldMs);

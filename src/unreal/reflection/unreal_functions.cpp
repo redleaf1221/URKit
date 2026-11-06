@@ -30,9 +30,13 @@ struct Expected {
     bool hasReturnValue = false;
 };
 
-bool IsParameter(const PropertyInfo &info) { return (info.propertyFlags & kPropertyFlagParm) != 0; }
+bool IsParameter(const PropertyInfo &info) {
+    return (info.propertyFlags & kPropertyFlagParm) != 0;
+}
 
-bool IsReturnValue(const PropertyInfo &info) { return (info.propertyFlags & kPropertyFlagReturnParm) != 0; }
+bool IsReturnValue(const PropertyInfo &info) {
+    return (info.propertyFlags & kPropertyFlagReturnParm) != 0;
+}
 
 // Derives the expected stored numbers from the function's properties.
 std::optional<Expected> ExpectedOf(const PropertyChain &chain, const PropertyValues &values, Address function) {
@@ -209,8 +213,9 @@ FunctionOffsets FindFunctionOffsets(const ObjectFinder &finder, const StructOffs
 }
 
 const FunctionParameter *FunctionInfo::Parameter(std::string_view name) const {
-    const auto found = std::find_if(parameters.begin(), parameters.end(),
-                                    [name](const FunctionParameter &parameter) { return SameName(parameter.name, name); });
+    const auto found = std::find_if(parameters.begin(), parameters.end(), [name](const FunctionParameter &parameter) {
+        return SameName(parameter.name, name);
+    });
     return found == parameters.end() ? nullptr : &*found;
 }
 
@@ -245,8 +250,8 @@ std::optional<FunctionInfo> DescribeFunction(const PropertyChain &chain, const P
     }
 
     if (offsets.Resolved()) {
-        if (const std::optional<std::uint16_t> parmsSize = chain.Reader().ReadAs<std::uint16_t>(
-                function + offsets.parmsSize))
+        if (const std::optional<std::uint16_t> parmsSize =
+                chain.Reader().ReadAs<std::uint16_t>(function + offsets.parmsSize))
             info.parmsSize = *parmsSize;
         if (const std::optional<std::uint32_t> flags = chain.Reader().ReadUInt32(function + offsets.functionFlags))
             info.flags = *flags;

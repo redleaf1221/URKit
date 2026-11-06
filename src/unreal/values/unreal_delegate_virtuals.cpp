@@ -57,7 +57,8 @@ std::optional<PropertyInfo> FirstOfKind(const ObjectFinder &finder, const Proper
 } // namespace
 
 void **DelegateVirtuals::VtableOf(Address field) const {
-    const std::optional<Address> vtable = field != kNullAddress ? finder_->Reader().ReadAs<Address>(field) : std::nullopt;
+    const std::optional<Address> vtable =
+        field != kNullAddress ? finder_->Reader().ReadAs<Address>(field) : std::nullopt;
     if (!vtable || *vtable == kNullAddress)
         return nullptr;
     for (std::int32_t slot = 0; slot <= getSlot_ + kClearOffset; ++slot) {
@@ -179,7 +180,7 @@ bool DelegateVirtuals::Add(const PropertyInfo &property, Address owner, std::uin
     std::uint8_t copy[32]{};
     std::memcpy(copy, delegate, static_cast<std::size_t>(delegateSize_));
     reinterpret_cast<AddFn>(vtable[getSlot_ + kAddOffset])(reinterpret_cast<const void *>(property.field), copy,
-                                                          reinterpret_cast<void *>(owner), value);
+                                                           reinterpret_cast<void *>(owner), value);
     return true;
 }
 
@@ -189,7 +190,7 @@ bool DelegateVirtuals::Remove(const PropertyInfo &property, Address owner, std::
     if (!vtable || !value || owner == kNullAddress)
         return false;
     reinterpret_cast<RemoveFn>(vtable[getSlot_ + kRemoveOffset])(reinterpret_cast<const void *>(property.field),
-                                                                delegate, reinterpret_cast<void *>(owner), value);
+                                                                 delegate, reinterpret_cast<void *>(owner), value);
     return true;
 }
 
@@ -198,7 +199,7 @@ bool DelegateVirtuals::Clear(const PropertyInfo &property, Address owner, std::u
     if (!vtable || !value || owner == kNullAddress)
         return false;
     reinterpret_cast<ClearFn>(vtable[getSlot_ + kClearOffset])(reinterpret_cast<const void *>(property.field),
-                                                              reinterpret_cast<void *>(owner), value);
+                                                               reinterpret_cast<void *>(owner), value);
     return true;
 }
 

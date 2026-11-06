@@ -24,10 +24,18 @@ class ObjectLifeHook {
     // Once; later calls return the first answer.
     bool Install(const MemoryReader &reader, std::span<const Address> modules, const FunctionTable &bounds,
                  const ObjectArray &objects, std::int32_t indexOffset, const HookInstaller &installer);
-    bool Installed() const { return installed_.load(std::memory_order_acquire); }
-    const std::string &Failure() const { return failure_; }
-    Address Allocate() const { return allocate_; }
-    Address Free() const { return free_; }
+    bool Installed() const {
+        return installed_.load(std::memory_order_acquire);
+    }
+    const std::string &Failure() const {
+        return failure_;
+    }
+    Address Allocate() const {
+        return allocate_;
+    }
+    Address Free() const {
+        return free_;
+    }
 
     void Observe(Observer observer, void *user);
 

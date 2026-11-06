@@ -149,7 +149,8 @@ std::string CMakeLists(const ModuleProjectOptions &options, const std::vector<fs
         << "set(CMAKE_EXPORT_COMPILE_COMMANDS ON)\n"
         << "set(CMAKE_CXX_SCAN_FOR_MODULES OFF)\n\n"
         << "if(WIN32)\n"
-        << "    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<$<CONFIG:Debug>:Debug>\" CACHE STRING \"Use the static Microsoft C/C++ runtime\" FORCE)\n"
+        << "    set(CMAKE_MSVC_RUNTIME_LIBRARY \"MultiThreaded$<$<CONFIG:Debug>:Debug>\" CACHE STRING \"Use the static "
+           "Microsoft C/C++ runtime\" FORCE)\n"
         << "endif()\n\n"
         << "if(NOT WIN32)\n"
         << "    message(FATAL_ERROR \"Generated URKit starter mods target Windows native game processes.\")\n"
@@ -190,8 +191,7 @@ std::string CMakeLists(const ModuleProjectOptions &options, const std::vector<fs
         << "urk_disable_vs_vcpkg_integration(imgui)\n\n"
         << "add_library(" << options.projectName << " SHARED)\n"
         << "set_target_properties(" << options.projectName << " PROPERTIES CXX_SCAN_FOR_MODULES OFF)\n\n";
-    out << "target_include_directories(" << options.projectName
-        << " PRIVATE . mod";
+    out << "target_include_directories(" << options.projectName << " PRIVATE . mod";
     for (const auto &directory : options.includeDirectories)
         out << " " << directory;
     out << ")\n\n";
@@ -349,7 +349,8 @@ std::string VsCodeCppProperties() {
 std::string Readme(const ModuleProjectOptions &options) {
     std::ostringstream out;
     out << "# " << options.projectName << "\n\n"
-        << "Generated URKit " << options.backendDisplayName << " mod project for Windows x64. The output DLL is a "
+        << "Generated URKit " << options.backendDisplayName
+        << " mod project for Windows x64. The output DLL is a "
            "URKit loader plugin, not a standalone injectable DLL.\n\n"
         << "## Build\n\n"
         << "Use Clang from PowerShell or MSVC from an x64 Visual Studio Developer PowerShell.\n\n"
@@ -415,15 +416,15 @@ std::string Readme(const ModuleProjectOptions &options) {
         out << "- Locale JSON files under `locales/` are preserved and deployed beside the DLL.\n";
     if (!unreal)
         out << "\n## Stripped members\n\n"
-        << "IL2CPP and Mono builds drop UnityEngine members the game never calls. A stripped member returns "
-           "the default value, which reads the same as a legitimate empty result.\n\n"
-        << "- Probe first: `Unity::has_method(Unity::GameObjectType, \"get_scene\", 0)`, "
-           "`Unity::has_property(type, \"tag\")`, or a wrapper helper such as "
-           "`Unity::GameObject::scene_available()`.\n"
-        << "- Disable the feature when the member is gone. Do not report the default as data.\n"
-        << "- Against your own Unity project, `Assets/link.xml` with "
-           "`<linker><assembly fullname=\"UnityEngine.CoreModule\" preserve=\"all\"/></linker>` keeps the "
-           "member. A shipped game gives you no such option.\n";
+            << "IL2CPP and Mono builds drop UnityEngine members the game never calls. A stripped member returns "
+               "the default value, which reads the same as a legitimate empty result.\n\n"
+            << "- Probe first: `Unity::has_method(Unity::GameObjectType, \"get_scene\", 0)`, "
+               "`Unity::has_property(type, \"tag\")`, or a wrapper helper such as "
+               "`Unity::GameObject::scene_available()`.\n"
+            << "- Disable the feature when the member is gone. Do not report the default as data.\n"
+            << "- Against your own Unity project, `Assets/link.xml` with "
+               "`<linker><assembly fullname=\"UnityEngine.CoreModule\" preserve=\"all\"/></linker>` keeps the "
+               "member. A shipped game gives you no such option.\n";
     out << "\nStart troubleshooting with `URKit_logs.log` beside the game executable.\n";
     return out.str();
 }
@@ -616,9 +617,9 @@ void TryFormatCxxSource(const fs::path &destination, std::string &text) {
     const fs::path tempDir = fs::temp_directory_path(ec);
     if (ec)
         return;
-    const fs::path tempFile = tempDir / ("urk-fmt-" + std::to_string(GetCurrentProcessId()) + "-" +
-                                         std::to_string(reinterpret_cast<std::uintptr_t>(&text)) +
-                                         destination.extension().string());
+    const fs::path tempFile =
+        tempDir / ("urk-fmt-" + std::to_string(GetCurrentProcessId()) + "-" +
+                   std::to_string(reinterpret_cast<std::uintptr_t>(&text)) + destination.extension().string());
 
     {
         std::ofstream tempOutput(tempFile, std::ios::binary | std::ios::trunc);
@@ -642,9 +643,8 @@ void TryFormatCxxSource(const fs::path &destination, std::string &text) {
         startupInfo.hStdError = nul;
     }
     PROCESS_INFORMATION processInfo{};
-    const BOOL started = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr,
-                                        nul != INVALID_HANDLE_VALUE, CREATE_NO_WINDOW, nullptr, nullptr, &startupInfo,
-                                        &processInfo);
+    const BOOL started = CreateProcessW(nullptr, commandLine.data(), nullptr, nullptr, nul != INVALID_HANDLE_VALUE,
+                                        CREATE_NO_WINDOW, nullptr, nullptr, &startupInfo, &processInfo);
     if (nul != INVALID_HANDLE_VALUE)
         CloseHandle(nul);
 
@@ -764,37 +764,39 @@ bool WriteModuleProject(const ModuleProjectOptions &options, std::string *error)
          true},
         {"mod/hooks/dx11_state_guard.cpp", OutputFilePolicy::GeneratedOverwrite, Dx11StateGuardSourceModule(), true,
          false},
-        {"mod/hooks/dx12_overlay_resources.h", OutputFilePolicy::GeneratedOverwrite,
-         Dx12OverlayResourcesHeaderModule(), true, true},
+        {"mod/hooks/dx12_overlay_resources.h", OutputFilePolicy::GeneratedOverwrite, Dx12OverlayResourcesHeaderModule(),
+         true, true},
         {"mod/hooks/dx12_overlay_resources.cpp", OutputFilePolicy::GeneratedOverwrite,
          Dx12OverlayResourcesSourceModule(), true, false},
-        {"mod/hooks/dxgi_hook_discovery.h", OutputFilePolicy::GeneratedOverwrite,
-         DxgiHookDiscoveryHeaderModule(), true, true},
-        {"mod/hooks/dxgi_hook_discovery.cpp", OutputFilePolicy::GeneratedOverwrite,
-         DxgiHookDiscoverySourceModule(), true, false},
+        {"mod/hooks/dxgi_hook_discovery.h", OutputFilePolicy::GeneratedOverwrite, DxgiHookDiscoveryHeaderModule(), true,
+         true},
+        {"mod/hooks/dxgi_hook_discovery.cpp", OutputFilePolicy::GeneratedOverwrite, DxgiHookDiscoverySourceModule(),
+         true, false},
         {"mod/hooks/win32_input_coordinates.h", OutputFilePolicy::GeneratedOverwrite,
          Win32InputCoordinatesHeaderModule(), true, true},
         {"mod/hooks/win32_input_coordinates.cpp", OutputFilePolicy::GeneratedOverwrite,
          Win32InputCoordinatesSourceModule(), true, false},
-        {"mod/hooks/win32_message_pump.h", OutputFilePolicy::GeneratedOverwrite,
-         Win32MessagePumpHeaderModule(), true, true},
-        {"mod/hooks/win32_message_pump.cpp", OutputFilePolicy::GeneratedOverwrite,
-         Win32MessagePumpSourceModule(), true, false},
+        {"mod/hooks/win32_message_pump.h", OutputFilePolicy::GeneratedOverwrite, Win32MessagePumpHeaderModule(), true,
+         true},
+        {"mod/hooks/win32_message_pump.cpp", OutputFilePolicy::GeneratedOverwrite, Win32MessagePumpSourceModule(), true,
+         false},
         {"third_party/imgui_win32_module_scope.cpp", OutputFilePolicy::GeneratedOverwrite,
          ImGuiWin32ModuleScopeSourceModule(), true, false},
-        {"mod/hooks/win32_viewport_policy.h", OutputFilePolicy::GeneratedOverwrite,
-         Win32ViewportPolicyHeaderModule(), true, true},
-        {"mod/hooks/win32_viewport_policy.cpp", OutputFilePolicy::GeneratedOverwrite,
-         Win32ViewportPolicySourceModule(), true, false},
+        {"mod/hooks/win32_viewport_policy.h", OutputFilePolicy::GeneratedOverwrite, Win32ViewportPolicyHeaderModule(),
+         true, true},
+        {"mod/hooks/win32_viewport_policy.cpp", OutputFilePolicy::GeneratedOverwrite, Win32ViewportPolicySourceModule(),
+         true, false},
         {"mod/hooks/render_imgui_hook.h", OutputFilePolicy::GeneratedOverwrite, RenderHookHeaderModule(), true, true},
-        {"mod/hooks/render_imgui_hook.cpp", OutputFilePolicy::GeneratedOverwrite, RenderHookSourceModule(), true, false},
+        {"mod/hooks/render_imgui_hook.cpp", OutputFilePolicy::GeneratedOverwrite, RenderHookSourceModule(), true,
+         false},
         {"mod/generated/mod_lifecycle.h", OutputFilePolicy::GeneratedOverwrite, ModLifecycleHeader(), true, true},
         {"mod/generated/mod_lifecycle.cpp", OutputFilePolicy::GeneratedOverwrite, ModLifecycleSource(project), true,
          false},
         {"mod/generated/mod_entry.cpp", OutputFilePolicy::GeneratedOverwrite, ModEntrySource(), true, false},
         {"README.md", OutputFilePolicy::DocumentationPreserve, Readme(project), true, false},
         {".clangd", OutputFilePolicy::GeneratedOverwrite,
-         "CompileFlags:\n  CompilationDatabase: out/build/clang-relwithdebinfo\n  Compiler: clang++\n\nIndex:\n  Background: Build\n",
+         "CompileFlags:\n  CompilationDatabase: out/build/clang-relwithdebinfo\n  Compiler: clang++\n\nIndex:\n  "
+         "Background: Build\n",
          true, false},
         {"CMakePresets.json", OutputFilePolicy::GeneratedOverwrite, CMakePresets(), true, false},
         {".vscode/c_cpp_properties.json", OutputFilePolicy::GeneratedOverwrite, VsCodeCppProperties(), true, false},

@@ -19,7 +19,8 @@ class ProcessMemory : public MemoryReader, public MemoryWriter {
     static constexpr std::uint64_t kUnreadableMs = 20;
 
     explicit ProcessMemory(std::uint64_t unreadableLifetime = kUnreadableLifetime)
-        : unreadableLifetime_(unreadableLifetime) {}
+        : unreadableLifetime_(unreadableLifetime) {
+    }
 
     // Never faults, and never returns bytes it did not read in full.
     bool Read(Address address, void *out, std::size_t size) const override;
@@ -39,8 +40,12 @@ class ProcessMemory : public MemoryReader, public MemoryWriter {
     void Forget() const;
 
     // Kernel queries vs cache hits across threads.
-    std::uint64_t Queries() const { return queries_.load(std::memory_order_relaxed); }
-    std::uint64_t Hits() const { return hits_.load(std::memory_order_relaxed); }
+    std::uint64_t Queries() const {
+        return queries_.load(std::memory_order_relaxed);
+    }
+    std::uint64_t Hits() const {
+        return hits_.load(std::memory_order_relaxed);
+    }
 
   private:
     struct Range {
@@ -52,7 +57,9 @@ class ProcessMemory : public MemoryReader, public MemoryWriter {
         std::uint64_t expires = 0;
         std::uint64_t expiresAtMs = 0;
 
-        bool Holds(Address address) const { return start != end && address >= start && address < end; }
+        bool Holds(Address address) const {
+            return start != end && address >= start && address < end;
+        }
         bool Expired(std::uint64_t probes) const;
     };
 

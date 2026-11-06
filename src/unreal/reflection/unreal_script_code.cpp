@@ -160,7 +160,8 @@ std::string Number(double value, bool single) {
 class Decoder {
   public:
     Decoder(std::span<const std::uint8_t> code, const ScriptSymbols &symbols, const ScriptEncoding &encoding)
-        : code_(code), symbols_(symbols), encoding_(encoding) {}
+        : code_(code), symbols_(symbols), encoding_(encoding) {
+    }
 
     DecodedScript Run() {
         DecodedScript result;
@@ -219,7 +220,9 @@ class Decoder {
         return true;
     }
 
-    bool Pointer(Address &value) { return Take(value); }
+    bool Pointer(Address &value) {
+        return Take(value);
+    }
 
     bool Field(const char *tag, std::string &out) {
         Address field = kNullAddress;
@@ -321,7 +324,9 @@ class Decoder {
         }
     }
 
-    bool Sub(std::string &out, int depth) { return Expr(out, depth + 1, nullptr); }
+    bool Sub(std::string &out, int depth) {
+        return Expr(out, depth + 1, nullptr);
+    }
 
     // tag(a,b): each a sub-expression.
     bool Tagged(const char *tag, int count, std::string &out, int depth) {
@@ -350,7 +355,15 @@ class Decoder {
         if (!Take(kind))
             return false;
         // Older numbering: Empty, Localized, Invariant, Literal, Table.
-        enum { Empty, Localized, LocalizedNotes, Invariant, Literal, Table, Unknown };
+        enum {
+            Empty,
+            Localized,
+            LocalizedNotes,
+            Invariant,
+            Literal,
+            Table,
+            Unknown
+        };
         static constexpr int kOld[] = {Empty, Localized, Invariant, Literal, Table};
         static constexpr int kNew[] = {Empty, Localized, LocalizedNotes, Invariant, Literal, Table};
         int type = Unknown;
@@ -360,34 +373,34 @@ class Decoder {
             type = kOld[kind];
         out += "Text(";
         switch (type) {
-        case Empty:
-            out += "\"empty\"";
-            break;
-        case Localized:
-        case LocalizedNotes:
-            out += "\"loc\"";
-            for (int i = 0; i < (type == LocalizedNotes ? 4 : 3); ++i) {
+            case Empty:
+                out += "\"empty\"";
+                break;
+            case Localized:
+            case LocalizedNotes:
+                out += "\"loc\"";
+                for (int i = 0; i < (type == LocalizedNotes ? 4 : 3); ++i) {
+                    if (!TextString(out, depth))
+                        return false;
+                }
+                break;
+            case Invariant:
+            case Literal:
+                out += type == Invariant ? "\"inv\"" : "\"lit\"";
                 if (!TextString(out, depth))
                     return false;
+                break;
+            case Table: {
+                Address table = kNullAddress;
+                if (!Pointer(table))
+                    return false;
+                out += "\"table\"";
+                if (!TextString(out, depth) || !TextString(out, depth))
+                    return false;
+                break;
             }
-            break;
-        case Invariant:
-        case Literal:
-            out += type == Invariant ? "\"inv\"" : "\"lit\"";
-            if (!TextString(out, depth))
-                return false;
-            break;
-        case Table: {
-            Address table = kNullAddress;
-            if (!Pointer(table))
-                return false;
-            out += "\"table\"";
-            if (!TextString(out, depth) || !TextString(out, depth))
-                return false;
-            break;
-        }
-        default:
-            return Fail("unknown text literal type " + std::to_string(kind));
+            default:
+                return Fail("unknown text literal type " + std::to_string(kind));
         }
         out += ')';
         return true;
@@ -467,369 +480,369 @@ class Decoder {
         if (seen)
             *seen = token;
         switch (token) {
-        case kLocalVariable:
-            return Field("Local", out);
-        case kInstanceVariable:
-            return Field("Inst", out);
-        case kDefaultVariable:
-            return Field("Default", out);
-        case kLocalOutVariable:
-            return Field("Out", out);
-        case kClassSparseDataVariable:
-            return Field("Sparse", out);
-        case kPropertyConst:
-            return Field("PropConst", out);
-        case kReturn:
-            return Tagged("Return", 1, out, depth);
-        case kJump:
-            return Integer<std::uint32_t>("Jump", out);
-        case kPushExecutionFlow:
-            return Integer<std::uint32_t>("Push", out);
-        case kSkipOffsetConst:
-            return Integer<std::uint32_t>("SkipOffset", out);
-        case kJumpIfNot: {
-            std::uint32_t target = 0;
-            if (!Take(target))
-                return false;
-            out += "JumpIfNot(" + std::to_string(target) + ',';
-            if (!Sub(out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kAssert: {
-            std::uint16_t line = 0;
-            std::uint8_t debug = 0;
-            if (!Take(line) || !Take(debug))
-                return false;
-            out += "Assert(" + std::to_string(line) + ',' + std::to_string(debug) + ',';
-            if (!Sub(out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kNothing:
-        case kDeprecatedOp4A:
-            out += "Nothing";
-            return true;
-        case kNothingInt32:
-            return Integer<std::int32_t>("NothingInt32", out);
-        case kLet: {
-            Address property = kNullAddress;
-            if (!Pointer(property))
-                return false;
-            return Tagged("Let", 2, out, depth);
-        }
-        case kLetBool:
-            return Tagged("LetBool", 2, out, depth);
-        case kLetObj:
-            return Tagged("LetObj", 2, out, depth);
-        case kLetWeakObjPtr:
-            return Tagged("LetWeak", 2, out, depth);
-        case kLetDelegate:
-            return Tagged("LetDelegate", 2, out, depth);
-        case kLetMulticastDelegate:
-            return Tagged("LetMulticast", 2, out, depth);
-        case kLetValueOnPersistentFrame:
-        case kStructMemberContext: {
-            Address property = kNullAddress;
-            if (!Pointer(property))
-                return false;
-            out += token == kStructMemberContext ? "Member(" : "LetFrame(";
-            out += Quote(property == kNullAddress ? std::string() : symbols_.field(property));
-            out += ',';
-            if (!Sub(out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kBitFieldConst: {
-            Address property = kNullAddress;
-            std::uint8_t value = 0;
-            if (!Pointer(property) || !Take(value))
-                return false;
-            out += "BitField(" + Quote(symbols_.field(property)) + ',' + std::to_string(value) + ')';
-            return true;
-        }
-        case kClassContext:
-            return Context("ClassContext", out, depth);
-        case kContext:
-            return Context("Context", out, depth);
-        case kContextFailSilent:
-            return Context("ContextFS", out, depth);
-        case kInterfaceContext:
-            return Tagged("IfaceContext", 1, out, depth);
-        case kMetaCast:
-            return ClassCast("MetaCast", out, depth);
-        case kDynamicCast:
-            return ClassCast("DynCast", out, depth);
-        case kObjToInterfaceCast:
-            return ClassCast("ToIface", out, depth);
-        case kCrossInterfaceCast:
-            return ClassCast("CrossIface", out, depth);
-        case kInterfaceToObjCast:
-            return ClassCast("IfaceToObj", out, depth);
-        case kCast: {
-            std::uint8_t kind = 0;
-            if (!Take(kind))
-                return false;
-            out += "Cast(" + std::to_string(kind) + ',';
-            if (!Sub(out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kEndParmValue:
-            out += "EndParmValue";
-            return true;
-        case kEndFunctionParms:
-        case kEndStructConst:
-        case kEndArray:
-        case kEndSet:
-        case kEndMap:
-        case kEndSetConst:
-        case kEndMapConst:
-        case kEndArrayConst:
-            // Only a list's closing token; the list eats it.
-            return seen ? true : Fail("list end outside a list");
-        case kSelf:
-            out += "Self";
-            return true;
-        case kSkip: {
-            std::uint32_t skip = 0;
-            if (!Take(skip))
-                return false;
-            return Tagged("Skip", 1, out, depth);
-        }
-        case kVirtualFunction:
-        case kLocalVirtualFunction: {
-            std::string name;
-            if (!ScriptName(name))
-                return false;
-            out += "VCall(" + name;
-            if (!Until(kEndFunctionParms, out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kFinalFunction:
-        case kLocalFinalFunction:
-        case kCallMath:
-            return Call("Call", out, depth);
-        case kCallMulticastDelegate:
-            return Call("Broadcast", out, depth);
-        case kIntConst:
-            return Integer<std::int32_t>("Int", out);
-        case kInt64Const:
-            return Integer<std::int64_t>("Int64", out);
-        case kUInt64Const:
-            return Integer<std::uint64_t>("UInt64", out);
-        case kByteConst:
-            return Integer<std::uint8_t>("Byte", out);
-        case kIntConstByte:
-            return Integer<std::uint8_t>("Int", out);
-        case kIntZero:
-            out += "Int(0)";
-            return true;
-        case kIntOne:
-            out += "Int(1)";
-            return true;
-        case kTrue:
-            out += "True";
-            return true;
-        case kFalse:
-            out += "False";
-            return true;
-        case kFloatConst: {
-            float value = 0;
-            if (!Take(value))
-                return false;
-            out += "Float(" + Number(value, true) + ')';
-            return true;
-        }
-        case kDoubleConst: {
-            double value = 0;
-            if (!Take(value))
-                return false;
-            out += "Double(" + Number(value, false) + ')';
-            return true;
-        }
-        case kStringConst:
-            return Ansi(out);
-        case kUnicodeStringConst:
-            return Unicode(out);
-        case kTextConst:
-            return Text(out, depth);
-        case kObjectConst: {
-            Address object = kNullAddress;
-            if (!Pointer(object))
-                return false;
-            out += "Obj(" + ObjectText(object) + ')';
-            return true;
-        }
-        case kNameConst: {
-            std::string name;
-            if (!ScriptName(name))
-                return false;
-            out += "Name(" + name + ')';
-            return true;
-        }
-        case kRotationConst:
-            return Reals("Rotator", 3, encoding_.largeWorld, out);
-        case kVectorConst:
-            return Reals("Vector", 3, encoding_.largeWorld, out);
-        case kVector3fConst:
-            return Reals("Vector3f", 3, false, out);
-        case kTransformConst:
-            return Reals("Transform", 10, encoding_.largeWorld, out);
-        case kNoObject:
-            out += "NoObj";
-            return true;
-        case kNoInterface:
-            out += "NoIface";
-            return true;
-        case kStructConst: {
-            Address type = kNullAddress;
-            std::int32_t size = 0;
-            if (!Pointer(type) || !Take(size))
-                return false;
-            out += "Struct(" + PathText(type);
-            if (!Until(kEndStructConst, out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kSetArray:
-            out += "SetArray(";
-            if (!Sub(out, depth) || !Until(kEndArray, out, depth))
-                return false;
-            out += ')';
-            return true;
-        case kSetSet:
-        case kSetMap: {
-            out += token == kSetSet ? "SetSet(" : "SetMap(";
-            std::int32_t count = 0;
-            if (!Sub(out, depth) || !Take(count) || !Until(token == kSetSet ? kEndSet : kEndMap, out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kArrayConst:
-            return Literal("ArrayConst", 1, kEndArrayConst, out, depth);
-        case kSetConst:
-            return Literal("SetConst", 1, kEndSetConst, out, depth);
-        case kMapConst:
-            return Literal("MapConst", 2, kEndMapConst, out, depth);
-        case kInstanceDelegate: {
-            std::string name;
-            if (!ScriptName(name))
-                return false;
-            out += "InstDelegate(" + name + ')';
-            return true;
-        }
-        case kBindDelegate: {
-            std::string name;
-            if (!ScriptName(name))
-                return false;
-            out += "BindDelegate(" + name + ',';
-            if (!Sub(out, depth))
-                return false;
-            out += ',';
-            if (!Sub(out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kAddMulticastDelegate:
-            return Tagged("AddMulticast", 2, out, depth);
-        case kRemoveMulticastDelegate:
-            return Tagged("RemoveMulticast", 2, out, depth);
-        case kClearMulticastDelegate:
-            return Tagged("ClearMulticast", 1, out, depth);
-        case kPopExecutionFlow:
-            out += "Pop";
-            return true;
-        case kPopExecutionFlowIfNot:
-            return Tagged("PopIfNot", 1, out, depth);
-        case kComputedJump:
-            return Tagged("ComputedJump", 1, out, depth);
-        case kBreakpoint:
-        case kTracepoint:
-        case kWireTracepoint:
-            out += "Tracepoint";
-            return true;
-        case kEndOfScript:
-            out += "EndOfScript";
-            return true;
-        case kSoftObjectConst:
-            return Tagged("Soft", 1, out, depth);
-        case kFieldPathConst:
-            return Tagged("FieldPath", 1, out, depth);
-        case kArrayGetByRef:
-            return Tagged("GetByRef", 2, out, depth);
-        case kSwitchValue: {
-            std::uint16_t cases = 0;
-            std::uint32_t end = 0;
-            if (!Take(cases) || !Take(end))
-                return false;
-            out += "Switch(";
-            if (!Sub(out, depth))
-                return false;
-            for (std::uint16_t i = 0; i < cases; ++i) {
-                std::uint32_t next = 0;
+            case kLocalVariable:
+                return Field("Local", out);
+            case kInstanceVariable:
+                return Field("Inst", out);
+            case kDefaultVariable:
+                return Field("Default", out);
+            case kLocalOutVariable:
+                return Field("Out", out);
+            case kClassSparseDataVariable:
+                return Field("Sparse", out);
+            case kPropertyConst:
+                return Field("PropConst", out);
+            case kReturn:
+                return Tagged("Return", 1, out, depth);
+            case kJump:
+                return Integer<std::uint32_t>("Jump", out);
+            case kPushExecutionFlow:
+                return Integer<std::uint32_t>("Push", out);
+            case kSkipOffsetConst:
+                return Integer<std::uint32_t>("SkipOffset", out);
+            case kJumpIfNot: {
+                std::uint32_t target = 0;
+                if (!Take(target))
+                    return false;
+                out += "JumpIfNot(" + std::to_string(target) + ',';
+                if (!Sub(out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kAssert: {
+                std::uint16_t line = 0;
+                std::uint8_t debug = 0;
+                if (!Take(line) || !Take(debug))
+                    return false;
+                out += "Assert(" + std::to_string(line) + ',' + std::to_string(debug) + ',';
+                if (!Sub(out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kNothing:
+            case kDeprecatedOp4A:
+                out += "Nothing";
+                return true;
+            case kNothingInt32:
+                return Integer<std::int32_t>("NothingInt32", out);
+            case kLet: {
+                Address property = kNullAddress;
+                if (!Pointer(property))
+                    return false;
+                return Tagged("Let", 2, out, depth);
+            }
+            case kLetBool:
+                return Tagged("LetBool", 2, out, depth);
+            case kLetObj:
+                return Tagged("LetObj", 2, out, depth);
+            case kLetWeakObjPtr:
+                return Tagged("LetWeak", 2, out, depth);
+            case kLetDelegate:
+                return Tagged("LetDelegate", 2, out, depth);
+            case kLetMulticastDelegate:
+                return Tagged("LetMulticast", 2, out, depth);
+            case kLetValueOnPersistentFrame:
+            case kStructMemberContext: {
+                Address property = kNullAddress;
+                if (!Pointer(property))
+                    return false;
+                out += token == kStructMemberContext ? "Member(" : "LetFrame(";
+                out += Quote(property == kNullAddress ? std::string() : symbols_.field(property));
                 out += ',';
-                if (!Sub(out, depth) || !Take(next))
+                if (!Sub(out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kBitFieldConst: {
+                Address property = kNullAddress;
+                std::uint8_t value = 0;
+                if (!Pointer(property) || !Take(value))
+                    return false;
+                out += "BitField(" + Quote(symbols_.field(property)) + ',' + std::to_string(value) + ')';
+                return true;
+            }
+            case kClassContext:
+                return Context("ClassContext", out, depth);
+            case kContext:
+                return Context("Context", out, depth);
+            case kContextFailSilent:
+                return Context("ContextFS", out, depth);
+            case kInterfaceContext:
+                return Tagged("IfaceContext", 1, out, depth);
+            case kMetaCast:
+                return ClassCast("MetaCast", out, depth);
+            case kDynamicCast:
+                return ClassCast("DynCast", out, depth);
+            case kObjToInterfaceCast:
+                return ClassCast("ToIface", out, depth);
+            case kCrossInterfaceCast:
+                return ClassCast("CrossIface", out, depth);
+            case kInterfaceToObjCast:
+                return ClassCast("IfaceToObj", out, depth);
+            case kCast: {
+                std::uint8_t kind = 0;
+                if (!Take(kind))
+                    return false;
+                out += "Cast(" + std::to_string(kind) + ',';
+                if (!Sub(out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kEndParmValue:
+                out += "EndParmValue";
+                return true;
+            case kEndFunctionParms:
+            case kEndStructConst:
+            case kEndArray:
+            case kEndSet:
+            case kEndMap:
+            case kEndSetConst:
+            case kEndMapConst:
+            case kEndArrayConst:
+                // Only a list's closing token; the list eats it.
+                return seen ? true : Fail("list end outside a list");
+            case kSelf:
+                out += "Self";
+                return true;
+            case kSkip: {
+                std::uint32_t skip = 0;
+                if (!Take(skip))
+                    return false;
+                return Tagged("Skip", 1, out, depth);
+            }
+            case kVirtualFunction:
+            case kLocalVirtualFunction: {
+                std::string name;
+                if (!ScriptName(name))
+                    return false;
+                out += "VCall(" + name;
+                if (!Until(kEndFunctionParms, out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kFinalFunction:
+            case kLocalFinalFunction:
+            case kCallMath:
+                return Call("Call", out, depth);
+            case kCallMulticastDelegate:
+                return Call("Broadcast", out, depth);
+            case kIntConst:
+                return Integer<std::int32_t>("Int", out);
+            case kInt64Const:
+                return Integer<std::int64_t>("Int64", out);
+            case kUInt64Const:
+                return Integer<std::uint64_t>("UInt64", out);
+            case kByteConst:
+                return Integer<std::uint8_t>("Byte", out);
+            case kIntConstByte:
+                return Integer<std::uint8_t>("Int", out);
+            case kIntZero:
+                out += "Int(0)";
+                return true;
+            case kIntOne:
+                out += "Int(1)";
+                return true;
+            case kTrue:
+                out += "True";
+                return true;
+            case kFalse:
+                out += "False";
+                return true;
+            case kFloatConst: {
+                float value = 0;
+                if (!Take(value))
+                    return false;
+                out += "Float(" + Number(value, true) + ')';
+                return true;
+            }
+            case kDoubleConst: {
+                double value = 0;
+                if (!Take(value))
+                    return false;
+                out += "Double(" + Number(value, false) + ')';
+                return true;
+            }
+            case kStringConst:
+                return Ansi(out);
+            case kUnicodeStringConst:
+                return Unicode(out);
+            case kTextConst:
+                return Text(out, depth);
+            case kObjectConst: {
+                Address object = kNullAddress;
+                if (!Pointer(object))
+                    return false;
+                out += "Obj(" + ObjectText(object) + ')';
+                return true;
+            }
+            case kNameConst: {
+                std::string name;
+                if (!ScriptName(name))
+                    return false;
+                out += "Name(" + name + ')';
+                return true;
+            }
+            case kRotationConst:
+                return Reals("Rotator", 3, encoding_.largeWorld, out);
+            case kVectorConst:
+                return Reals("Vector", 3, encoding_.largeWorld, out);
+            case kVector3fConst:
+                return Reals("Vector3f", 3, false, out);
+            case kTransformConst:
+                return Reals("Transform", 10, encoding_.largeWorld, out);
+            case kNoObject:
+                out += "NoObj";
+                return true;
+            case kNoInterface:
+                out += "NoIface";
+                return true;
+            case kStructConst: {
+                Address type = kNullAddress;
+                std::int32_t size = 0;
+                if (!Pointer(type) || !Take(size))
+                    return false;
+                out += "Struct(" + PathText(type);
+                if (!Until(kEndStructConst, out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kSetArray:
+                out += "SetArray(";
+                if (!Sub(out, depth) || !Until(kEndArray, out, depth))
+                    return false;
+                out += ')';
+                return true;
+            case kSetSet:
+            case kSetMap: {
+                out += token == kSetSet ? "SetSet(" : "SetMap(";
+                std::int32_t count = 0;
+                if (!Sub(out, depth) || !Take(count) || !Until(token == kSetSet ? kEndSet : kEndMap, out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kArrayConst:
+                return Literal("ArrayConst", 1, kEndArrayConst, out, depth);
+            case kSetConst:
+                return Literal("SetConst", 1, kEndSetConst, out, depth);
+            case kMapConst:
+                return Literal("MapConst", 2, kEndMapConst, out, depth);
+            case kInstanceDelegate: {
+                std::string name;
+                if (!ScriptName(name))
+                    return false;
+                out += "InstDelegate(" + name + ')';
+                return true;
+            }
+            case kBindDelegate: {
+                std::string name;
+                if (!ScriptName(name))
+                    return false;
+                out += "BindDelegate(" + name + ',';
+                if (!Sub(out, depth))
                     return false;
                 out += ',';
                 if (!Sub(out, depth))
                     return false;
+                out += ')';
+                return true;
             }
-            out += ',';
-            if (!Sub(out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kInstrumentationEvent: {
-            if (pos_ >= code_.size())
-                return Fail("runs past the end");
-            const std::uint8_t kind = code_[pos_];
-            pos_ += 1 + (kind == kInlineEvent ? 12 : 0);
-            if (pos_ > code_.size())
-                return Fail("runs past the end");
-            out += "Instrumentation(" + std::to_string(kind) + ')';
-            return true;
-        }
-        case kAutoRtfmTransact: {
-            std::int32_t id = 0;
-            std::uint32_t skip = 0;
-            if (!Take(id) || !Take(skip))
-                return false;
-            out += "RtfmTransact(" + std::to_string(id);
-            if (!Until(kAutoRtfmStopTransact, out, depth))
-                return false;
-            out += ')';
-            return true;
-        }
-        case kAutoRtfmStopTransact: {
-            std::int32_t id = 0;
-            std::int8_t mode = 0;
-            if (!Take(id) || !Take(mode))
-                return false;
-            out += "RtfmStop(" + std::to_string(id) + ',' + std::to_string(mode) + ')';
-            return true;
-        }
-        case kAutoRtfmAbortIfNot:
-            return Tagged("RtfmAbortIfNot", 1, out, depth);
-        case kAutoRtfmAbort:
-            out += "RtfmAbort";
-            return true;
-        default: {
-            pos_ = start;
-            char why[48];
-            std::snprintf(why, sizeof(why), "unknown token 0x%02X", token);
-            return Fail(why);
-        }
+            case kAddMulticastDelegate:
+                return Tagged("AddMulticast", 2, out, depth);
+            case kRemoveMulticastDelegate:
+                return Tagged("RemoveMulticast", 2, out, depth);
+            case kClearMulticastDelegate:
+                return Tagged("ClearMulticast", 1, out, depth);
+            case kPopExecutionFlow:
+                out += "Pop";
+                return true;
+            case kPopExecutionFlowIfNot:
+                return Tagged("PopIfNot", 1, out, depth);
+            case kComputedJump:
+                return Tagged("ComputedJump", 1, out, depth);
+            case kBreakpoint:
+            case kTracepoint:
+            case kWireTracepoint:
+                out += "Tracepoint";
+                return true;
+            case kEndOfScript:
+                out += "EndOfScript";
+                return true;
+            case kSoftObjectConst:
+                return Tagged("Soft", 1, out, depth);
+            case kFieldPathConst:
+                return Tagged("FieldPath", 1, out, depth);
+            case kArrayGetByRef:
+                return Tagged("GetByRef", 2, out, depth);
+            case kSwitchValue: {
+                std::uint16_t cases = 0;
+                std::uint32_t end = 0;
+                if (!Take(cases) || !Take(end))
+                    return false;
+                out += "Switch(";
+                if (!Sub(out, depth))
+                    return false;
+                for (std::uint16_t i = 0; i < cases; ++i) {
+                    std::uint32_t next = 0;
+                    out += ',';
+                    if (!Sub(out, depth) || !Take(next))
+                        return false;
+                    out += ',';
+                    if (!Sub(out, depth))
+                        return false;
+                }
+                out += ',';
+                if (!Sub(out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kInstrumentationEvent: {
+                if (pos_ >= code_.size())
+                    return Fail("runs past the end");
+                const std::uint8_t kind = code_[pos_];
+                pos_ += 1 + (kind == kInlineEvent ? 12 : 0);
+                if (pos_ > code_.size())
+                    return Fail("runs past the end");
+                out += "Instrumentation(" + std::to_string(kind) + ')';
+                return true;
+            }
+            case kAutoRtfmTransact: {
+                std::int32_t id = 0;
+                std::uint32_t skip = 0;
+                if (!Take(id) || !Take(skip))
+                    return false;
+                out += "RtfmTransact(" + std::to_string(id);
+                if (!Until(kAutoRtfmStopTransact, out, depth))
+                    return false;
+                out += ')';
+                return true;
+            }
+            case kAutoRtfmStopTransact: {
+                std::int32_t id = 0;
+                std::int8_t mode = 0;
+                if (!Take(id) || !Take(mode))
+                    return false;
+                out += "RtfmStop(" + std::to_string(id) + ',' + std::to_string(mode) + ')';
+                return true;
+            }
+            case kAutoRtfmAbortIfNot:
+                return Tagged("RtfmAbortIfNot", 1, out, depth);
+            case kAutoRtfmAbort:
+                out += "RtfmAbort";
+                return true;
+            default: {
+                pos_ = start;
+                char why[48];
+                std::snprintf(why, sizeof(why), "unknown token 0x%02X", token);
+                return Fail(why);
+            }
         }
     }
 
@@ -961,9 +974,8 @@ std::int32_t FindScriptOffset(const ObjectFinder &finder, const StructOffsets &s
     return fail(closest.empty() ? "every offset held bytes in a native function" : closest);
 }
 
-ScriptDescriber::ScriptDescriber(const ObjectFinder &finder, const StructOffsets &structs,
-                                 const PropertyChain &chain, const FunctionOffsets &functions,
-                                 const EngineVersion &version)
+ScriptDescriber::ScriptDescriber(const ObjectFinder &finder, const StructOffsets &structs, const PropertyChain &chain,
+                                 const FunctionOffsets &functions, const EngineVersion &version)
     : finder_(finder), structs_(structs), chain_(chain), functions_(functions) {
     encoding_.largeWorld = version.major >= 5;
     encoding_.textWithNotes = version.major > 5 || (version.major == 5 && version.minor >= 5);

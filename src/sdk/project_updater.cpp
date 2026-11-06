@@ -31,7 +31,8 @@ namespace UrkProject {
 
 class CandidateTree {
   public:
-    explicit CandidateTree(std::filesystem::path root) : root_(std::move(root)) {}
+    explicit CandidateTree(std::filesystem::path root) : root_(std::move(root)) {
+    }
     ~CandidateTree() {
         std::error_code ignored;
         std::filesystem::remove_all(root_, ignored);
@@ -39,7 +40,9 @@ class CandidateTree {
     CandidateTree(const CandidateTree &) = delete;
     CandidateTree &operator=(const CandidateTree &) = delete;
 
-    const std::filesystem::path &root() const { return root_; }
+    const std::filesystem::path &root() const {
+        return root_;
+    }
 
   private:
     std::filesystem::path root_;
@@ -140,8 +143,7 @@ int ReadSdkVersion(const fs::path &header, std::string *error) {
     while (numberEnd < text.size() && text[numberEnd] >= '0' && text[numberEnd] <= '9')
         ++numberEnd;
     int version = 0;
-    const auto [end, conversionError] =
-        std::from_chars(text.data() + numberBegin, text.data() + numberEnd, version);
+    const auto [end, conversionError] = std::from_chars(text.data() + numberBegin, text.data() + numberEnd, version);
     if (conversionError != std::errc{} || end != text.data() + numberEnd || version <= 0) {
         if (error)
             *error = "URK_SDK_VERSION is invalid in " + header.string();
@@ -239,7 +241,8 @@ bool InspectLegacyProject(const fs::path &root, Inspection *inspection, std::str
     const std::string deployDirectory = ExtractQuotedValue(cmake, "set(URK_DEPLOY_DIR");
     fs::path deployPath(deployDirectory);
     const bool literal = !deployDirectory.empty() && deployDirectory.find("${") == std::string::npos &&
-                         deployPath.is_absolute() && !deployPath.parent_path().empty() && !deployPath.filename().empty();
+                         deployPath.is_absolute() && !deployPath.parent_path().empty() &&
+                         !deployPath.filename().empty();
     std::string deployNotice;
     if (!literal) {
         // The path is computed in CMake (for example "${URK_DEFAULT_DEPLOY_DIR}") or missing. Projects made by URKit
@@ -420,8 +423,7 @@ bool Regenerate(const fs::path &root, const Manifest &manifest, std::string *err
 // The backend SDK folder is published as a whole directory by the generator, so every file
 // below it belongs to the generator, recorded in the ledger or not.
 bool IsGeneratorOwnedTree(const std::string &generic) {
-    return generic.starts_with("sdk/mono/") || generic.starts_with("sdk/il2cpp/") ||
-           generic.starts_with("sdk/unreal/");
+    return generic.starts_with("sdk/mono/") || generic.starts_with("sdk/il2cpp/") || generic.starts_with("sdk/unreal/");
 }
 
 bool IsEditableArea(const std::string &generic) {
@@ -473,7 +475,8 @@ void RemoveOrphanedCandidates(const fs::path &temporaryRoot) {
             continue;
         const size_t dash = name.find('-', 11);
         DWORD owner = 0;
-        const auto [last, parseError] = std::from_chars(name.data() + 11, name.data() + (dash == std::string::npos ? name.size() : dash), owner);
+        const auto [last, parseError] =
+            std::from_chars(name.data() + 11, name.data() + (dash == std::string::npos ? name.size() : dash), owner);
         (void)last;
         if (parseError != std::errc{} || owner == GetCurrentProcessId())
             continue;
@@ -508,9 +511,9 @@ bool BuildCandidate(const Inspection &inspection, std::shared_ptr<const Candidat
 #else
     const std::string owner = "0";
 #endif
-    const auto stamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-                           std::chrono::system_clock::now().time_since_epoch())
-                           .count();
+    const auto stamp =
+        std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     auto tree = std::make_shared<CandidateTree>(temporaryRoot / ("urk-update-" + owner + "-" + std::to_string(stamp)));
     fs::create_directories(tree->root(), ec);
     if (ec) {
@@ -739,9 +742,9 @@ class UpdateLock {
             return true;
         const DWORD code = GetLastError();
         if (error) {
-            *error = code == ERROR_SHARING_VIOLATION
-                         ? "another URKit update is running on this project"
-                         : "cannot lock the project for update: " + std::system_category().message(static_cast<int>(code));
+            *error = code == ERROR_SHARING_VIOLATION ? "another URKit update is running on this project"
+                                                     : "cannot lock the project for update: " +
+                                                           std::system_category().message(static_cast<int>(code));
         }
         return false;
     }
@@ -752,7 +755,9 @@ class UpdateLock {
 #else
 class UpdateLock {
   public:
-    bool Acquire(const fs::path &, std::string *) { return true; }
+    bool Acquire(const fs::path &, std::string *) {
+        return true;
+    }
 };
 #endif
 
@@ -825,10 +830,9 @@ bool RestoreBackup(const fs::path &root, const fs::path &backup, std::string *er
     std::string firstError;
     for (const BackupEntry &entry : entries) {
         std::string stepError;
-        const bool restored = entry.existed
-                                  ? InstallFile(backup / "files" / entry.relativePath, root / entry.relativePath,
-                                                &stepError)
-                                  : RemoveFile(root / entry.relativePath, &stepError);
+        const bool restored =
+            entry.existed ? InstallFile(backup / "files" / entry.relativePath, root / entry.relativePath, &stepError)
+                          : RemoveFile(root / entry.relativePath, &stepError);
         if (!restored && firstError.empty())
             firstError = stepError;
     }
@@ -1119,24 +1123,23 @@ bool PreviewUpdate(const fs::path &projectRoot, UpdatePreview *preview, std::str
                        ", backend " + BackendDisplayName(inspection.manifest.backend) + ", sdk/mod_sdk.h " +
                        (inspection.detectedSdkVersion > 0 ? "SDK " + std::to_string(inspection.detectedSdkVersion)
                                                           : std::string("missing")));
-    Emit(progress, "Ledgers: generated " +
-                       (inspection.hasGeneratedFileLedger
-                            ? std::to_string(inspection.generatedFileLedger.hashes.size()) + " files"
-                            : std::string("missing")) +
-                       ", editable " +
-                       (inspection.hasEditableFileLedger
-                            ? std::to_string(inspection.editableFileLedger.hashes.size()) + " files"
-                            : std::string("missing")));
+    Emit(progress,
+         "Ledgers: generated " +
+             (inspection.hasGeneratedFileLedger
+                  ? std::to_string(inspection.generatedFileLedger.hashes.size()) + " files"
+                  : std::string("missing")) +
+             ", editable " +
+             (inspection.hasEditableFileLedger ? std::to_string(inspection.editableFileLedger.hashes.size()) + " files"
+                                               : std::string("missing")));
 
     if (!BuildCandidate(inspection, &result.candidate, error, progress))
         return false;
-    if (!BuildPlan(inspection, *result.candidate, &result.changes, &result.editableBaselines,
-                   &result.reviewedTemplates, error, progress))
+    if (!BuildPlan(inspection, *result.candidate, &result.changes, &result.editableBaselines, &result.reviewedTemplates,
+                   error, progress))
         return false;
 
-    const bool hasWork = std::any_of(result.changes.begin(), result.changes.end(), [](const PlannedChange &change) {
-        return change.kind != ChangeKind::Review;
-    });
+    const bool hasWork = std::any_of(result.changes.begin(), result.changes.end(),
+                                     [](const PlannedChange &change) { return change.kind != ChangeKind::Review; });
     if (hasWork && !result.inspection.updateAvailable)
         result.inspection.notices.push_back("Same SDK version, but generated files differ from this release.");
     result.inspection.updateAvailable = result.inspection.updateAvailable || hasWork;
@@ -1251,13 +1254,13 @@ bool ApplyUpdate(const UpdatePreview &preview, const ApplyOptions &options, Upda
                                  kEditableFileLedgerRelativePath, kReviewedTemplateLedgerRelativePath})
         entries.push_back({metadata, PathExists(root / metadata)});
 
-    const int fromSdk = inspection.detectedSdkVersion > 0 ? inspection.detectedSdkVersion : inspection.manifest.sdkVersion;
+    const int fromSdk =
+        inspection.detectedSdkVersion > 0 ? inspection.detectedSdkVersion : inspection.manifest.sdkVersion;
     std::error_code ec;
     const fs::path backups = root / ".urk" / "backups";
     fs::create_directories(backups, ec);
-    const fs::path backup =
-        UniqueDirectory(backups, LocalStamp() + "-sdk" + std::to_string(fromSdk) + "-to-" +
-                                                   std::to_string(URK_SDK_VERSION));
+    const fs::path backup = UniqueDirectory(backups, LocalStamp() + "-sdk" + std::to_string(fromSdk) + "-to-" +
+                                                         std::to_string(URK_SDK_VERSION));
     fs::create_directories(backup / "files", ec);
     if (ec) {
         if (error)
@@ -1274,8 +1277,8 @@ bool ApplyUpdate(const UpdatePreview &preview, const ApplyOptions &options, Upda
     }
     if (!WriteBackupIndex(backup, fromSdk, entries, error))
         return false;
-    Emit(progress, "Backup: " + backup.lexically_relative(root).generic_string() + " (" + std::to_string(backedUp) +
-                       " files)");
+    Emit(progress,
+         "Backup: " + backup.lexically_relative(root).generic_string() + " (" + std::to_string(backedUp) + " files)");
     if (!WriteJournal(root, backup, error))
         return false;
     result->backupDirectory = backup;

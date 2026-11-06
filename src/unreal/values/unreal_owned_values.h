@@ -22,7 +22,8 @@ class OwnedValues {
     OwnedValues(const ObjectFinder &finder, const PropertyChain &chain, const PropertyValues &values,
                 const TypeQueries &types, EngineCalls &engine)
         : finder_(&finder), chain_(&chain), values_(&values), types_(&types), engine_(&engine),
-          containers_(finder, chain, values, engine, *this) {}
+          containers_(finder, chain, values, engine, *this) {
+    }
 
     // Reflection only; safe off the game thread.
     Ownership Classify(const PropertyInfo &info, int depth = 0) const;
@@ -42,9 +43,15 @@ class OwnedValues {
     // DefaultKeyFuncs equality; strings ignore case.
     bool Equal(const PropertyInfo &info, const std::uint8_t *a, const std::uint8_t *b, int depth = 0) const;
 
-    const std::string &Failure() const { return failure_; }
-    EngineCalls &Engine() { return *engine_; }
-    Containers &Stores() { return containers_; }
+    const std::string &Failure() const {
+        return failure_;
+    }
+    EngineCalls &Engine() {
+        return *engine_;
+    }
+    Containers &Stores() {
+        return containers_;
+    }
 
     // FScriptDelegate size from a reflected single-cast delegate; 0 if none.
     std::int32_t DelegateSize();

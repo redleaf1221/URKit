@@ -77,8 +77,7 @@ std::vector<Address> FindLiteral(const MemoryReader &reader, std::span<const Sca
 }
 
 // lea r64, [rip+disp32] instructions whose operand is one of targets.
-std::vector<std::pair<Address, std::size_t>> LeaReferences(const MemoryReader &reader,
-                                                           std::span<const ScanRegion> code,
+std::vector<std::pair<Address, std::size_t>> LeaReferences(const MemoryReader &reader, std::span<const ScanRegion> code,
                                                            const std::vector<Address> &targets) {
     std::vector<std::pair<Address, std::size_t>> sites;
     if (targets.empty())
@@ -111,16 +110,38 @@ std::vector<Address> CallsTo(const MemoryReader &reader, std::span<const ScanReg
 // Immediate bytes after a rip-relative operand, or -1 for other opcodes.
 int ImmediateAfter(std::uint8_t opcode) {
     switch (opcode) {
-    case 0x01: case 0x03: case 0x09: case 0x0B: case 0x21: case 0x23: case 0x29: case 0x2B:
-    case 0x31: case 0x33: case 0x38: case 0x39: case 0x3A: case 0x3B: case 0x85: case 0x87:
-    case 0x88: case 0x89: case 0x8A: case 0x8B: case 0x8D: case 0xFF:
-        return 0;
-    case 0x80: case 0x83: case 0xC6:
-        return 1;
-    case 0x81: case 0xC7:
-        return 4;
-    default:
-        return -1;
+        case 0x01:
+        case 0x03:
+        case 0x09:
+        case 0x0B:
+        case 0x21:
+        case 0x23:
+        case 0x29:
+        case 0x2B:
+        case 0x31:
+        case 0x33:
+        case 0x38:
+        case 0x39:
+        case 0x3A:
+        case 0x3B:
+        case 0x85:
+        case 0x87:
+        case 0x88:
+        case 0x89:
+        case 0x8A:
+        case 0x8B:
+        case 0x8D:
+        case 0xFF:
+            return 0;
+        case 0x80:
+        case 0x83:
+        case 0xC6:
+            return 1;
+        case 0x81:
+        case 0xC7:
+            return 4;
+        default:
+            return -1;
     }
 }
 

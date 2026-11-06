@@ -49,6 +49,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD reason, LPVOID reserved) {
             LoaderLifecycle_RequestStopFromDllMain();
             LoaderLifecycle_ReleaseProcessResourcesFromDllMain();
             break;
+        default:
+            break;
     }
 
     return TRUE;

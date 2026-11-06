@@ -59,10 +59,9 @@ std::optional<WorldLocation> FindWorldGlobal(const ObjectFinder &finder, const T
     if (counted.empty())
         return std::nullopt;
 
-    const auto best = std::max_element(counted.begin(), counted.end(),
-                                       [](const Counted &left, const Counted &right) {
-                                           return left.references < right.references;
-                                       });
+    const auto best = std::max_element(counted.begin(), counted.end(), [](const Counted &left, const Counted &right) {
+        return left.references < right.references;
+    });
     return WorldLocation{.global = best->global, .world = best->world, .references = best->references};
 }
 

@@ -48,7 +48,9 @@ class FunctionHooks {
     static FunctionHooks &Instance();
 
     // UStruct::SuperStruct, which leads an override to the function it overrides.
-    void SetSuperOffset(std::int32_t offset) { superOffset_.store(offset, std::memory_order_release); }
+    void SetSuperOffset(std::int32_t offset) {
+        superOffset_.store(offset, std::memory_order_release);
+    }
 
     // Zero when function is null or both callbacks are.
     std::uint64_t Add(Address function, Callback before, Callback after, void *user);

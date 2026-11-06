@@ -126,8 +126,8 @@ bool NativeCallHook::Prepare(const MemoryReader &reader, std::span<const ScanReg
     if (found.size() != 1) {
         failure_ = (found.empty() ? "GNatives was not found" : "more than one table looks like GNatives") +
                    std::string(" (") + std::to_string(runs) + " runs of " + std::to_string(kNativeCount) +
-                   " code pointers, " + std::to_string(ended) + " with execEndFunctionParms, " + std::to_string(empty) + " with execNothing, " +
-                   std::to_string(unreadable) + " unreadable windows)";
+                   " code pointers, " + std::to_string(ended) + " with execEndFunctionParms, " + std::to_string(empty) +
+                   " with execNothing, " + std::to_string(unreadable) + " unreadable windows)";
         return false;
     }
     natives_ = reinterpret_cast<const NativeFn *>(found.front());
@@ -199,7 +199,8 @@ bool NativeCallHook::Attach(std::shared_ptr<const FunctionInfo> info, std::strin
     if (note)
         *note = owner.empty() ? std::string()
                               : "its calls from Blueprint off the game thread (animation Blueprints) are not seen: "
-                                "parameter " + owner + " owns engine memory";
+                                "parameter " +
+                                    owner + " owns engine memory";
     const Address function = info->function;
     auto &slot = *reinterpret_cast<std::atomic<void *> *>(function + static_cast<Address>(funcOffset_));
     std::unique_ptr<Entry> &entry = entries_[function];
@@ -318,8 +319,8 @@ void NativeCallHook::Route(void *context, std::uint8_t *stack, void *result, Ent
         if (!out.home)
             continue;
         each(*out.parameter, [&](std::uint8_t *value, std::int32_t i) {
-            virtuals_->Copy(out.parameter->info, out.home + static_cast<std::size_t>(i) * out.parameter->info.elementSize,
-                            value);
+            virtuals_->Copy(out.parameter->info,
+                            out.home + static_cast<std::size_t>(i) * out.parameter->info.elementSize, value);
         });
     }
     if (const FunctionParameter *returned = info.Returned(); returned && result)

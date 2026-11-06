@@ -35,14 +35,14 @@ const RuntimeBackendDescriptor kUnavailableBackend{"Unavailable", false, RunUnav
 BackendResolution ResolveLoadedBackend() {
     const RuntimeModuleSnapshot snapshot = RuntimeDiscovery_Snapshot();
     switch (RuntimeDiscovery_SelectRuntime(snapshot)) {
-    case RuntimeModuleKind::Il2Cpp:
-        return {RuntimeBackend_Il2Cpp(), RuntimeDiscovery_RuntimeReason(snapshot)};
-    case RuntimeModuleKind::Mono:
-        return {RuntimeBackend_Mono(), RuntimeDiscovery_RuntimeReason(snapshot)};
-    case RuntimeModuleKind::Unreal:
-        return {RuntimeBackend_Unreal(), RuntimeDiscovery_RuntimeReason(snapshot)};
-    case RuntimeModuleKind::None:
-        return {kUnavailableBackend, RuntimeDiscovery_RuntimeReason(snapshot)};
+        case RuntimeModuleKind::Il2Cpp:
+            return {RuntimeBackend_Il2Cpp(), RuntimeDiscovery_RuntimeReason(snapshot)};
+        case RuntimeModuleKind::Mono:
+            return {RuntimeBackend_Mono(), RuntimeDiscovery_RuntimeReason(snapshot)};
+        case RuntimeModuleKind::Unreal:
+            return {RuntimeBackend_Unreal(), RuntimeDiscovery_RuntimeReason(snapshot)};
+        case RuntimeModuleKind::None:
+            return {kUnavailableBackend, RuntimeDiscovery_RuntimeReason(snapshot)};
     }
     return {kUnavailableBackend, "unknown runtime discovery state"};
 }

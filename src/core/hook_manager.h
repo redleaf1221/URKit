@@ -4,7 +4,7 @@
 
 int HookManager_Attach(void **original, void *detour, const URK_HookOptions *options);
 
-int HookManager_Detach(void **original, void *detour);
+int HookManager_Detach(void **original, const void *detour);
 
 // Detached hook count, or -1 when one could not be detached (keep the module loaded).
 int HookManager_DetachModule(void *module);

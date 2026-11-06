@@ -21,7 +21,9 @@ struct ClassOffsets {
     // UClass::ClassFlags (EClassFlags), just before ClassCastFlags.
     std::int32_t classFlags = kOffsetNotFound;
 
-    bool Resolved() const { return classDefaultObject != kOffsetNotFound; }
+    bool Resolved() const {
+        return classDefaultObject != kOffsetNotFound;
+    }
 };
 
 std::int32_t FindClassDefaultObjectOffset(const ObjectFinder &finder, const StructOffsets &structs);
@@ -30,7 +32,8 @@ ClassOffsets FindClassOffsets(const ObjectFinder &finder, const StructOffsets &s
 class TypeQueries {
   public:
     TypeQueries(const ObjectFinder &finder, const StructOffsets &structs, const ClassOffsets &classes)
-        : finder_(&finder), structs_(structs), classes_(classes) {}
+        : finder_(&finder), structs_(structs), classes_(classes) {
+    }
 
     Address SuperOf(Address structObject) const;
 
@@ -58,7 +61,9 @@ class TypeQueries {
     };
 
     std::vector<Address> InstancesOf(const InstanceQuery &query) const;
-    std::vector<Address> InstancesOf(Address classObject) const { return InstancesOf(InstanceQuery{classObject}); }
+    std::vector<Address> InstancesOf(Address classObject) const {
+        return InstancesOf(InstanceQuery{classObject});
+    }
 
     // Every class deriving from this one, itself excluded.
     std::vector<Address> SubclassesOf(Address classObject) const;

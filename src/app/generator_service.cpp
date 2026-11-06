@@ -56,8 +56,7 @@ std::string SizeText(std::uintmax_t bytes) {
 } // namespace
 
 std::string Lower(std::string value) {
-    std::ranges::transform(value, value.begin(),
-                   [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
+    std::ranges::transform(value, value.begin(), [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     return value;
 }
 
@@ -195,11 +194,10 @@ bool ResolveProjectOptions(ProjectOptions &options, std::string &error) {
         return false;
     }
 
-    options.projectName = ModProjectGenerator::Identifier(options.projectName, options.backend == "il2cpp"
-                                                                                   ? "GeneratedIl2CppMod"
-                                                                               : options.backend == "unreal"
-                                                                                   ? "GeneratedUnrealMod"
-                                                                                   : "GeneratedMod");
+    options.projectName =
+        ModProjectGenerator::Identifier(options.projectName, options.backend == "il2cpp"   ? "GeneratedIl2CppMod"
+                                                             : options.backend == "unreal" ? "GeneratedUnrealMod"
+                                                                                           : "GeneratedMod");
     options.exportRoot = (fs::path(options.gameDir) / "urk-sdk-output").lexically_normal().string();
     options.projectOut = (fs::path(options.exportRoot) / options.projectName / "project").lexically_normal().string();
     options.sdkOut = (fs::path(options.projectOut) / "sdk" / options.backend).string();
@@ -218,9 +216,9 @@ bool GenerateProject(const ProjectOptions &options, const LogSink &log, std::str
     }
 
     log(LogLevel::Info, "Game: " + options.gameExePath + " (x64)");
-    log(LogLevel::Info, std::string("Backend: ") + BackendDisplayName(options.backend) +
-                            (options.detectionEvidence.empty() ? " (selected)"
-                                                               : " (detected from " + options.detectionEvidence + ")"));
+    log(LogLevel::Info,
+        std::string("Backend: ") + BackendDisplayName(options.backend) +
+            (options.detectionEvidence.empty() ? " (selected)" : " (detected from " + options.detectionEvidence + ")"));
     log(LogLevel::Info, "SDK " + std::to_string(URK_SDK_VERSION) + ", runtime API " +
                             std::to_string(URK_RUNTIME_API_VERSION) + ", mono " + std::to_string(URK_MONO_API_VERSION) +
                             ", il2cpp " + std::to_string(URK_IL2CPP_API_VERSION) + ", unreal " +

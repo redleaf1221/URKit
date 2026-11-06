@@ -64,7 +64,9 @@ class FunctionTable {
   public:
     static FunctionTable Read(const MemoryReader &reader, std::span<const Address> modules);
 
-    bool Empty() const { return modules_.empty(); }
+    bool Empty() const {
+        return modules_.empty();
+    }
 
     // The entry holding address; a function split by the compiler has several.
     std::optional<FunctionRange> Containing(Address address) const;

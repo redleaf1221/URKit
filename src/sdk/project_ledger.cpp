@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
-#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -85,10 +84,10 @@ class Sha256 {
                            static_cast<std::uint32_t>(block[offset + 3]);
         }
         for (std::size_t index = 16; index < words.size(); ++index) {
-            const std::uint32_t lower0 = RotateRight(words[index - 15], 7) ^ RotateRight(words[index - 15], 18) ^
-                                         (words[index - 15] >> 3);
-            const std::uint32_t lower1 = RotateRight(words[index - 2], 17) ^ RotateRight(words[index - 2], 19) ^
-                                         (words[index - 2] >> 10);
+            const std::uint32_t lower0 =
+                RotateRight(words[index - 15], 7) ^ RotateRight(words[index - 15], 18) ^ (words[index - 15] >> 3);
+            const std::uint32_t lower1 =
+                RotateRight(words[index - 2], 17) ^ RotateRight(words[index - 2], 19) ^ (words[index - 2] >> 10);
             words[index] = words[index - 16] + lower0 + words[index - 7] + lower1;
         }
 
@@ -150,9 +149,9 @@ bool IsSafeRelativePath(const fs::path &path) {
 }
 
 bool IsSha256(const std::string &value) {
-    return value.size() == 64 && std::all_of(value.begin(), value.end(), [](unsigned char character) {
-        return (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f');
-    });
+    return value.size() == 64 && std::ranges::all_of(value, [](unsigned char character) {
+               return (character >= '0' && character <= '9') || (character >= 'a' && character <= 'f');
+           });
 }
 
 } // namespace
@@ -266,8 +265,9 @@ bool ReadLedgerAt(const fs::path &path, const char *label, GeneratedFileLedger *
 
 bool WriteLedgerAt(const fs::path &path, const char *label, const char *comment, int sdkVersion,
                    std::vector<std::pair<std::string, std::string>> entries, std::string *error) {
-    std::sort(entries.begin(), entries.end());
-    if (std::adjacent_find(entries.begin(), entries.end(), [](const auto &left, const auto &right) {
+    std::ranges::sort(entries);
+    if (std::ranges::adjacent_find(
+            entries, [](const auto &left, const auto &right) {
             return left.first == right.first;
         }) != entries.end()) {
         if (error)

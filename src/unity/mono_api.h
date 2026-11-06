@@ -192,9 +192,9 @@ bool Mono_Resolve(MonoApi &, int timeoutMs = 30000);
 
 void Mono_PublishDomain(MonoDomain *domain);
 MonoDomain *Mono_PublishedDomain();
-bool Mono_AttachCurrentThread(MonoApi &api, MonoDomain *domain, const char *purpose,
+bool Mono_AttachCurrentThread(const MonoApi &api, MonoDomain *domain, const char *purpose,
                               MonoThread **attachedThread = nullptr);
-void Mono_DetachThread(MonoApi &api, MonoThread *thread);
+void Mono_DetachThread(const MonoApi &api, MonoThread *thread);
 
 // Embedding calls must run on a Mono-attached thread.
 class MonoThreadScope {

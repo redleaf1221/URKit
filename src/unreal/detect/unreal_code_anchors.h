@@ -22,7 +22,9 @@ struct GlobalCandidates {
     // Set when the module could not be searched at all.
     const char *unsearched = nullptr;
 
-    bool Empty() const { return objectArrays.empty() && namePools.empty(); }
+    bool Empty() const {
+        return objectArrays.empty() && namePools.empty();
+    }
 };
 
 // GUObjectArray via "gc.MaxObjectsInGame", FNamePool via "ByteProperty" (4.25-5.8).

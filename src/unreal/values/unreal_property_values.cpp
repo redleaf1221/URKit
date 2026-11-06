@@ -182,72 +182,72 @@ template <typename T> std::optional<std::int64_t> ReadWidened(const MemoryReader
 
 const char *PropertyKindName(PropertyKind kind) {
     switch (kind) {
-    case PropertyKind::Bool:
-        return "bool";
-    case PropertyKind::Byte:
-        return "byte";
-    case PropertyKind::Int8:
-        return "int8";
-    case PropertyKind::Int16:
-        return "int16";
-    case PropertyKind::Int32:
-        return "int32";
-    case PropertyKind::Int64:
-        return "int64";
-    case PropertyKind::UInt16:
-        return "uint16";
-    case PropertyKind::UInt32:
-        return "uint32";
-    case PropertyKind::UInt64:
-        return "uint64";
-    case PropertyKind::Float:
-        return "float";
-    case PropertyKind::Double:
-        return "double";
-    case PropertyKind::Enum:
-        return "enum";
-    case PropertyKind::Name:
-        return "name";
-    case PropertyKind::String:
-        return "string";
-    case PropertyKind::Text:
-        return "text";
-    case PropertyKind::Object:
-        return "object";
-    case PropertyKind::Class:
-        return "class";
-    case PropertyKind::WeakObject:
-        return "weak object";
-    case PropertyKind::SoftObject:
-        return "soft object";
-    case PropertyKind::Interface:
-        return "interface";
-    case PropertyKind::Struct:
-        return "struct";
-    case PropertyKind::Array:
-        return "array";
-    case PropertyKind::Set:
-        return "set";
-    case PropertyKind::Map:
-        return "map";
-    case PropertyKind::Delegate:
-        return "delegate";
-    case PropertyKind::MulticastDelegate:
-        return "multicast delegate";
-    case PropertyKind::SparseDelegate:
-        return "sparse delegate";
-    case PropertyKind::LazyObject:
-        return "lazy object";
-    case PropertyKind::Utf8String:
-        return "utf8 string";
-    case PropertyKind::AnsiString:
-        return "ansi string";
-    case PropertyKind::FieldPath:
-        return "field path";
-    case PropertyKind::Optional:
-        return "optional";
-    case PropertyKind::Unknown:
-        break;
+        case PropertyKind::Bool:
+            return "bool";
+        case PropertyKind::Byte:
+            return "byte";
+        case PropertyKind::Int8:
+            return "int8";
+        case PropertyKind::Int16:
+            return "int16";
+        case PropertyKind::Int32:
+            return "int32";
+        case PropertyKind::Int64:
+            return "int64";
+        case PropertyKind::UInt16:
+            return "uint16";
+        case PropertyKind::UInt32:
+            return "uint32";
+        case PropertyKind::UInt64:
+            return "uint64";
+        case PropertyKind::Float:
+            return "float";
+        case PropertyKind::Double:
+            return "double";
+        case PropertyKind::Enum:
+            return "enum";
+        case PropertyKind::Name:
+            return "name";
+        case PropertyKind::String:
+            return "string";
+        case PropertyKind::Text:
+            return "text";
+        case PropertyKind::Object:
+            return "object";
+        case PropertyKind::Class:
+            return "class";
+        case PropertyKind::WeakObject:
+            return "weak object";
+        case PropertyKind::SoftObject:
+            return "soft object";
+        case PropertyKind::Interface:
+            return "interface";
+        case PropertyKind::Struct:
+            return "struct";
+        case PropertyKind::Array:
+            return "array";
+        case PropertyKind::Set:
+            return "set";
+        case PropertyKind::Map:
+            return "map";
+        case PropertyKind::Delegate:
+            return "delegate";
+        case PropertyKind::MulticastDelegate:
+            return "multicast delegate";
+        case PropertyKind::SparseDelegate:
+            return "sparse delegate";
+        case PropertyKind::LazyObject:
+            return "lazy object";
+        case PropertyKind::Utf8String:
+            return "utf8 string";
+        case PropertyKind::AnsiString:
+            return "ansi string";
+        case PropertyKind::FieldPath:
+            return "field path";
+        case PropertyKind::Optional:
+            return "optional";
+        case PropertyKind::Unknown:
+            break;
     }
     return "unknown";
 }
@@ -334,9 +334,8 @@ PropertyTailOffsets FindPropertyTailOffsets(const ObjectFinder &finder, const St
             }
         };
         check(samples.bools, "bool", [&](Address field) { return PlausibleBoolTail(reader, fields, field, offset); });
-        check(samples.objects, "object", [&](Address field) {
-            return PointsToObjectWithFlags(finder, structs, field, offset, kCastFlagClass);
-        });
+        check(samples.objects, "object",
+              [&](Address field) { return PointsToObjectWithFlags(finder, structs, field, offset, kCastFlagClass); });
         check(samples.structs, "struct", [&](Address field) {
             return PointsToObjectWithFlags(finder, structs, field, offset, kCastFlagScriptStruct);
         });
@@ -352,7 +351,9 @@ PropertyTailOffsets FindPropertyTailOffsets(const ObjectFinder &finder, const St
         resolved.failure.clear();
         resolved.tail = offset;
         resolved.arrayInner = FindArrayInnerOffset(reader, fields, samples.arrays, offset);
-        const auto property = [&](Address field, std::int32_t at) { return PointsToProperty(reader, fields, field, at); };
+        const auto property = [&](Address field, std::int32_t at) {
+            return PointsToProperty(reader, fields, field, at);
+        };
         resolved.setElement = FirstAgreeingOffset(samples.sets, offset, property);
         resolved.mapKey = FirstAgreeingOffset(samples.maps, offset, property);
         if (resolved.mapKey != kOffsetNotFound)
@@ -412,45 +413,45 @@ std::optional<PropertyInfo> PropertyValues::Describe(Address field) const {
         return reader_->ReadPointer(field + offset).value_or(kNullAddress);
     };
     switch (info.kind) {
-    case PropertyKind::Object:
-    case PropertyKind::Class:
-    case PropertyKind::WeakObject:
-    case PropertyKind::SoftObject:
-    case PropertyKind::LazyObject:
-    case PropertyKind::Interface:
-    case PropertyKind::Struct:
-        info.inner = pointerAt(tail_.firstPointer());
-        info.typeObject = info.inner;
-        break;
-    case PropertyKind::Enum:
-        info.inner = pointerAt(tail_.firstPointer());
-        info.typeObject = pointerAt(tail_.enumPropertyEnum);
-        break;
-    case PropertyKind::Byte:
-        // Where FEnumProperty keeps UnderlyingProp a byte keeps its UEnum; null for a plain byte.
-        info.typeObject = pointerAt(tail_.firstPointer());
-        break;
-    case PropertyKind::Delegate:
-    case PropertyKind::MulticastDelegate:
-    case PropertyKind::SparseDelegate:
-        info.typeObject = pointerAt(tail_.firstPointer());
-        break;
-    case PropertyKind::Array:
-        info.inner = pointerAt(tail_.arrayInner);
-        break;
-    case PropertyKind::Set:
-        info.inner = pointerAt(tail_.setElement);
-        break;
-    case PropertyKind::Map:
-        info.inner = pointerAt(tail_.mapKey);
-        info.valueInner = pointerAt(tail_.mapValue);
-        break;
-    case PropertyKind::Optional:
-        // FOptionalPropertyLayout::ValueProperty, right after FProperty (5.4's PDB).
-        info.inner = pointerAt(tail_.firstPointer());
-        break;
-    default:
-        break;
+        case PropertyKind::Object:
+        case PropertyKind::Class:
+        case PropertyKind::WeakObject:
+        case PropertyKind::SoftObject:
+        case PropertyKind::LazyObject:
+        case PropertyKind::Interface:
+        case PropertyKind::Struct:
+            info.inner = pointerAt(tail_.firstPointer());
+            info.typeObject = info.inner;
+            break;
+        case PropertyKind::Enum:
+            info.inner = pointerAt(tail_.firstPointer());
+            info.typeObject = pointerAt(tail_.enumPropertyEnum);
+            break;
+        case PropertyKind::Byte:
+            // Where FEnumProperty keeps UnderlyingProp a byte keeps its UEnum; null for a plain byte.
+            info.typeObject = pointerAt(tail_.firstPointer());
+            break;
+        case PropertyKind::Delegate:
+        case PropertyKind::MulticastDelegate:
+        case PropertyKind::SparseDelegate:
+            info.typeObject = pointerAt(tail_.firstPointer());
+            break;
+        case PropertyKind::Array:
+            info.inner = pointerAt(tail_.arrayInner);
+            break;
+        case PropertyKind::Set:
+            info.inner = pointerAt(tail_.setElement);
+            break;
+        case PropertyKind::Map:
+            info.inner = pointerAt(tail_.mapKey);
+            info.valueInner = pointerAt(tail_.mapValue);
+            break;
+        case PropertyKind::Optional:
+            // FOptionalPropertyLayout::ValueProperty, right after FProperty (5.4's PDB).
+            info.inner = pointerAt(tail_.firstPointer());
+            break;
+        default:
+            break;
     }
 
     return info;
@@ -467,36 +468,37 @@ Address PropertyValues::ValueAddress(Address instance, const PropertyInfo &info,
 
 std::int32_t PropertyValues::AlignmentOf(const PropertyInfo &info) const {
     switch (info.kind) {
-    case PropertyKind::Bool:
-    case PropertyKind::Byte:
-    case PropertyKind::Int8:
-    case PropertyKind::SparseDelegate:
-        return 1;
-    case PropertyKind::Int16:
-    case PropertyKind::UInt16:
-        return 2;
-    case PropertyKind::Int32:
-    case PropertyKind::UInt32:
-    case PropertyKind::Float:
-    case PropertyKind::Name:
-    case PropertyKind::WeakObject:
-    case PropertyKind::LazyObject:
-    case PropertyKind::Delegate:
-        return 4;
-    case PropertyKind::Enum:
-        return info.elementSize > 0 && info.elementSize <= 8 ? info.elementSize : 0;
-    case PropertyKind::Struct: {
-        if (structs_.minAlignment == kOffsetNotFound || info.inner == kNullAddress)
+        case PropertyKind::Bool:
+        case PropertyKind::Byte:
+        case PropertyKind::Int8:
+        case PropertyKind::SparseDelegate:
+            return 1;
+        case PropertyKind::Int16:
+        case PropertyKind::UInt16:
+            return 2;
+        case PropertyKind::Int32:
+        case PropertyKind::UInt32:
+        case PropertyKind::Float:
+        case PropertyKind::Name:
+        case PropertyKind::WeakObject:
+        case PropertyKind::LazyObject:
+        case PropertyKind::Delegate:
+            return 4;
+        case PropertyKind::Enum:
+            return info.elementSize > 0 && info.elementSize <= 8 ? info.elementSize : 0;
+        case PropertyKind::Struct: {
+            if (structs_.minAlignment == kOffsetNotFound || info.inner == kNullAddress)
+                return 0;
+            // int16 since UE5.x (int32 before; the low half is the same value).
+            const std::int32_t alignment =
+                reader_->ReadAs<std::int16_t>(info.inner + structs_.minAlignment).value_or(0);
+            return alignment > 0 && alignment <= 256 && (alignment & (alignment - 1)) == 0 ? alignment : 0;
+        }
+        case PropertyKind::Unknown:
+        case PropertyKind::Optional:
             return 0;
-        // int16 since UE5.x (int32 before; the low half is the same value).
-        const std::int32_t alignment = reader_->ReadAs<std::int16_t>(info.inner + structs_.minAlignment).value_or(0);
-        return alignment > 0 && alignment <= 256 && (alignment & (alignment - 1)) == 0 ? alignment : 0;
-    }
-    case PropertyKind::Unknown:
-    case PropertyKind::Optional:
-        return 0;
-    default:
-        return 8;
+        default:
+            return 8;
     }
 }
 
@@ -507,37 +509,37 @@ std::optional<std::int64_t> PropertyValues::ReadInteger(Address instance, const 
         return std::nullopt;
 
     switch (info.kind) {
-    case PropertyKind::Int8:
-        return ReadWidened<std::int8_t>(*reader_, value);
-    case PropertyKind::Byte:
-        return ReadWidened<std::uint8_t>(*reader_, value);
-    case PropertyKind::Int16:
-        return ReadWidened<std::int16_t>(*reader_, value);
-    case PropertyKind::UInt16:
-        return ReadWidened<std::uint16_t>(*reader_, value);
-    case PropertyKind::Int32:
-        return ReadWidened<std::int32_t>(*reader_, value);
-    case PropertyKind::UInt32:
-        return ReadWidened<std::uint32_t>(*reader_, value);
-    case PropertyKind::Int64:
-    case PropertyKind::UInt64:
-        return ReadWidened<std::int64_t>(*reader_, value);
-    case PropertyKind::Enum:
-        // An enum's width is its underlying property's.
-        switch (info.elementSize) {
-        case 1:
+        case PropertyKind::Int8:
+            return ReadWidened<std::int8_t>(*reader_, value);
+        case PropertyKind::Byte:
             return ReadWidened<std::uint8_t>(*reader_, value);
-        case 2:
+        case PropertyKind::Int16:
+            return ReadWidened<std::int16_t>(*reader_, value);
+        case PropertyKind::UInt16:
             return ReadWidened<std::uint16_t>(*reader_, value);
-        case 4:
+        case PropertyKind::Int32:
             return ReadWidened<std::int32_t>(*reader_, value);
-        case 8:
+        case PropertyKind::UInt32:
+            return ReadWidened<std::uint32_t>(*reader_, value);
+        case PropertyKind::Int64:
+        case PropertyKind::UInt64:
             return ReadWidened<std::int64_t>(*reader_, value);
+        case PropertyKind::Enum:
+            // An enum's width is its underlying property's.
+            switch (info.elementSize) {
+                case 1:
+                    return ReadWidened<std::uint8_t>(*reader_, value);
+                case 2:
+                    return ReadWidened<std::uint16_t>(*reader_, value);
+                case 4:
+                    return ReadWidened<std::int32_t>(*reader_, value);
+                case 8:
+                    return ReadWidened<std::int64_t>(*reader_, value);
+                default:
+                    return std::nullopt;
+            }
         default:
             return std::nullopt;
-        }
-    default:
-        return std::nullopt;
     }
 }
 
@@ -652,43 +654,43 @@ std::optional<ArrayView> PropertyValues::ReadArray(Address instance, const Prope
     return view;
 }
 
-bool PropertyValues::WriteInteger(MemoryWriter &writer, Address instance, const PropertyInfo &info,
-                                  std::int64_t value, std::int32_t index) const {
+bool PropertyValues::WriteInteger(MemoryWriter &writer, Address instance, const PropertyInfo &info, std::int64_t value,
+                                  std::int32_t index) const {
     const Address at = ValueAddress(instance, info, index);
     if (at == kNullAddress)
         return false;
 
     switch (info.kind) {
-    case PropertyKind::Int8:
-        return writer.WriteAs<std::int8_t>(at, static_cast<std::int8_t>(value));
-    case PropertyKind::Byte:
-        return writer.WriteAs<std::uint8_t>(at, static_cast<std::uint8_t>(value));
-    case PropertyKind::Int16:
-        return writer.WriteAs<std::int16_t>(at, static_cast<std::int16_t>(value));
-    case PropertyKind::UInt16:
-        return writer.WriteAs<std::uint16_t>(at, static_cast<std::uint16_t>(value));
-    case PropertyKind::Int32:
-        return writer.WriteAs<std::int32_t>(at, static_cast<std::int32_t>(value));
-    case PropertyKind::UInt32:
-        return writer.WriteAs<std::uint32_t>(at, static_cast<std::uint32_t>(value));
-    case PropertyKind::Int64:
-    case PropertyKind::UInt64:
-        return writer.WriteAs<std::int64_t>(at, value);
-    case PropertyKind::Enum:
-        switch (info.elementSize) {
-        case 1:
+        case PropertyKind::Int8:
+            return writer.WriteAs<std::int8_t>(at, static_cast<std::int8_t>(value));
+        case PropertyKind::Byte:
             return writer.WriteAs<std::uint8_t>(at, static_cast<std::uint8_t>(value));
-        case 2:
+        case PropertyKind::Int16:
+            return writer.WriteAs<std::int16_t>(at, static_cast<std::int16_t>(value));
+        case PropertyKind::UInt16:
             return writer.WriteAs<std::uint16_t>(at, static_cast<std::uint16_t>(value));
-        case 4:
+        case PropertyKind::Int32:
             return writer.WriteAs<std::int32_t>(at, static_cast<std::int32_t>(value));
-        case 8:
+        case PropertyKind::UInt32:
+            return writer.WriteAs<std::uint32_t>(at, static_cast<std::uint32_t>(value));
+        case PropertyKind::Int64:
+        case PropertyKind::UInt64:
             return writer.WriteAs<std::int64_t>(at, value);
+        case PropertyKind::Enum:
+            switch (info.elementSize) {
+                case 1:
+                    return writer.WriteAs<std::uint8_t>(at, static_cast<std::uint8_t>(value));
+                case 2:
+                    return writer.WriteAs<std::uint16_t>(at, static_cast<std::uint16_t>(value));
+                case 4:
+                    return writer.WriteAs<std::int32_t>(at, static_cast<std::int32_t>(value));
+                case 8:
+                    return writer.WriteAs<std::int64_t>(at, value);
+                default:
+                    return false;
+            }
         default:
             return false;
-        }
-    default:
-        return false;
     }
 }
 

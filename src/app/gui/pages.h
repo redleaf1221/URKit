@@ -33,12 +33,17 @@ struct ReleaseState;
 class Page : public wxScrolled<wxPanel> {
   public:
     Page(wxWindow *parent, MainFrame *frame, const wxString &title);
-    virtual void OnGameChanged() {}
-    virtual void OnProjectChanged() {}
-    virtual void OnShown() {}
+    virtual void OnGameChanged() {
+    }
+    virtual void OnProjectChanged() {
+    }
+    virtual void OnShown() {
+    }
 
   protected:
-    wxBoxSizer *Column() const { return column_; }
+    wxBoxSizer *Column() const {
+        return column_;
+    }
     MainFrame *frame_;
 
   private:

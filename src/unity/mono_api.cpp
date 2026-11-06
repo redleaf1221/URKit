@@ -6,9 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
-#include <cctype>
 #include <chrono>
-#include <cstring>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -48,7 +46,7 @@ void Mono_PublishDomain(MonoDomain *domain) {
 MonoDomain *Mono_PublishedDomain() {
     return g_publishedMonoDomain.load(std::memory_order_acquire);
 }
-bool Mono_AttachCurrentThread(MonoApi &api, MonoDomain *domain, const char *purpose, MonoThread **attachedThread) {
+bool Mono_AttachCurrentThread(const MonoApi &api, MonoDomain *domain, const char *purpose, MonoThread **attachedThread) {
     if (attachedThread)
         *attachedThread = nullptr;
     if (g_currentThreadUsesMono) {
@@ -78,7 +76,7 @@ bool Mono_AttachCurrentThread(MonoApi &api, MonoDomain *domain, const char *purp
     return thread != nullptr;
 }
 
-void Mono_DetachThread(MonoApi &api, MonoThread *thread) {
+void Mono_DetachThread(const MonoApi &api, MonoThread *thread) {
     if (!thread || !api.thread_detach)
         return;
 
@@ -740,7 +738,7 @@ void *MonoApi::CompileMethodSafe(MonoMethod *method, uint32_t *native_exception)
 }
 
 MonoObject *MonoApi::RuntimeInvokeSafe(MonoMethod *method, void *object, void **params, MonoObject **exception,
-                                        uint32_t *native_exception) const {
+                                       uint32_t *native_exception) const {
     if (exception)
         *exception = nullptr;
 

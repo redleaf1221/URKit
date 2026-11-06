@@ -6,5 +6,4 @@
 bool SteamIdentity_TryReadSteamId64(std::string *steamIdOut, std::string *diagnosticOut = nullptr);
 
 // Waits for late Steamworks init; don't call from the Unity main thread.
-bool SteamIdentity_WaitForSteamId64(unsigned timeoutMs, std::string *steamIdOut,
-                                    std::string *diagnosticOut = nullptr);
+bool SteamIdentity_WaitForSteamId64(unsigned timeoutMs, std::string *steamIdOut, std::string *diagnosticOut = nullptr);

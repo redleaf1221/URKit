@@ -2,7 +2,6 @@
 #include "hooks.h"
 #include "logger.h"
 #include "main_thread_dispatcher.h"
-#include "mod_api.h"
 #include "network_http.h"
 #include "runtime_events.h"
 #include "steam_identity.h"
@@ -10,7 +9,6 @@
 
 #include <cstdarg>
 #include <cstdio>
-#include <cstring>
 #include <intrin.h>
 #include <string>
 
@@ -40,8 +38,7 @@ int Ctx_HookDetachEx(void **o, void *d) {
 int Ctx_HookBackendAvailable(uint32_t backend) {
     return Hook_BackendAvailable(backend) ? 1 : 0;
 }
-URK_MidHookHandle *Ctx_MidHookAttach(void *target, URK_MidHookCallbackFn callback,
-                                     const URK_MidHookOptions *options) {
+URK_MidHookHandle *Ctx_MidHookAttach(void *target, URK_MidHookCallbackFn callback, const URK_MidHookOptions *options) {
     return Hook_MidAttach(target, callback, options);
 }
 int Ctx_MidHookDetach(URK_MidHookHandle *hook) {
@@ -85,9 +82,9 @@ int Runtime_SceneCurrent(URK_SceneInfo *scene) {
 
 HMODULE Runtime_OwnerModule(const void *ownerAddress) {
     HMODULE owner = nullptr;
-    if (!ownerAddress || !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-                                                GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                            reinterpret_cast<LPCSTR>(ownerAddress), &owner))
+    if (!ownerAddress ||
+        !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            static_cast<LPCSTR>(ownerAddress), &owner))
         return nullptr;
     return owner;
 }
@@ -155,59 +152,55 @@ int Runtime_IsMainThread() {
     return RuntimeEvents_IsMainThread();
 }
 
-const URK_RuntimeApi g_runtimeApi = {
-    URK_RUNTIME_API_VERSION,
-    sizeof(URK_RuntimeApi),
-    &Runtime_Backend,
-    &Runtime_Capabilities,
-    &Runtime_ModuleBase,
-    &Runtime_SceneCurrent,
-    &Runtime_MenuCursorSetOpen,
-    &Runtime_CursorStateGet,
-    &Runtime_CursorStateSet,
-    &Runtime_InputGetKey,
-    &Runtime_InputGetKeyDown,
-    &Runtime_InputGetKeyUp,
-    &Runtime_InputGetMouseButton,
-    &Runtime_InputGetMouseButtonDown,
-    &Runtime_InputGetMouseButtonUp,
-    &Runtime_GraphicsDeviceType,
-    &Runtime_SteamId64,
-    &WindowMessage_Register,
-    &WindowMessage_Unregister,
-    &WindowMessage_CallOriginal,
-    &Runtime_MenuCursorSetOpenOwned,
-    &Runtime_MenuMouseCaptureSetOwned,
-    &Runtime_IsMainThread,
+constexpr URK_RuntimeApi g_runtimeApi = {
+    .version = URK_RUNTIME_API_VERSION,
+    .size = sizeof(URK_RuntimeApi),
+    .backend = &Runtime_Backend,
+    .capabilities = &Runtime_Capabilities,
+    .module_base = &Runtime_ModuleBase,
+    .scene_current = &Runtime_SceneCurrent,
+    .menu_cursor_set_open = &Runtime_MenuCursorSetOpen,
+    .cursor_state_get = &Runtime_CursorStateGet,
+    .cursor_state_set = &Runtime_CursorStateSet,
+    .input_get_key = &Runtime_InputGetKey,
+    .input_get_key_down = &Runtime_InputGetKeyDown,
+    .input_get_key_up = &Runtime_InputGetKeyUp,
+    .input_get_mouse_button = &Runtime_InputGetMouseButton,
+    .input_get_mouse_button_down = &Runtime_InputGetMouseButtonDown,
+    .input_get_mouse_button_up = &Runtime_InputGetMouseButtonUp,
+    .graphics_device_type = &Runtime_GraphicsDeviceType,
+    .steam_id64 = &Runtime_SteamId64,
+    .window_message_register = &WindowMessage_Register,
+    .window_message_unregister = &WindowMessage_Unregister,
+    .window_message_call_original = &WindowMessage_CallOriginal,
+    .menu_cursor_set_open_owned = &Runtime_MenuCursorSetOpenOwned,
+    .menu_mouse_capture_set_owned = &Runtime_MenuMouseCaptureSetOwned,
+    .is_main_thread = &Runtime_IsMainThread,
 };
 
-const URK_NetworkApi g_networkApi = {
-    URK_NETWORK_API_VERSION,
-    sizeof(URK_NetworkApi),
-    &Ctx_NetworkJsonRequest,
+constexpr URK_NetworkApi g_networkApi = {
+    .version = URK_NETWORK_API_VERSION,
+    .size = sizeof(URK_NetworkApi),
+    .json_request = &Ctx_NetworkJsonRequest,
 };
 
-const URK_HookApi g_hookApi = {
-    URK_HOOK_API_VERSION,
-    sizeof(URK_HookApi),
-    &Ctx_MidHookAttach,
-    &Ctx_MidHookDetach,
-    &Ctx_MidHookSetEnabled,
+constexpr URK_HookApi g_hookApi = {
+    .version = URK_HOOK_API_VERSION, .size = sizeof(URK_HookApi), .mid_attach = &Ctx_MidHookAttach, .mid_detach = &Ctx_MidHookDetach, .mid_set_enabled = &Ctx_MidHookSetEnabled,
 };
 
 bool HasCompatibleUnrealApi(uint32_t runtimeBackend, const URK_UnrealApi *api) {
-    const size_t requiredSize = offsetof(URK_UnrealApi, post_to_game_thread) + sizeof(api->post_to_game_thread);
+    constexpr size_t requiredSize = offsetof(URK_UnrealApi, post_to_game_thread) + sizeof(api->post_to_game_thread);
     return runtimeBackend == URK_RUNTIME_BACKEND_UNREAL && api && api->version >= URK_UNREAL_API_VERSION &&
            api->size >= requiredSize && api->is_available && api->find_object && api->class_of && api->name_of &&
            api->describe_property && api->post_to_game_thread;
 }
 
 bool HasCompatibleIl2CppApi(uint32_t runtimeBackend, const URK_Il2CppApi *api) {
-    const size_t requiredSize = offsetof(URK_Il2CppApi, last_error) + sizeof(api->last_error);
+    constexpr size_t requiredSize = offsetof(URK_Il2CppApi, last_error) + sizeof(api->last_error);
     return runtimeBackend == URK_RUNTIME_BACKEND_IL2CPP && api && api->version >= URK_IL2CPP_API_VERSION &&
-           api->size >= requiredSize && api->is_available && api->is_available() && api->domain_get && api->find_image &&
-           api->find_class && api->find_method && api->find_method_exact && api->find_field && api->field_offset &&
-           api->runtime_invoke && api->last_error;
+           api->size >= requiredSize && api->is_available && api->is_available() && api->domain_get &&
+           api->find_image && api->find_class && api->find_method && api->find_method_exact && api->find_field &&
+           api->field_offset && api->runtime_invoke && api->last_error;
 }
 
 } // namespace

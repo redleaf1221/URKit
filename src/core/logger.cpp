@@ -2,7 +2,6 @@
 #include <cerrno>
 #include <cstdarg>
 #include <cstdio>
-#include <cstring>
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -78,22 +77,21 @@ static LogSeverity DetectLogSeverity(const char *message) {
         return LogSeverity::Error;
     if (HasSeverityTag(message, "[WARNING]") || HasSeverityTag(message, "[WARN]"))
         return LogSeverity::Warning;
-    if (HasSeverityTag(message, "[SUCCESS]") || HasSeverityTag(message, "[LOADED]") ||
-        HasSeverityTag(message, "[OK]"))
+    if (HasSeverityTag(message, "[SUCCESS]") || HasSeverityTag(message, "[LOADED]") || HasSeverityTag(message, "[OK]"))
         return LogSeverity::Success;
     return LogSeverity::Info;
 }
 
 static WORD ConsoleAttributesForSeverity(LogSeverity severity) {
     switch (severity) {
-    case LogSeverity::Error:
-        return FOREGROUND_RED | FOREGROUND_INTENSITY;
-    case LogSeverity::Warning:
-        return FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
-    case LogSeverity::Info:
-        return FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
-    case LogSeverity::Success:
-        return FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+        case LogSeverity::Error:
+            return FOREGROUND_RED | FOREGROUND_INTENSITY;
+        case LogSeverity::Warning:
+            return FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+        case LogSeverity::Info:
+            return FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+        case LogSeverity::Success:
+            return FOREGROUND_GREEN | FOREGROUND_INTENSITY;
     }
 
     return g_consoleDefaultAttributes;

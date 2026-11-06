@@ -59,7 +59,8 @@ int Unreal_PlaceReadInteger(const URK_UnrealPlace *place, std::int64_t *output) 
 }
 
 int Unreal_PlaceWriteInteger(const URK_UnrealPlace *place, std::int64_t value) {
-    return Changed(place, [&](Places &places, const PlaceTarget &target) { return places.WriteInteger(target, value); });
+    return Changed(place,
+                   [&](Places &places, const PlaceTarget &target) { return places.WriteInteger(target, value); });
 }
 
 int Unreal_PlaceReadFloating(const URK_UnrealPlace *place, double *output) {
@@ -82,7 +83,8 @@ int Unreal_PlaceReadBool(const URK_UnrealPlace *place, int *output) {
 }
 
 int Unreal_PlaceWriteBool(const URK_UnrealPlace *place, int value) {
-    return Changed(place, [&](Places &places, const PlaceTarget &target) { return places.WriteBool(target, value != 0); });
+    return Changed(place,
+                   [&](Places &places, const PlaceTarget &target) { return places.WriteBool(target, value != 0); });
 }
 
 URK_UnrealObject Unreal_PlaceReadObject(const URK_UnrealPlace *place) {
@@ -115,9 +117,8 @@ int Unreal_PlaceReadText(const URK_UnrealPlace *place, char *output, std::size_t
 
 int Unreal_PlaceWriteText(const URK_UnrealPlace *place, const char *utf8) {
     const bool gameThread = OnGameThread();
-    return Changed(place, [&](Places &places, const PlaceTarget &target) {
-        return places.WriteText(target, utf8, gameThread);
-    });
+    return Changed(
+        place, [&](Places &places, const PlaceTarget &target) { return places.WriteText(target, utf8, gameThread); });
 }
 
 int Unreal_PlaceReadBytes(const URK_UnrealPlace *place, void *output, std::size_t size) {

@@ -60,39 +60,73 @@ class UnrealEngine {
     bool RuledOut() const;
 
     // Why the last bootstrap attempt failed; empty until one has.
-    const char *LastFailure() const { return failure_.load(std::memory_order_acquire); }
+    const char *LastFailure() const {
+        return failure_.load(std::memory_order_acquire);
+    }
     // The failed step in detail, one finding per line. Costs a data scan: call once, on give-up.
     std::vector<std::string> ExplainFailure();
     // Why the code anchors made no pair; cheap, for a bootstrap the data scan rescued.
     std::vector<std::string> ExplainAnchors();
 
     bool Available() const;
-    const EngineVersion &Version() const { return version_; }
+    const EngineVersion &Version() const {
+        return version_;
+    }
     // Fills a version the resource lacks from engine code.
     void ResolveVersionFromCode(InstructionLength length);
     // Stable once Available().
-    const BootstrapProfile &Profile() const { return profile_; }
+    const BootstrapProfile &Profile() const {
+        return profile_;
+    }
 
-    const ProcessMemory &Reader() const { return memory_; }
+    const ProcessMemory &Reader() const {
+        return memory_;
+    }
     // Same memory as reads; constness is what keeps them apart.
-    ProcessMemory &Writer() { return memory_; }
-    const ObjectFinder &Finder() const { return *finder_; }
-    const PropertyChain &Chain() const { return *chain_; }
-    const PropertyValues &Values() const { return *values_; }
-    const TypeQueries &Types() const { return *types_; }
-    const StructOffsets &Structs() const { return structs_; }
-    const FieldOffsets &Fields() const { return fields_; }
-    const ClassOffsets &Classes() const { return classes_; }
-    const FunctionOffsets &Functions() const { return functions_; }
+    ProcessMemory &Writer() {
+        return memory_;
+    }
+    const ObjectFinder &Finder() const {
+        return *finder_;
+    }
+    const PropertyChain &Chain() const {
+        return *chain_;
+    }
+    const PropertyValues &Values() const {
+        return *values_;
+    }
+    const TypeQueries &Types() const {
+        return *types_;
+    }
+    const StructOffsets &Structs() const {
+        return structs_;
+    }
+    const FieldOffsets &Fields() const {
+        return fields_;
+    }
+    const ClassOffsets &Classes() const {
+        return classes_;
+    }
+    const FunctionOffsets &Functions() const {
+        return functions_;
+    }
     // Exact function bounds from the engine image's exception table.
-    const FunctionTable &Bounds() const { return functionTable_; }
+    const FunctionTable &Bounds() const {
+        return functionTable_;
+    }
 
     // Engine globals by name (GUObjectArray's objects, the name pool, ProcessEvent, UObject's vtable).
     std::vector<std::pair<std::string, Address>> Globals() const;
 
-    const ProcessEventLocation &ProcessEvent() const { return processEvent_; }
-    bool ProcessEventResolved() const { return processEvent_.Resolved(); }
-    const std::string &ProcessEventFailure() const { return processEventFailure_; }
+    const ProcessEventLocation &ProcessEvent() const {
+        return processEvent_;
+    }
+    bool ProcessEventResolved() const {
+        return processEvent_.Resolved();
+    }
+    const std::string &ProcessEventFailure() const {
+        return processEventFailure_;
+    }
 
   private:
     UnrealEngine() = default;

@@ -52,9 +52,7 @@ bool InvokeCallbackSafely(void (*callback)(), DWORD *exceptionCode) {
 std::uint32_t RecordCallbackResult(void (*callback)(), bool succeeded) {
     std::lock_guard lock(g_mainThreadMutex);
     const auto found = std::find_if(Callbacks().begin(), Callbacks().end(),
-                                    [callback](const MainThreadCallback &entry) {
-                                        return entry.callback == callback;
-                                    });
+                                    [callback](const MainThreadCallback &entry) { return entry.callback == callback; });
     if (found == Callbacks().end())
         return 0;
 
@@ -175,8 +173,7 @@ void MainThread_Drain() {
             } else if (faults != 0) {
                 Log("[mod][ERROR] MainThread callback=%p crashed with exception "
                     "0x%08lX; keeping it registered for recovery attempt %u/%u.",
-                    reinterpret_cast<void *>(entry.callback), exceptionCode, faults,
-                    kMaxConsecutiveCallbackFaults);
+                    reinterpret_cast<void *>(entry.callback), exceptionCode, faults, kMaxConsecutiveCallbackFaults);
             }
         }
     }

@@ -10,10 +10,7 @@
 #include <array>
 #include <cctype>
 #include <chrono>
-#include <cstddef>
 #include <cstdio>
-#include <cstring>
-#include <initializer_list>
 #include <limits>
 #include <mutex>
 #include <sstream>
@@ -32,8 +29,8 @@ constexpr std::int32_t kMaxManagedStringUtf16Units = 1024 * 1024;
 
 std::string JoinTypes(const char *const *types, int count);
 
-using URK::UnityNames::ImageNameMatches;
 using URK::UnityNames::BaseName;
+using URK::UnityNames::ImageNameMatches;
 using URK::UnityNames::ImageNameVariants;
 using URK::UnityNames::Lower;
 using URK::UnityNames::NormalizeTypeName;
@@ -97,7 +94,7 @@ __declspec(noinline) bool SehInvokeVoid(Function function, DWORD *exceptionCode,
 
 __declspec(noinline) int SehMethodPointerGet(const Il2CppMethod *method, void **target, DWORD *exceptionCode) {
     __try {
-        *target = *reinterpret_cast<void *const *>(method);
+        *target = *static_cast<void *const *>(method);
         return 1;
     } __except ((*exceptionCode = GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER)) {
         return 0;
@@ -299,7 +296,15 @@ struct PeExportRecord {
 };
 
 // ICF can fold several exports into one body; an alias is safe only when the x64 ABI classes match.
-enum class ExportAbiValue : std::uint8_t { Void, Gpr8, Gpr16, Gpr32, Gpr64, Floating32, Floating64 };
+enum class ExportAbiValue : std::uint8_t {
+    Void,
+    Gpr8,
+    Gpr16,
+    Gpr32,
+    Gpr64,
+    Floating32,
+    Floating64
+};
 
 struct ExportAbiSignature {
     static constexpr size_t kMaxArguments = 8;
@@ -310,8 +315,7 @@ struct ExportAbiSignature {
     bool operator==(const ExportAbiSignature &) const = default;
 };
 
-template <typename T>
-constexpr ExportAbiValue ExportAbiValueOf() {
+template <typename T> constexpr ExportAbiValue ExportAbiValueOf() {
     using Value = std::remove_cv_t<std::remove_reference_t<T>>;
     if constexpr (std::is_void_v<Value>)
         return ExportAbiValue::Void;
@@ -331,8 +335,7 @@ constexpr ExportAbiValue ExportAbiValueOf() {
         return ExportAbiValue::Gpr64;
 }
 
-template <typename Result, typename... Args>
-constexpr ExportAbiSignature ExportAbiOf(Result (*)(Args...)) {
+template <typename Result, typename... Args> constexpr ExportAbiSignature ExportAbiOf(Result (*)(Args...)) {
     static_assert(sizeof...(Args) <= ExportAbiSignature::kMaxArguments,
                   "extend ExportAbiSignature if an IL2CPP export takes more arguments");
     ExportAbiSignature signature{};
@@ -345,20 +348,20 @@ constexpr ExportAbiSignature ExportAbiOf(Result (*)(Args...)) {
 
 const char *ExportAbiValueName(ExportAbiValue value) {
     switch (value) {
-    case ExportAbiValue::Void:
-        return "void";
-    case ExportAbiValue::Gpr8:
-        return "gpr8";
-    case ExportAbiValue::Gpr16:
-        return "gpr16";
-    case ExportAbiValue::Gpr32:
-        return "gpr32";
-    case ExportAbiValue::Gpr64:
-        return "gpr64";
-    case ExportAbiValue::Floating32:
-        return "fp32";
-    case ExportAbiValue::Floating64:
-        return "fp64";
+        case ExportAbiValue::Void:
+            return "void";
+        case ExportAbiValue::Gpr8:
+            return "gpr8";
+        case ExportAbiValue::Gpr16:
+            return "gpr16";
+        case ExportAbiValue::Gpr32:
+            return "gpr32";
+        case ExportAbiValue::Gpr64:
+            return "gpr64";
+        case ExportAbiValue::Floating32:
+            return "fp32";
+        case ExportAbiValue::Floating64:
+            return "fp64";
     }
     return "unknown";
 }
@@ -487,8 +490,7 @@ class StrictIl2CppExportResolver {
 
             exports_.emplace(std::move(exportName),
                              PeExportRecord{reinterpret_cast<FARPROC>(const_cast<std::uint8_t *>(base + functionRva)),
-                                            functionRva,
-                                            static_cast<WORD>(exportDirectory.Base + functionIndex)});
+                                            functionRva, static_cast<WORD>(exportDirectory.Base + functionIndex)});
         }
         Log("[IL2CPP][EXPORT] Validated GameAssembly PE export table: imageSize=0x%lX names=%lu functions=%lu "
             "bindable=%zu skipped=%zu.",
@@ -502,8 +504,7 @@ class StrictIl2CppExportResolver {
     FARPROC BindExact(const char *name, ExportAbiSignature abi, Il2CppExportRequirement requirement, bool &ok) {
         const auto found = exports_.find(name ? name : "");
         if (found == exports_.end()) {
-            const Il2CppExportBindingDecision decision =
-                Il2CppExportPolicy_Decide(requirement, false, false);
+            const Il2CppExportBindingDecision decision = Il2CppExportPolicy_Decide(requirement, false, false);
             if (decision.failStartup) {
                 ok = false;
                 Log("[IL2CPP][ERROR] Required exact export GameAssembly.dll!%s is missing; no fallback will be used.",
@@ -519,17 +520,15 @@ class StrictIl2CppExportResolver {
         const PeExportRecord &record = found->second;
         const FARPROC win32Address = GetProcAddress(module_, name);
         if (win32Address != record.address) {
-            const Il2CppExportBindingDecision decision =
-                Il2CppExportPolicy_Decide(requirement, true, false);
+            const Il2CppExportBindingDecision decision = Il2CppExportPolicy_Decide(requirement, true, false);
             if (decision.failStartup)
                 ok = false;
             else
                 ++optionalUnavailable_;
-            Log(decision.failStartup
-                    ? "[IL2CPP][ERROR] Exact export mismatch for %s: PE=%p (RVA=0x%08lX ordinal=%hu) "
-                      "GetProcAddress=%p."
-                    : "[IL2CPP][WARNING] Optional exact export mismatch for %s: PE=%p "
-                      "(RVA=0x%08lX ordinal=%hu) GetProcAddress=%p; capability disabled.",
+            Log(decision.failStartup ? "[IL2CPP][ERROR] Exact export mismatch for %s: PE=%p (RVA=0x%08lX ordinal=%hu) "
+                                       "GetProcAddress=%p."
+                                     : "[IL2CPP][WARNING] Optional exact export mismatch for %s: PE=%p "
+                                       "(RVA=0x%08lX ordinal=%hu) GetProcAddress=%p; capability disabled.",
                 name, reinterpret_cast<void *>(record.address), static_cast<unsigned long>(record.rva), record.ordinal,
                 reinterpret_cast<void *>(win32Address));
             return nullptr;
@@ -538,17 +537,16 @@ class StrictIl2CppExportResolver {
         MEMORY_BASIC_INFORMATION memory{};
         HMODULE addressModule = nullptr;
         const auto targetAddress = reinterpret_cast<const void *>(reinterpret_cast<uintptr_t>(record.address));
-        const DWORD protection = VirtualQuery(targetAddress, &memory, sizeof(memory)) == sizeof(memory)
-                                     ? memory.Protect & 0xff
-                                     : 0;
+        const DWORD protection =
+            VirtualQuery(targetAddress, &memory, sizeof(memory)) == sizeof(memory) ? memory.Protect & 0xff : 0;
         const bool executable = protection == PAGE_EXECUTE || protection == PAGE_EXECUTE_READ ||
                                 protection == PAGE_EXECUTE_READWRITE || protection == PAGE_EXECUTE_WRITECOPY;
         if (memory.State != MEM_COMMIT || (memory.Protect & (PAGE_GUARD | PAGE_NOACCESS)) != 0 || !executable ||
             !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                 reinterpret_cast<LPCSTR>(reinterpret_cast<uintptr_t>(record.address)), &addressModule) ||
+                                reinterpret_cast<LPCSTR>(reinterpret_cast<uintptr_t>(record.address)),
+                                &addressModule) ||
             addressModule != module_) {
-            const Il2CppExportBindingDecision decision =
-                Il2CppExportPolicy_Decide(requirement, true, false);
+            const Il2CppExportBindingDecision decision = Il2CppExportPolicy_Decide(requirement, true, false);
             if (decision.failStartup)
                 ok = false;
             else
@@ -577,8 +575,8 @@ class StrictIl2CppExportResolver {
                 return record.address;
             }
             ++sharedExactTargets_;
-            Log("[IL2CPP][EXPORT] %s => %p RVA=0x%08lX ordinal=%hu exact=yes aliasOf=%s ABI=%s accepted=yes.",
-                name, reinterpret_cast<void *>(record.address), static_cast<unsigned long>(record.rva), record.ordinal,
+            Log("[IL2CPP][EXPORT] %s => %p RVA=0x%08lX ordinal=%hu exact=yes aliasOf=%s ABI=%s accepted=yes.", name,
+                reinterpret_cast<void *>(record.address), static_cast<unsigned long>(record.rva), record.ordinal,
                 duplicate->second.name.c_str(), ExportAbiName(abi).c_str());
             return record.address;
         }
@@ -589,9 +587,15 @@ class StrictIl2CppExportResolver {
         return record.address;
     }
 
-    const std::string &failure() const { return failure_; }
-    size_t optional_unavailable() const { return optionalUnavailable_; }
-    size_t shared_exact_targets() const { return sharedExactTargets_; }
+    const std::string &failure() const {
+        return failure_;
+    }
+    size_t optional_unavailable() const {
+        return optionalUnavailable_;
+    }
+    size_t shared_exact_targets() const {
+        return sharedExactTargets_;
+    }
 
   private:
     bool RangeInImage(size_t rva, size_t size) const {
@@ -750,8 +754,7 @@ class Il2CppThreadScope {
             return;
         }
         if (api_.il2cpp_thread_current) {
-            Il2CppThread *current = api_.il2cpp_thread_current();
-            if (current) {
+            if (Il2CppThread *current = api_.il2cpp_thread_current()) {
                 thread_ = current;
                 attached_ = true;
                 ++attach_depth_;
@@ -983,9 +986,8 @@ size_t Api_DomainAssemblyCount() {
     if (!a.ok())
         return 0;
     size_t c = 0;
-    return InvokeMetadata("il2cpp_domain_get_assemblies", g_api->il2cpp_domain_get_assemblies, g_api->Domain(), &c)
-               ? c
-               : 0;
+    return InvokeMetadata("il2cpp_domain_get_assemblies", g_api->il2cpp_domain_get_assemblies, g_api->Domain(), &c) ? c
+                                                                                                                    : 0;
 }
 const void *Api_DomainAssembly(size_t index) {
     if (!g_api || !g_api->MetadataAccessReady())
@@ -994,8 +996,7 @@ const void *Api_DomainAssembly(size_t index) {
     if (!a.ok())
         return nullptr;
     size_t c = 0;
-    auto as = InvokeMetadata("il2cpp_domain_get_assemblies", g_api->il2cpp_domain_get_assemblies, g_api->Domain(),
-                             &c);
+    auto as = InvokeMetadata("il2cpp_domain_get_assemblies", g_api->il2cpp_domain_get_assemblies, g_api->Domain(), &c);
     return as && index < c ? as[index] : nullptr;
 }
 const void *Api_AssemblyImage(const void *assembly) {
@@ -1030,17 +1031,17 @@ const void *Api_ImageClass(const void *image, size_t i) {
 const char *Api_ClassName(const void *k) {
     REQAPI(il2cpp_class_get_name, "IL2CPP: il2cpp_class_get_name unavailable", nullptr);
     ATTACHAPI(nullptr);
-    const char *name = k ? InvokeMetadata("il2cpp_class_get_name", g_api->il2cpp_class_get_name,
-                                          (Il2CppClass *)const_cast<void *>(k))
-                         : nullptr;
+    const char *name =
+        k ? InvokeMetadata("il2cpp_class_get_name", g_api->il2cpp_class_get_name, (Il2CppClass *)const_cast<void *>(k))
+          : nullptr;
     return name && ValidateMetadataCString(name, "il2cpp_class_get_name") ? name : nullptr;
 }
 const char *Api_ClassNamespace(const void *k) {
     REQAPI(il2cpp_class_get_namespace, "IL2CPP: il2cpp_class_get_namespace unavailable", nullptr);
     ATTACHAPI(nullptr);
     const char *namespc = k ? InvokeMetadata("il2cpp_class_get_namespace", g_api->il2cpp_class_get_namespace,
-                                              (Il2CppClass *)const_cast<void *>(k))
-                             : nullptr;
+                                             (Il2CppClass *)const_cast<void *>(k))
+                            : nullptr;
     return namespc && ValidateMetadataCString(namespc, "il2cpp_class_get_namespace") ? namespc : nullptr;
 }
 const void *Api_ClassParent(const void *k) {
@@ -1091,9 +1092,8 @@ const void *Api_ClassInterfaces(const void *k, void **it) {
 const char *Api_MethodName(const void *m) {
     REQAPI(il2cpp_method_get_name, "IL2CPP: il2cpp_method_get_name unavailable", nullptr);
     ATTACHAPI(nullptr);
-    const char *name = m ? InvokeMetadata("il2cpp_method_get_name", g_api->il2cpp_method_get_name,
-                                          (const Il2CppMethod *)m)
-                         : nullptr;
+    const char *name =
+        m ? InvokeMetadata("il2cpp_method_get_name", g_api->il2cpp_method_get_name, (const Il2CppMethod *)m) : nullptr;
     return name && ValidateMetadataCString(name, "il2cpp_method_get_name") ? name : nullptr;
 }
 const void *Api_MethodClass(const void *m) {
@@ -1394,8 +1394,7 @@ bool TryGetArrayLength(void *array, size_t *length, const char *operation) {
         }
         if (lengthOffset == 0 || lengthOffset % alignof(uintptr_t) != 0 ||
             (headerSize != 0 && lengthOffset + sizeof(uintptr_t) > headerSize)) {
-            SetError(std::string("IL2CPP: ") + operation +
-                     " failed: runtime reported an invalid array-length offset");
+            SetError(std::string("IL2CPP: ") + operation + " failed: runtime reported an invalid array-length offset");
             return false;
         }
 
@@ -1415,8 +1414,7 @@ bool TryGetArrayLength(void *array, size_t *length, const char *operation) {
         il2cpp_array_size_t rawLength = 0;
         if (!SehInvokeValue(g_api->il2cpp_array_length, &rawLength, &exceptionCode,
                             static_cast<Il2CppArray *>(array))) {
-            SetError(std::string("IL2CPP: ") + operation +
-                     " failed: il2cpp_array_length raised a native exception");
+            SetError(std::string("IL2CPP: ") + operation + " failed: il2cpp_array_length raised a native exception");
             return false;
         }
         if (length)
@@ -1509,8 +1507,7 @@ bool ValidateReferenceArray(void *array, const char *operation, Il2CppClass **ar
     }
     auto *elementClass = g_api->il2cpp_class_get_element_class(klass);
     if (!elementClass) {
-        SetError(std::string("IL2CPP: ") + operation +
-                 " failed: object class has no array element-class metadata");
+        SetError(std::string("IL2CPP: ") + operation + " failed: object class has no array element-class metadata");
         return false;
     }
     if (g_api->il2cpp_class_is_valuetype(elementClass)) {
@@ -1697,8 +1694,8 @@ Il2CppGCHandle Api_GcHandleNewV2(void *object, int pinned) {
     ATTACHAPI(0);
     Il2CppGCHandle handle = 0;
     DWORD exceptionCode = 0;
-    if (!SehInvokeValue(g_api->il2cpp_gchandle_new, &handle, &exceptionCode,
-                        static_cast<Il2CppObject *>(object), pinned != 0)) {
+    if (!SehInvokeValue(g_api->il2cpp_gchandle_new, &handle, &exceptionCode, static_cast<Il2CppObject *>(object),
+                        pinned != 0)) {
         SetError("IL2CPP: il2cpp_gchandle_new raised a native exception");
         return 0;
     }
@@ -2241,9 +2238,7 @@ const URK_Il2CppApi g_publicApi = [] {
             SetError("IL2CPP: string_new_utf16 rejected null input or an oversized string");
             return nullptr;
         }
-        return g_api && g_api->il2cpp_string_new_utf16
-                   ? g_api->il2cpp_string_new_utf16(text, length)
-                   : nullptr;
+        return g_api && g_api->il2cpp_string_new_utf16 ? g_api->il2cpp_string_new_utf16(text, length) : nullptr;
     };
     api.string_new_wrapper = &Api_StringNew;
     api.string_length = &Api_StringLengthSafe;
@@ -2595,11 +2590,10 @@ const URK_Il2CppApi g_publicApi = [] {
 } // namespace
 
 bool Il2CppApi::valid() const {
-    return exportsValidated && gameAssembly && il2cpp_domain_get && il2cpp_domain_get_assemblies && il2cpp_assembly_get_image &&
-           il2cpp_image_get_name && il2cpp_class_from_name && il2cpp_class_get_methods && il2cpp_method_get_name &&
-           il2cpp_method_get_param_count &&
-           il2cpp_method_get_param && il2cpp_type_get_name && il2cpp_class_get_field_from_name &&
-           il2cpp_field_get_offset;
+    return exportsValidated && gameAssembly && il2cpp_domain_get && il2cpp_domain_get_assemblies &&
+           il2cpp_assembly_get_image && il2cpp_image_get_name && il2cpp_class_from_name && il2cpp_class_get_methods &&
+           il2cpp_method_get_name && il2cpp_method_get_param_count && il2cpp_method_get_param && il2cpp_type_get_name &&
+           il2cpp_class_get_field_from_name && il2cpp_field_get_offset;
 }
 
 bool Il2CppApi::thread_attach_available() const {
@@ -2795,8 +2789,8 @@ const Il2CppImage *Il2CppApi::FindImage(const char *imageName) const {
             return cached;
     }
     size_t count = 0;
-    const Il2CppAssembly **assemblies =
-        InvokeMetadata("il2cpp_domain_get_assemblies during image lookup", il2cpp_domain_get_assemblies, domain, &count);
+    const Il2CppAssembly **assemblies = InvokeMetadata("il2cpp_domain_get_assemblies during image lookup",
+                                                       il2cpp_domain_get_assemblies, domain, &count);
     if (!assemblies) {
         SetError(std::string("IL2CPP: assembly list unavailable during image "
                              "lookup: requested=\"") +
@@ -2805,11 +2799,10 @@ const Il2CppImage *Il2CppApi::FindImage(const char *imageName) const {
     }
     const auto requestedVariants = ImageNameVariants(imageName);
     for (size_t i = 0; i < count; ++i) {
-        const Il2CppImage *image = InvokeMetadata("il2cpp_assembly_get_image during image lookup",
-                                                   il2cpp_assembly_get_image, assemblies[i]);
-        const char *actualName = image ? InvokeMetadata("il2cpp_image_get_name during image lookup",
-                                                         il2cpp_image_get_name, image)
-                                       : nullptr;
+        const Il2CppImage *image =
+            InvokeMetadata("il2cpp_assembly_get_image during image lookup", il2cpp_assembly_get_image, assemblies[i]);
+        const char *actualName =
+            image ? InvokeMetadata("il2cpp_image_get_name during image lookup", il2cpp_image_get_name, image) : nullptr;
         if (image && ValidateMetadataCString(actualName, "il2cpp_image_get_name") &&
             ImageNameMatches(requestedVariants, actualName)) {
             std::scoped_lock lock(g_il2cppLookupCacheMutex);
@@ -2837,8 +2830,8 @@ Il2CppClass *Il2CppApi::FindClass(const char *imageName, const char *namespc, co
                 return cached;
         }
         const Il2CppImage *image = FindImage(imageName);
-        Il2CppClass *klass = image ? InvokeMetadata("il2cpp_class_from_name during class lookup", il2cpp_class_from_name,
-                                                     image, namespc ? namespc : "", name)
+        Il2CppClass *klass = image ? InvokeMetadata("il2cpp_class_from_name during class lookup",
+                                                    il2cpp_class_from_name, image, namespc ? namespc : "", name)
                                    : nullptr;
         if (klass) {
             std::scoped_lock lock(g_il2cppLookupCacheMutex);
@@ -2869,8 +2862,8 @@ Il2CppClass *Il2CppApi::FindClass(const char *imageName, const char *namespc, co
         return nullptr;
     }
     size_t count = 0;
-    const Il2CppAssembly **assemblies = InvokeMetadata(
-        "il2cpp_domain_get_assemblies during unqualified class lookup", il2cpp_domain_get_assemblies, domain, &count);
+    const Il2CppAssembly **assemblies = InvokeMetadata("il2cpp_domain_get_assemblies during unqualified class lookup",
+                                                       il2cpp_domain_get_assemblies, domain, &count);
     if (!assemblies) {
         SetError(std::string("IL2CPP: assembly list unavailable during unqualified class lookup: requested=\"") +
                  (namespc ? namespc : "") + "." + name + "\"");
@@ -2878,11 +2871,10 @@ Il2CppClass *Il2CppApi::FindClass(const char *imageName, const char *namespc, co
     }
     for (size_t i = 0; i < count; ++i) {
         const Il2CppImage *candidate = InvokeMetadata("il2cpp_assembly_get_image during unqualified class lookup",
-                                                       il2cpp_assembly_get_image, assemblies[i]);
-        Il2CppClass *klass =
-            candidate ? InvokeMetadata("il2cpp_class_from_name during unqualified class lookup", il2cpp_class_from_name,
-                                       candidate, namespc ? namespc : "", name)
-                      : nullptr;
+                                                      il2cpp_assembly_get_image, assemblies[i]);
+        Il2CppClass *klass = candidate ? InvokeMetadata("il2cpp_class_from_name during unqualified class lookup",
+                                                        il2cpp_class_from_name, candidate, namespc ? namespc : "", name)
+                                       : nullptr;
         if (klass) {
             std::scoped_lock lock(g_il2cppLookupCacheMutex);
             g_il2cppLookupCaches.classes[cacheKey] = klass;
@@ -2914,16 +2906,15 @@ const Il2CppMethod *Il2CppApi::FindMethod(Il2CppClass *klass, const char *name, 
         const Il2CppMethod *match = nullptr;
         size_t candidateCount = 0;
         void *iterator = nullptr;
-        while (const Il2CppMethod *candidate =
-                   InvokeMetadata("il2cpp_class_get_methods during method lookup", il2cpp_class_get_methods, current,
-                                  &iterator)) {
+        while (const Il2CppMethod *candidate = InvokeMetadata("il2cpp_class_get_methods during method lookup",
+                                                              il2cpp_class_get_methods, current, &iterator)) {
             const char *candidateName =
                 InvokeMetadata("il2cpp_method_get_name during method lookup", il2cpp_method_get_name, candidate);
             if (candidateName && !ValidateMetadataCString(candidateName, "il2cpp_method_get_name"))
                 return nullptr;
             if (!candidateName || std::strcmp(candidateName, name) != 0 ||
                 static_cast<int>(InvokeMetadata("il2cpp_method_get_param_count during method lookup",
-                                                 il2cpp_method_get_param_count, candidate)) != argc) {
+                                                il2cpp_method_get_param_count, candidate)) != argc) {
                 continue;
             }
             ++candidateCount;
@@ -2931,8 +2922,8 @@ const Il2CppMethod *Il2CppApi::FindMethod(Il2CppClass *klass, const char *name, 
                 match = candidate;
         }
         if (candidateCount > 1) {
-            SetError(std::string("IL2CPP: ambiguous method lookup: method=\"") + name + "\" argc=" +
-                     std::to_string(argc) + " requestedClass=" + PtrString(klass) +
+            SetError(std::string("IL2CPP: ambiguous method lookup: method=\"") + name +
+                     "\" argc=" + std::to_string(argc) + " requestedClass=" + PtrString(klass) +
                      " declaringClass=" + PtrString(current) + " candidates=" + std::to_string(candidateCount) +
                      "; use find_method_exact with parameter type names");
             return nullptr;
@@ -2973,9 +2964,8 @@ const Il2CppMethod *Il2CppApi::FindMethodExact(Il2CppClass *klass, const char *n
     Il2CppClass *current = klass;
     while (current) {
         void *iter = nullptr;
-        while (const Il2CppMethod *method =
-                   InvokeMetadata("il2cpp_class_get_methods during exact method lookup", il2cpp_class_get_methods,
-                                  current, &iter)) {
+        while (const Il2CppMethod *method = InvokeMetadata("il2cpp_class_get_methods during exact method lookup",
+                                                           il2cpp_class_get_methods, current, &iter)) {
             const char *methodName =
                 InvokeMetadata("il2cpp_method_get_name during exact method lookup", il2cpp_method_get_name, method);
             if (methodName && !ValidateMetadataCString(methodName, "il2cpp_method_get_name"))
@@ -2983,14 +2973,14 @@ const Il2CppMethod *Il2CppApi::FindMethodExact(Il2CppClass *klass, const char *n
             if (!methodName || std::strcmp(methodName, name) != 0)
                 continue;
             if (static_cast<int>(InvokeMetadata("il2cpp_method_get_param_count during exact method lookup",
-                                                 il2cpp_method_get_param_count, method)) != parameterCount)
+                                                il2cpp_method_get_param_count, method)) != parameterCount)
                 continue;
             ++sameArity;
             bool same = true;
             for (int i = 0; i < parameterCount; ++i) {
                 const std::string actual =
                     TypeName(*this, InvokeMetadata("il2cpp_method_get_param during exact method lookup",
-                                                    il2cpp_method_get_param, method, static_cast<uint32_t>(i)));
+                                                   il2cpp_method_get_param, method, static_cast<uint32_t>(i)));
                 if (!TypeNameMatches(actual, parameterTypes[i])) {
                     if (firstMismatch.empty()) {
                         firstMismatch = std::string(" first mismatch: param=") + std::to_string(i) + " requested=\"" +
@@ -3016,8 +3006,8 @@ const Il2CppMethod *Il2CppApi::FindMethodExact(Il2CppClass *klass, const char *n
         }
         if (!il2cpp_class_get_parent)
             break;
-        current = InvokeMetadata("il2cpp_class_get_parent during exact method lookup", il2cpp_class_get_parent,
-                                 current);
+        current =
+            InvokeMetadata("il2cpp_class_get_parent during exact method lookup", il2cpp_class_get_parent, current);
     }
     if (!match) {
         SetError(std::string("IL2CPP: exact overload not found: method=\"") + name + "\" params=[" +
@@ -3044,9 +3034,8 @@ Il2CppClassField *Il2CppApi::FindField(Il2CppClass *klass, const char *name) con
         if (TryGetCached(g_il2cppLookupCaches.fields, cacheKey, cached))
             return cached;
     }
-    Il2CppClassField *field =
-        InvokeMetadata("il2cpp_class_get_field_from_name during field lookup", il2cpp_class_get_field_from_name, klass,
-                       name);
+    Il2CppClassField *field = InvokeMetadata("il2cpp_class_get_field_from_name during field lookup",
+                                             il2cpp_class_get_field_from_name, klass, name);
     if (field) {
         std::scoped_lock lock(g_il2cppLookupCacheMutex);
         g_il2cppLookupCaches.fields[cacheKey] = field;
@@ -3106,7 +3095,8 @@ bool Il2CppApi::WaitForMetadataAccess(std::chrono::milliseconds timeout, std::ch
             if (now - firstDomainSeen >= kDomainSettle) {
                 Il2CppThreadScope attach(*this);
                 if (attach.ok()) {
-                    MetadataAssemblyProbeResult probe = ProbeMetadataAssemblies(*this, domain, "during metadata readiness");
+                    MetadataAssemblyProbeResult probe =
+                        ProbeMetadataAssemblies(*this, domain, "during metadata readiness");
                     if (probe.ok) {
                         cachedDomain = domain;
                         metadataReady = true;
@@ -3152,9 +3142,8 @@ bool Il2CppApi::TryAssemblyCount(size_t &count) const {
     Il2CppDomain *domain = Domain();
     if (!domain)
         return false;
-    const Il2CppAssembly **assemblies =
-        InvokeMetadata("il2cpp_domain_get_assemblies during assembly count", il2cpp_domain_get_assemblies, domain,
-                       &count);
+    const Il2CppAssembly **assemblies = InvokeMetadata("il2cpp_domain_get_assemblies during assembly count",
+                                                       il2cpp_domain_get_assemblies, domain, &count);
     return assemblies != nullptr;
 }
 
@@ -3185,7 +3174,7 @@ bool Il2Cpp_BindExports(Il2CppApi &api, int timeoutMs) {
     }
 
     bool ok = true;
-#define BIND(name)                                                                                                    \
+#define BIND(name)                                                                                                     \
     api.name = reinterpret_cast<name##_t>(                                                                             \
         resolver.BindExact(#name, ExportAbiOf(name##_t{}), Il2CppExportRequirement::Required, ok))
     BIND(il2cpp_domain_get);
@@ -3201,7 +3190,7 @@ bool Il2Cpp_BindExports(Il2CppApi &api, int timeoutMs) {
     BIND(il2cpp_class_get_field_from_name);
     BIND(il2cpp_field_get_offset);
 #undef BIND
-#define BIND_OPTIONAL(name)                                                                                           \
+#define BIND_OPTIONAL(name)                                                                                            \
     api.name = reinterpret_cast<name##_t>(                                                                             \
         resolver.BindExact(#name, ExportAbiOf(name##_t{}), Il2CppExportRequirement::Optional, ok))
     // lifecycle / config

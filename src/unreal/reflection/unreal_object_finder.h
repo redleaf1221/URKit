@@ -41,15 +41,24 @@ class ObjectFinder {
     // As above, with the outer given as an address (the SDK's find_function).
     Address FindInOuter(std::string_view name, Address outer) const;
 
-    const MemoryReader &Reader() const { return objects_->Reader(); }
-    const ObjectArray &Objects() const { return *objects_; }
-    const NameTable &Names() const { return *names_; }
-    const ObjectOffsets &Offsets() const { return offsets_; }
+    const MemoryReader &Reader() const {
+        return objects_->Reader();
+    }
+    const ObjectArray &Objects() const {
+        return *objects_;
+    }
+    const NameTable &Names() const {
+        return *names_;
+    }
+    const ObjectOffsets &Offsets() const {
+        return offsets_;
+    }
     std::size_t IndexedCount() const;
 
   private:
     ObjectFinder(const ObjectArray &objects, const NameTable &names, const ObjectOffsets &offsets)
-        : objects_(&objects), names_(&names), offsets_(offsets) {}
+        : objects_(&objects), names_(&names), offsets_(offsets) {
+    }
 
     struct Index {
         std::mutex mutex;

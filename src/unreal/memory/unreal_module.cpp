@@ -7,8 +7,8 @@ namespace URK::Unreal {
 namespace {
 
 // PE fields spelled out: the image may be another process's or synthetic.
-constexpr std::uint16_t kDosSignature = 0x5A4D;      // "MZ"
-constexpr std::uint32_t kNtSignature = 0x00004550;   // "PE\0\0"
+constexpr std::uint16_t kDosSignature = 0x5A4D;    // "MZ"
+constexpr std::uint32_t kNtSignature = 0x00004550; // "PE\0\0"
 constexpr std::uint16_t kPe32PlusMagic = 0x20B;
 
 constexpr Address kLfanewOffset = 0x3C;
@@ -101,11 +101,17 @@ constexpr int kMaxChainDepth = 32;
 
 } // namespace
 
-bool ModuleSection::Readable() const { return (characteristics & kSectionRead) != 0; }
+bool ModuleSection::Readable() const {
+    return (characteristics & kSectionRead) != 0;
+}
 
-bool ModuleSection::Executable() const { return (characteristics & kSectionExecute) != 0; }
+bool ModuleSection::Executable() const {
+    return (characteristics & kSectionExecute) != 0;
+}
 
-bool ModuleSection::Writable() const { return (characteristics & kSectionWrite) != 0; }
+bool ModuleSection::Writable() const {
+    return (characteristics & kSectionWrite) != 0;
+}
 
 bool ModuleSection::HoldsData() const {
     return (characteristics & (kSectionInitializedData | kSectionUninitializedData)) != 0;
@@ -131,8 +137,7 @@ std::vector<ModuleSection> ReadModuleSections(const MemoryReader &reader, Addres
         const std::optional<std::uint32_t> virtualSize = reader.ReadUInt32(header + kSectionVirtualSizeOffset);
         const std::optional<std::uint32_t> virtualAddress = reader.ReadUInt32(header + kSectionVirtualAddressOffset);
         const std::optional<std::uint32_t> rawSize = reader.ReadUInt32(header + kSectionRawSizeOffset);
-        const std::optional<std::uint32_t> characteristics =
-            reader.ReadUInt32(header + kSectionCharacteristicsOffset);
+        const std::optional<std::uint32_t> characteristics = reader.ReadUInt32(header + kSectionCharacteristicsOffset);
         if (!virtualSize || !virtualAddress || !rawSize || !characteristics)
             break;
 
@@ -222,10 +227,8 @@ FunctionTable FunctionTable::Read(const MemoryReader &reader, std::span<const Ad
             continue;
         if (static_cast<std::uint64_t>(*rva) + *size > *imageSize)
             continue;
-        table.modules_.push_back(Module{.base = base,
-                                        .imageEnd = base + *imageSize,
-                                        .table = base + *rva,
-                                        .count = *size / kRuntimeFunctionSize});
+        table.modules_.push_back(Module{
+            .base = base, .imageEnd = base + *imageSize, .table = base + *rva, .count = *size / kRuntimeFunctionSize});
     }
     return table;
 }

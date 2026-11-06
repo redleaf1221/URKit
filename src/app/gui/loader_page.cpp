@@ -131,8 +131,7 @@ LoaderPage::LoaderPage(wxWindow *parent, MainFrame *frame) : Page(parent, frame,
         refresh->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { RefreshProcesses(); });
         injectSelected_->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { InjectSelected(); });
         processes_->Bind(wxEVT_LIST_ITEM_ACTIVATED, [this](wxListEvent &) { InjectSelected(); });
-        processes_->Bind(wxEVT_LIST_ITEM_SELECTED,
-                         [this](wxListEvent &) { injectSelected_->Enable(!frame_->Busy()); });
+        processes_->Bind(wxEVT_LIST_ITEM_SELECTED, [this](wxListEvent &) { injectSelected_->Enable(!frame_->Busy()); });
         processes_->Bind(wxEVT_SIZE, [this](wxSizeEvent &event) {
             event.Skip();
             CallAfter([this] {
@@ -243,8 +242,8 @@ void LoaderPage::RefreshProxy() {
     } else {
         install_->SetLabel("Install");
         install_->Show();
-        proxyStatus_->Set(StatusCard::Tone::Neutral, "Not installed",
-                          "Copies " + selected + " into the game folder.", Theme::Icon::kLink);
+        proxyStatus_->Set(StatusCard::Tone::Neutral, "Not installed", "Copies " + selected + " into the game folder.",
+                          Theme::Icon::kLink);
     }
     proxyStatus_->Refit();
 }
@@ -261,8 +260,9 @@ void LoaderPage::RefreshInjector() {
     } else if (gameProcess_ && gameProcess_->urkitLoaded) {
         injectStatus_->Set(StatusCard::Tone::Success, "URKit is running", "Loaded into " + name + ".");
     } else if (gameProcess_ && auto_->GetValue() && pendingPid_ == gameProcess_->pid) {
-        injectStatus_->Set(StatusCard::Tone::Busy, name + " started",
-                           wxString::Format("Injecting in %d s.", std::max(1, kAutoInjectDelaySeconds - pendingTicks_)));
+        injectStatus_->Set(
+            StatusCard::Tone::Busy, name + " started",
+            wxString::Format("Injecting in %d s.", std::max(1, kAutoInjectDelaySeconds - pendingTicks_)));
     } else if (gameProcess_) {
         injectStatus_->Set(StatusCard::Tone::Info, name + " is running", "Inject URKit now.", Theme::Icon::kPlay);
         showInject = true;
@@ -418,8 +418,8 @@ void LoaderPage::OnTimer(wxTimerEvent &) {
     const std::optional<UrkApp::ProcessInfo> previous = gameProcess_;
     RefreshGame();
     const bool changed = previous.has_value() != gameProcess_.has_value() ||
-                         (previous && gameProcess_ && (previous->pid != gameProcess_->pid ||
-                                                       previous->urkitLoaded != gameProcess_->urkitLoaded));
+                         (previous && gameProcess_ &&
+                          (previous->pid != gameProcess_->pid || previous->urkitLoaded != gameProcess_->urkitLoaded));
     if (injector && auto_->GetValue() && gameProcess_ && !gameProcess_->urkitLoaded &&
         gameProcess_->pid != autoInjectedPid_) {
         if (pendingPid_ != gameProcess_->pid) {

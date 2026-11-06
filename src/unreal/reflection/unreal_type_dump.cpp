@@ -61,8 +61,8 @@ std::string ElementShape(const ObjectFinder &finder, const PropertyValues &value
     if (!info)
         return "unknown|0||";
     const Named type = TypeOf(finder, *info);
-    return std::string(PropertyKindName(info->kind)) + '|' + std::to_string(info->elementSize) + '|' + type.name +
-           '|' + type.package;
+    return std::string(PropertyKindName(info->kind)) + '|' + std::to_string(info->elementSize) + '|' + type.name + '|' +
+           type.package;
 }
 
 // Closes a shape line: element shapes of an array or set (one) or a map (two).
@@ -86,8 +86,8 @@ void WriteShape(std::ostringstream &out, const ObjectFinder &finder, const Prope
 void WriteMember(std::ostringstream &out, const ObjectFinder &finder, const PropertyValues &values,
                  const PropertyInfo &info) {
     WriteShapeOpen(out, finder, info);
-    out << '\t' << (info.Resolved() ? info.offset : -1) << '\t' << static_cast<int>(info.boolLayout.byteOffset)
-        << '\t' << static_cast<int>(info.boolLayout.byteMask) << '\t' << static_cast<int>(info.boolLayout.fieldMask);
+    out << '\t' << (info.Resolved() ? info.offset : -1) << '\t' << static_cast<int>(info.boolLayout.byteOffset) << '\t'
+        << static_cast<int>(info.boolLayout.byteMask) << '\t' << static_cast<int>(info.boolLayout.fieldMask);
     WriteElements(out, finder, values, info);
 }
 
@@ -236,7 +236,9 @@ std::string DumpEnum(const EnumNames &enums, Address enumObject, const Named &se
 }
 
 // Globals sort after every package path.
-std::string GlobalKey(const std::string &name) { return "~\t" + name; }
+std::string GlobalKey(const std::string &name) {
+    return "~\t" + name;
+}
 
 // "C|S|E<TAB>name<TAB>package..." to the block key "package<TAB>name".
 std::string KeyOf(const std::string &recordLine) {
@@ -467,8 +469,8 @@ void TypeDumper::Describe(const Queued &item) {
     const TypeDumpSources &s = sources_;
     int scripts[2] = {0, 0};
     if (item.kind == kKindClass)
-        ready_[item.key] = DumpClass(s, item.object, self, scripts) +
-                           (s.defaults ? s.defaults(item.object) : std::string());
+        ready_[item.key] =
+            DumpClass(s, item.object, self, scripts) + (s.defaults ? s.defaults(item.object) : std::string());
     else if (item.kind == kKindStruct)
         ready_[item.key] = DumpStruct(s.finder, s.structs, s.chain, s.values, s.types, item.object, self);
     else
@@ -510,8 +512,8 @@ void TypeDumper::Flush() {
                   partialScripts_);
     scripts_ = 0;
     partialScripts_ = 0;
-    std::thread([file = file_, busy = busy_, blocks = std::move(ready_), path = path_, image = image_,
-                 report = report_, summary = std::string(summary)]() mutable {
+    std::thread([file = file_, busy = busy_, blocks = std::move(ready_), path = path_, image = image_, report = report_,
+                 summary = std::string(summary)]() mutable {
         for (auto &[key, block] : blocks)
             file->insert_or_assign(key, std::move(block));
         if (WriteAll(path, image, *file))

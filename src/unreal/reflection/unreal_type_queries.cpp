@@ -110,7 +110,8 @@ std::optional<std::vector<ImplementedInterface>> ReadInterfaces(const ObjectFind
     const std::optional<Address> data = reader.ReadPointer(classObject + offset);
     const std::optional<std::int32_t> num = reader.ReadInt32(classObject + offset + 8);
     const std::optional<std::int32_t> max = reader.ReadInt32(classObject + offset + 12);
-    if (!data || !num || !max || *num < 0 || *num > kMaxInterfaces || *max < *num || (*num > 0 && *data == kNullAddress))
+    if (!data || !num || !max || *num < 0 || *num > kMaxInterfaces || *max < *num ||
+        (*num > 0 && *data == kNullAddress))
         return std::nullopt;
     std::vector<ImplementedInterface> found;
     for (std::int32_t i = 0; i < *num; ++i) {

@@ -73,7 +73,9 @@ class TypeDumper {
     void Step(double budgetMs, bool more = false);
     // Describes one type at once, before a map change can free it (a class just loaded). Game thread.
     bool DescribeNow(Address object);
-    bool Idle() const { return queue_.empty() && ready_.empty(); }
+    bool Idle() const {
+        return queue_.empty() && ready_.empty();
+    }
 
   private:
     struct Queued {

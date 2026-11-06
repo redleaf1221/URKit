@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cstddef>
 #include <cstdio>
 #include <cwctype>
 #include <fstream>
@@ -30,8 +29,8 @@ namespace fs = std::filesystem;
 std::string Narrow(const std::wstring &value) {
     if (value.empty())
         return {};
-    const int length = WideCharToMultiByte(CP_UTF8, 0, value.data(), static_cast<int>(value.size()), nullptr, 0,
-                                           nullptr, nullptr);
+    const int length =
+        WideCharToMultiByte(CP_UTF8, 0, value.data(), static_cast<int>(value.size()), nullptr, 0, nullptr, nullptr);
     std::string output(static_cast<size_t>(std::max(length, 0)), '\0');
     if (length > 0)
         WideCharToMultiByte(CP_UTF8, 0, value.data(), static_cast<int>(value.size()), output.data(), length, nullptr,
@@ -50,7 +49,7 @@ std::string Hex(std::uintptr_t value) {
 }
 
 std::wstring LowerWide(std::wstring value) {
-    std::transform(value.begin(), value.end(), value.begin(),
+    std::ranges::transform(value, value.begin(),
                    [](wchar_t ch) { return static_cast<wchar_t>(std::towlower(ch)); });
     return value;
 }
@@ -76,15 +75,20 @@ bool SameContent(const fs::path &left, const fs::path &right) {
 class Handle {
   public:
     Handle() = default;
-    explicit Handle(HANDLE value) : value_(value) {}
+    explicit Handle(HANDLE value) : value_(value) {
+    }
     Handle(const Handle &) = delete;
     Handle &operator=(const Handle &) = delete;
     ~Handle() {
         if (value_ && value_ != INVALID_HANDLE_VALUE)
             CloseHandle(value_);
     }
-    HANDLE get() const { return value_; }
-    explicit operator bool() const { return value_ && value_ != INVALID_HANDLE_VALUE; }
+    HANDLE get() const {
+        return value_;
+    }
+    explicit operator bool() const {
+        return value_ && value_ != INVALID_HANDLE_VALUE;
+    }
 
   private:
     HANDLE value_ = nullptr;
@@ -172,7 +176,7 @@ bool ParseLoaderMode(const std::string &text, LoaderMode *mode) {
 }
 
 bool IsProxyName(const std::string &name) {
-    return std::any_of(std::begin(kProxyNames), std::end(kProxyNames),
+    return std::ranges::any_of(kProxyNames,
                        [&](const char *candidate) { return name == candidate; });
 }
 
@@ -196,8 +200,8 @@ bool IsUrkitBinary(const fs::path &dll) {
     std::ifstream input(dll, std::ios::binary);
     if (!input)
         return false;
-    const char *marker = reinterpret_cast<const char *>(kMarker.data());
-    const size_t markerBytes = kMarker.size() * sizeof(wchar_t);
+    const auto marker = reinterpret_cast<const char *>(kMarker.data());
+    constexpr size_t markerBytes = kMarker.size() * sizeof(wchar_t);
     std::vector<char> buffer(static_cast<size_t>(1024 * 1024) + markerBytes);
     size_t carried = 0;
     while (input) {
@@ -306,8 +310,8 @@ bool InstallProxy(const fs::path &gameDir, const std::string &proxyName, bool re
             continue;
         fs::remove(otherPath, ec);
         if (ec)
-            log(LogLevel::Warning, "Could not remove the other URKit loader " + otherPath.filename().string() + ": " +
-                                       ec.message());
+            log(LogLevel::Warning,
+                "Could not remove the other URKit loader " + otherPath.filename().string() + ": " + ec.message());
         else
             log(LogLevel::Info, "Removed the other URKit loader " + otherPath.filename().string());
     }
@@ -398,7 +402,7 @@ std::vector<ProcessInfo> ListProcesses(bool windowedOnly) {
         info.urkitLoaded = UrkitRuntimeRunning(info.pid);
         processes.push_back(std::move(info));
     }
-    std::sort(processes.begin(), processes.end(), [](const ProcessInfo &left, const ProcessInfo &right) {
+    std::ranges::sort(processes, [](const ProcessInfo &left, const ProcessInfo &right) {
         const std::wstring a = LowerWide(left.name);
         const std::wstring b = LowerWide(right.name);
         return a == b ? left.pid < right.pid : a < b;
@@ -457,7 +461,9 @@ bool InjectLoader(std::uint32_t pid, const LogSink &log, std::string &error) {
     struct RemoteFree {
         HANDLE process;
         void *address;
-        ~RemoteFree() { VirtualFreeEx(process, address, 0, MEM_RELEASE); }
+        ~RemoteFree() {
+            VirtualFreeEx(process, address, 0, MEM_RELEASE);
+        }
     } freeRemote{process.get(), remote};
 
     SIZE_T written = 0;
@@ -504,8 +510,8 @@ bool InjectLoader(std::uint32_t pid, const LogSink &log, std::string &error) {
                                "Unreal game processes; see URKit_logs.log.");
         return true;
     }
-    log(LogLevel::Success, "Loader started in process " + std::to_string(pid) +
-                               ". It asks for the config and mod DLLs inside the game.");
+    log(LogLevel::Success,
+        "Loader started in process " + std::to_string(pid) + ". It asks for the config and mod DLLs inside the game.");
     return true;
 }
 

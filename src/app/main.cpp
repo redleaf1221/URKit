@@ -4,7 +4,6 @@
 #include "text_util.h"
 
 #include <cwchar>
-#include <limits>
 #include <shellapi.h>
 #include <string>
 #include <vector>

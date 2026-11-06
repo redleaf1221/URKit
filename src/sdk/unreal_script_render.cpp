@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <functional>
 #include <map>
+#include <ranges>
 #include <set>
 #include <sstream>
 #include <stdexcept>
@@ -33,7 +34,9 @@ struct Node {
     bool quoted = false;
     std::vector<Node> args;
 
-    bool Is(std::string_view name) const { return !atom && tag == name; }
+    bool Is(std::string_view name) const {
+        return !atom && tag == name;
+    }
     const Node &Arg(std::size_t i) const {
         static const Node empty;
         return i < args.size() ? args[i] : empty;
@@ -42,7 +45,8 @@ struct Node {
 
 class Parser {
   public:
-    explicit Parser(std::string_view text) : text_(text) {}
+    explicit Parser(std::string_view text) : text_(text) {
+    }
 
     std::optional<Node> Parse() {
         Node node;
@@ -227,7 +231,9 @@ struct Text {
     bool compound = false;
 };
 
-std::string Operand(const Text &text) { return text.compound ? "(" + text.s + ")" : text.s; }
+std::string Operand(const Text &text) {
+    return text.compound ? "(" + text.s + ")" : text.s;
+}
 
 std::string Negated(const Text &text) {
     if (!text.compound && text.s.size() > 1 && text.s[0] == '!')
@@ -237,25 +243,31 @@ std::string Negated(const Text &text) {
 
 const std::map<std::string, std::string> &BinaryOperators() {
     static const std::map<std::string, std::string> operators = {
-        {"Add", "+"},           {"Subtract", "-"},        {"Multiply", "*"},  {"Divide", "/"},
-        {"Percent", "%"},       {"Less", "<"},            {"Greater", ">"},   {"LessEqual", "<="},
-        {"GreaterEqual", ">="}, {"EqualEqual", "=="},     {"NotEqual", "!="}, {"And", "&"},
-        {"Or", "|"},            {"Xor", "^"},             {"BooleanAND", "&&"}, {"BooleanOR", "||"},
-        {"BooleanXOR", "!="},   {"BooleanNAND", "nand"}};
+        {"Add", "+"},         {"Subtract", "-"},    {"Multiply", "*"},
+        {"Divide", "/"},      {"Percent", "%"},     {"Less", "<"},
+        {"Greater", ">"},     {"LessEqual", "<="},  {"GreaterEqual", ">="},
+        {"EqualEqual", "=="}, {"NotEqual", "!="},   {"And", "&"},
+        {"Or", "|"},          {"Xor", "^"},         {"BooleanAND", "&&"},
+        {"BooleanOR", "||"},  {"BooleanXOR", "!="}, {"BooleanNAND", "nand"}};
     return operators;
 }
 
 // Conv_IntToFloat -> float.
 const std::map<std::string, std::string> &NumericTypes() {
-    static const std::map<std::string, std::string> types = {
-        {"Float", "float"}, {"Double", "double"}, {"Int", "int32"}, {"Int64", "int64"}, {"Byte", "uint8"},
-        {"Bool", "bool"}};
+    static const std::map<std::string, std::string> types = {{"Float", "float"}, {"Double", "double"},
+                                                             {"Int", "int32"},   {"Int64", "int64"},
+                                                             {"Byte", "uint8"},  {"Bool", "bool"}};
     return types;
 }
 
 // --- the class writer -------------------------------------------------------------------------
 
-enum class Flow { Plain, Goto, Branch, Exit };
+enum class Flow {
+    Plain,
+    Goto,
+    Branch,
+    Exit
+};
 
 struct Statement {
     int offset = 0;
@@ -272,7 +284,8 @@ struct Line {
 
 class Writer {
   public:
-    Writer(const Type &entry, const TypeMap &types) : entry_(entry), types_(types) {}
+    Writer(const Type &entry, const TypeMap &types) : entry_(entry), types_(types) {
+    }
 
     std::string Render() {
         const Function *ubergraph = nullptr;
@@ -297,7 +310,7 @@ class Writer {
         }
         if (ubergraph) {
             for (const int resume : Resumes()) {
-                if (!ubergraph_.index.count(resume))
+                if (!ubergraph_.index.contains(resume))
                     continue;
                 resumes << "\n// Resumes here after a latent call (Delay, async load...) reaches its end.\n"
                         << "void " << ClassName() << "::resume_" << Hex4(resume) << "()\n"
@@ -407,16 +420,30 @@ class Writer {
         return (IsActor(type) ? "A" : "U") + Ident(name);
     }
 
-    std::string ClassName() const { return CppName(entry_.name, entry_.package); }
+    std::string ClassName() const {
+        return CppName(entry_.name, entry_.package);
+    }
 
     std::string TypeText(const Shape &shape) const {
-        static const std::map<std::string, std::string> plain = {
-            {"bool", "bool"},     {"int8", "int8"},     {"int16", "int16"},   {"int32", "int32"},
-            {"int64", "int64"},   {"uint16", "uint16"}, {"uint32", "uint32"}, {"uint64", "uint64"},
-            {"float", "float"},   {"double", "double"}, {"name", "FName"},    {"string", "FString"},
-            {"text", "FText"},    {"utf8 string", "FUtf8String"},             {"ansi string", "FAnsiString"},
-            {"field path", "TFieldPath<FProperty>"}, {"multicast delegate", "FMulticastScriptDelegate"},
-            {"sparse delegate", "FSparseDelegate"},   {"delegate", "FScriptDelegate"}};
+        static const std::map<std::string, std::string> plain = {{"bool", "bool"},
+                                                                 {"int8", "int8"},
+                                                                 {"int16", "int16"},
+                                                                 {"int32", "int32"},
+                                                                 {"int64", "int64"},
+                                                                 {"uint16", "uint16"},
+                                                                 {"uint32", "uint32"},
+                                                                 {"uint64", "uint64"},
+                                                                 {"float", "float"},
+                                                                 {"double", "double"},
+                                                                 {"name", "FName"},
+                                                                 {"string", "FString"},
+                                                                 {"text", "FText"},
+                                                                 {"utf8 string", "FUtf8String"},
+                                                                 {"ansi string", "FAnsiString"},
+                                                                 {"field path", "TFieldPath<FProperty>"},
+                                                                 {"multicast delegate", "FMulticastScriptDelegate"},
+                                                                 {"sparse delegate", "FSparseDelegate"},
+                                                                 {"delegate", "FScriptDelegate"}};
         if (const auto found = plain.find(shape.kind); found != plain.end())
             return found->second;
         const auto element = [&](std::size_t i) {
@@ -461,8 +488,8 @@ class Writer {
                 continue;
             }
             const bool out = (parameter.shape.flags & kOutParm) && !(parameter.shape.flags & kConstParm);
-            params += (params.empty() ? "" : ", ") + TypeText(parameter.shape) + (out ? "& " : " ") +
-                      Ident(parameter.name);
+            params +=
+                (params.empty() ? "" : ", ") + TypeText(parameter.shape) + (out ? "& " : " ") + Ident(parameter.name);
         }
         return result + ' ' + ClassName() + "::" + name + '(' + params + ')';
     }
@@ -711,7 +738,7 @@ class Writer {
             const Node &inner = node.Arg(1);
             // A static call through its class default object.
             if (inner.Is("Call") && object.Is("Obj") && LastName(object.Arg(0).text).rfind("Default__", 0) == 0) {
-                const std::string none;
+                constexpr std::string none;
                 return CallText(inner, scope, depth + 1, &none);
             }
             const Text target = Expr(object, scope, depth + 1);
@@ -733,8 +760,8 @@ class Writer {
             return {"Cast<" + CppName(LastName(node.Arg(0).text), PackageOf(node.Arg(0).text)) + ">(" + arg(1).s + ')',
                     false};
         if (tag == "MetaCast")
-            return {"ClassCast<" + CppName(LastName(node.Arg(0).text), PackageOf(node.Arg(0).text)) + ">(" +
-                        arg(1).s + ')',
+            return {"ClassCast<" + CppName(LastName(node.Arg(0).text), PackageOf(node.Arg(0).text)) + ">(" + arg(1).s +
+                        ')',
                     false};
         if (tag == "Cast")
             return CastText(node, scope, depth);
@@ -769,20 +796,20 @@ class Writer {
         const int kind = std::stoi(node.Arg(0).text);
         const Text value = Expr(node.Arg(1), scope, depth + 1);
         switch (kind) {
-        case 0x46:
-        case 0:
-            return value;
-        case 0x47:
-        case 0x49:
-        case 1:
-        case 2:
-            return {Operand(value) + " != nullptr", true};
-        case 3:
-            return {"(float)" + Operand(value), false};
-        default:
-            if (kind >= 4 && kind <= 0x12)
+            case 0x46:
+            case 0:
                 return value;
-            return {"/*cast " + std::to_string(kind) + "*/ " + value.s, value.compound};
+            case 0x47:
+            case 0x49:
+            case 1:
+            case 2:
+                return {Operand(value) + " != nullptr", true};
+            case 3:
+                return {"(float)" + Operand(value), false};
+            default:
+                if (kind >= 4 && kind <= 0x12)
+                    return value;
+                return {"/*cast " + std::to_string(kind) + "*/ " + value.s, value.compound};
         }
     }
 
@@ -848,7 +875,9 @@ class Writer {
         std::vector<bool> removed;
     };
 
-    static int Target(const Node &node) { return std::stoi(node.Arg(0).text); }
+    static int Target(const Node &node) {
+        return std::stoi(node.Arg(0).text);
+    }
 
     // Walks every (statement, flow stack) state from start. A statement whose stack differs by path and that
     // leads to a Pop with differing targets (a Sequence pin reached from two places) is copied per stack.
@@ -980,11 +1009,11 @@ class Writer {
         std::map<int, int> original;
         for (const auto &[index, id] : firstState) {
             int chosen = id;
-            const auto before = original.find(index - 1);
             // The entry keeps its own (empty-stack) state: Body starts at the original.
-            if (split.count(index) && index != start && before != original.end()) {
-                const int into = fall[static_cast<std::size_t>(before->second)];
-                if (into >= 0 && states[static_cast<std::size_t>(into)].first == index)
+            if (const auto before = original.find(index - 1);
+                split.contains(index) && index != start && before != original.end()) {
+                if (const int into = fall[static_cast<std::size_t>(before->second)];
+                    into >= 0 && states[static_cast<std::size_t>(into)].first == index)
                     chosen = into;
             }
             original.emplace(index, chosen);
@@ -994,21 +1023,21 @@ class Writer {
             if (id < 0)
                 return -1;
             const int index = states[static_cast<std::size_t>(id)].first;
-            return split.count(index) ? id : original.at(index);
+            return split.contains(index) ? id : original.at(index);
         };
 
         // Layout: originals by offset, then copies grouped by stack; a jump where fall-through would land wrong.
         std::vector<int> layout;
         layout.reserve(original.size());
-        for (const auto &[index, id] : original)
+        for (const auto &id : original | std::views::values)
             layout.push_back(id);
         std::vector<int> copies;
         for (int id = 0; id < stateCount; ++id) {
-            if (split.count(states[static_cast<std::size_t>(id)].first) &&
+            if (split.contains(states[static_cast<std::size_t>(id)].first) &&
                 id != original.at(states[static_cast<std::size_t>(id)].first))
                 copies.push_back(id);
         }
-        std::sort(copies.begin(), copies.end(), [&](int a, int b) {
+        std::ranges::sort(copies, [&](int a, int b) {
             const State &x = states[static_cast<std::size_t>(a)];
             const State &y = states[static_cast<std::size_t>(b)];
             return x.second != y.second ? x.second < y.second : x.first < y.first;
@@ -1053,7 +1082,8 @@ class Writer {
                 const int index = states[static_cast<std::size_t>(to)].first;
                 Node goTo;
                 goTo.tag = "Jump";
-                goTo.args.push_back(Node{"", std::to_string(loaded.statements[static_cast<std::size_t>(index)].offset), true});
+                goTo.args.push_back(
+                    Node{"", std::to_string(loaded.statements[static_cast<std::size_t>(index)].offset), true});
                 region.nodes.push_back(std::move(goTo));
                 region.order[p] = region.order[p - 1];
                 region.flow[p] = Flow::Goto;
@@ -1078,8 +1108,8 @@ class Writer {
                 region.target[p] = positionOf(nodeOf(jump[static_cast<std::size_t>(entry)]));
             } else if (node.Is("Pop") || node.Is("PopIfNot")) {
                 // Unexplored states (too many) leave every pop unknown.
-                const int to = overflow || (differs(index) && !split.count(index)) ? -2
-                                                                                   : popTo[static_cast<std::size_t>(entry)];
+                const int to =
+                    overflow || (differs(index) && !split.contains(index)) ? -2 : popTo[static_cast<std::size_t>(entry)];
                 const bool branch = node.Is("PopIfNot");
                 region.popTo[p] = to;
                 region.flow[p] = to >= 0 ? (branch ? Flow::Branch : Flow::Goto) : (branch ? Flow::Branch : Flow::Exit);
@@ -1090,8 +1120,8 @@ class Writer {
             }
         }
         for (int p = 0; p < count; ++p) {
-            if ((region.flow[p] == Flow::Plain || region.flow[p] == Flow::Branch) && falls[static_cast<std::size_t>(p)] &&
-                p + 1 < count)
+            if ((region.flow[p] == Flow::Plain || region.flow[p] == Flow::Branch) &&
+                falls[static_cast<std::size_t>(p)] && p + 1 < count)
                 region.preds[p + 1].push_back(p);
             if ((region.flow[p] == Flow::Goto || region.flow[p] == Flow::Branch) && region.target[p] >= 0)
                 region.preds[region.target[p]].push_back(p);
@@ -1156,7 +1186,8 @@ class Writer {
     class Emitter {
       public:
         Emitter(const Writer &writer, Region &region, const Scope &scope, const std::string &returnName)
-            : w_(writer), r_(region), scope_(scope), returnName_(returnName) {}
+            : w_(writer), r_(region), scope_(scope), returnName_(returnName) {
+        }
 
         std::vector<Line> lines;
         std::set<int> labels;
@@ -1193,13 +1224,17 @@ class Writer {
 
         // An explicit jump back to where the text started.
         void Jump(int target, int indent) {
-            const std::vector<Loop> none;
+            constexpr std::vector<Loop> none;
             Say(indent, Goto(target, none, -1));
         }
 
       private:
-        void Mark(int p, int indent) { lines.push_back({indent, "", p}); }
-        void Say(int indent, const std::string &text) { lines.push_back({indent, text, -1}); }
+        void Mark(int p, int indent) {
+            lines.push_back({indent, "", p});
+        }
+        void Say(int indent, const std::string &text) {
+            lines.push_back({indent, text, -1});
+        }
 
         // from: the jumping position, to tell a missing target from the end of the thread.
         std::string Goto(int target, const std::vector<Loop> &loops, int from) {
@@ -1295,40 +1330,40 @@ class Writer {
                 return p + 1;
             const Node &node = r_.nodes[p];
             switch (r_.flow[p]) {
-            case Flow::Plain: {
-                if (Silent(node))
+                case Flow::Plain: {
+                    if (Silent(node))
+                        return p + 1;
+                    // "ReturnValue = x; return;" reads as "return x;".
+                    if (!returnName_.empty() && node.Is("Let") && node.Arg(0).Is("Out") &&
+                        node.Arg(0).Arg(0).text == returnName_ && p + 1 < static_cast<int>(r_.flow.size()) &&
+                        (ExitAt(p + 1) || (r_.flow[p + 1] == Flow::Goto && ExitAt(r_.target[p + 1]))) &&
+                        r_.preds[p + 1].size() == 1) {
+                        Say(indent, "return " + w_.Expr(node.Arg(1), scope_, 1).s + ';');
+                        Mark(p + 1, indent);
+                        return p + 2;
+                    }
+                    Say(indent, w_.StatementText(node, scope_));
                     return p + 1;
-                // "ReturnValue = x; return;" reads as "return x;".
-                if (!returnName_.empty() && node.Is("Let") && node.Arg(0).Is("Out") &&
-                    node.Arg(0).Arg(0).text == returnName_ && p + 1 < static_cast<int>(r_.flow.size()) &&
-                    (ExitAt(p + 1) || (r_.flow[p + 1] == Flow::Goto && ExitAt(r_.target[p + 1]))) &&
-                    r_.preds[p + 1].size() == 1) {
-                    Say(indent, "return " + w_.Expr(node.Arg(1), scope_, 1).s + ';');
-                    Mark(p + 1, indent);
-                    return p + 2;
                 }
-                Say(indent, w_.StatementText(node, scope_));
-                return p + 1;
-            }
-            case Flow::Exit:
-                if (node.Is("ComputedJump"))
-                    Say(indent, "goto *" + w_.Expr(node.Arg(0), scope_, 1).s + ";  // entry point dispatch");
-                else if (node.Is("Return") && !node.Arg(0).Is("Nothing"))
-                    Say(indent, "return " + w_.Expr(node.Arg(0), scope_, 1).s + ';');
-                else if (node.Is("Pop") && r_.popTo[p] == -2)
-                    Say(indent, "return;  // flow stack differs by path");
-                else if (p + 1 < to || !node.Is("EndOfScript"))
-                    Say(indent, "return;");
-                return p + 1;
-            case Flow::Goto: {
-                const int target = r_.target[p];
-                if (target == p + 1)
+                case Flow::Exit:
+                    if (node.Is("ComputedJump"))
+                        Say(indent, "goto *" + w_.Expr(node.Arg(0), scope_, 1).s + ";  // entry point dispatch");
+                    else if (node.Is("Return") && !node.Arg(0).Is("Nothing"))
+                        Say(indent, "return " + w_.Expr(node.Arg(0), scope_, 1).s + ';');
+                    else if (node.Is("Pop") && r_.popTo[p] == -2)
+                        Say(indent, "return;  // flow stack differs by path");
+                    else if (p + 1 < to || !node.Is("EndOfScript"))
+                        Say(indent, "return;");
                     return p + 1;
-                Say(indent, Goto(target, loops, p));
-                return p + 1;
-            }
-            case Flow::Branch:
-                return Branch(p, to, indent, loops, depth);
+                case Flow::Goto: {
+                    const int target = r_.target[p];
+                    if (target == p + 1)
+                        return p + 1;
+                    Say(indent, Goto(target, loops, p));
+                    return p + 1;
+                }
+                case Flow::Branch:
+                    return Branch(p, to, indent, loops, depth);
             }
             return p + 1;
         }
@@ -1361,16 +1396,16 @@ class Writer {
 
         // Label form: no structure, every jump a goto.
         void Flat(int from, int to, int indent) {
-            const std::vector<Loop> none;
             for (int p = from; p < to; ++p) {
+                constexpr std::vector<Loop> none;
                 Mark(p, indent);
                 if (r_.removed[p] || Silent(r_.nodes[p]))
                     continue;
                 if (r_.flow[p] == Flow::Goto)
                     Say(indent, Goto(r_.target[p], none, p));
                 else if (r_.flow[p] == Flow::Branch)
-                    Say(indent, "if (" + Negated(Condition(p)) + ") " +
-                                    Goto(r_.exitTarget[p] ? -1 : r_.target[p], none, p));
+                    Say(indent,
+                        "if (" + Negated(Condition(p)) + ") " + Goto(r_.exitTarget[p] ? -1 : r_.target[p], none, p));
                 else if (r_.flow[p] == Flow::Exit)
                     Say(indent, "return;");
                 else
@@ -1384,7 +1419,9 @@ class Writer {
         std::string returnName_;
     };
 
-    int OffsetOf(const Region &region, int p) const { return offsets_.at(region.order[p]); }
+    int OffsetOf(const Region &region, int p) const {
+        return offsets_.at(region.order[p]);
+    }
     // L_0210, or L_0210_1 for its first copy.
     std::string LabelOf(const Region &region, int p) const {
         std::string label = "L_" + Hex4(OffsetOf(region, p));
@@ -1426,7 +1463,7 @@ class Writer {
         Emitter emitter(*this, region, scope, returnName);
         std::vector<Loop> loops;
         // Execution starts at the entry; code before it (reached by jumps) follows.
-        const int entry = region.position.count(start) ? region.position.at(start) : 0;
+        const int entry = region.position.contains(start) ? region.position.at(start) : 0;
         const int count = static_cast<int>(region.order.size());
         emitter.Range(entry, count, 1, loops, 0);
         if (entry > 0) {
@@ -1441,7 +1478,7 @@ class Writer {
         // Locals still named (not inlined), declared as the function's frame has them.
         if (function && !ubergraph) {
             for (const Member &local : function->locals) {
-                if (used.count(local.name))
+                if (used.contains(local.name))
                     out << "    " << TypeText(local.shape) << ' ' << Ident(local.name) << ";\n";
             }
         }
@@ -1457,7 +1494,7 @@ class Writer {
         const bool partial = loaded.function && loaded.function->failedAt >= 0;
         for (const Line &line : emitter.lines) {
             if (line.position >= 0) {
-                if (emitter.labels.count(line.position)) {
+                if (emitter.labels.contains(line.position)) {
                     emitter.labels.erase(line.position);
                     out << std::string(static_cast<std::size_t>(std::max(0, line.indent - 1)) * 4, ' ')
                         << LabelOf(region, line.position) << ":\n";
@@ -1488,7 +1525,7 @@ class Writer {
         }
         std::ostringstream out;
         out << '\n' << Signature(function, function.name) << '\n';
-        if (!ubergraph_.index.count(entry))
+        if (!ubergraph_.index.contains(entry))
             return out.str() + "{\n    // Enters ExecuteUbergraph at 0x" + Hex4(entry) + ", which was not dumped.\n}\n";
         out << Body(ubergraph_, ubergraph_.index.at(entry), scope, true, &covered, nullptr);
         return out.str();
@@ -1517,7 +1554,7 @@ class Writer {
         std::vector<int> rest;
         for (int i = 0; i < static_cast<int>(ubergraph_.statements.size()); ++i) {
             const Node &node = ubergraph_.statements[i].node;
-            if (!covered.count(i) && !Silent(node) && !node.Is("EndOfScript") && !node.Is("ComputedJump") &&
+            if (!covered.contains(i) && !Silent(node) && !node.Is("EndOfScript") && !node.Is("ComputedJump") &&
                 !(node.Is("Return") && node.Arg(0).Is("Nothing")))
                 rest.push_back(i);
         }
@@ -1545,7 +1582,7 @@ class Writer {
 std::string RenderBlueprint(const Type &entry, const TypeMap &types) {
     if (entry.isStruct || entry.isEnum)
         return {};
-    const bool any = std::any_of(entry.functions.begin(), entry.functions.end(),
+    const bool any = std::ranges::any_of(entry.functions,
                                  [](const Function &function) { return !function.script.empty(); });
     if (!any)
         return {};

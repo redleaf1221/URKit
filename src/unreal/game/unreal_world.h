@@ -30,7 +30,8 @@ class WorldView {
   public:
     WorldView(const ObjectFinder &finder, const TypeQueries &types, const PropertyChain &chain,
               const PropertyValues &values)
-        : finder_(&finder), types_(&types), chain_(&chain), values_(&values) {}
+        : finder_(&finder), types_(&types), chain_(&chain), values_(&values) {
+    }
 
     // The level the world keeps, read through the member of that name.
     Address PersistentLevelOf(Address world) const;

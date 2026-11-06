@@ -92,13 +92,13 @@ int ChangeRank(UrkProject::ChangeKind kind) {
 UpdatePage::UpdatePage(wxWindow *parent, MainFrame *frame) : Page(parent, frame, "Update a project") {
     wxBoxSizer *column = Column();
 
-    project_ = new DropZone(this, DropZone::Mode::Folder, "Drop your project folder here",
-                            [this](const wxString &path) {
-                                if (wxDirExists(path))
-                                    frame_->SetProjectDir(path);
-                                else
-                                    MainFrame::Log(UrkApp::LogLevel::Warning, "update", "Drop the project folder");
-                            });
+    project_ =
+        new DropZone(this, DropZone::Mode::Folder, "Drop your project folder here", [this](const wxString &path) {
+            if (wxDirExists(path))
+                frame_->SetProjectDir(path);
+            else
+                MainFrame::Log(UrkApp::LogLevel::Warning, "update", "Drop the project folder");
+        });
     column->Add(project_, 0, wxEXPAND);
 
     status_ = new StatusCard(this);
@@ -163,8 +163,7 @@ void UpdatePage::OnProjectChanged() {
     const wxString folder = frame_->settings().projectDir.Strip(wxString::both);
     if (folder.empty()) {
         project_->SetEmpty();
-        status_->Set(StatusCard::Tone::Neutral, "No project selected",
-                     "Pick the folder URKit created for your mod.");
+        status_->Set(StatusCard::Tone::Neutral, "No project selected", "Pick the folder URKit created for your mod.");
         return;
     }
     project_->SetFilled(folder, FromPath(ToPath(folder).filename()), wxEmptyString, Theme::kTextMuted);
@@ -217,8 +216,8 @@ void UpdatePage::ShowPlan() {
         SetAction("Update", false);
         return;
     }
-    wxString versions = sdk > 0 && sdk != URK_SDK_VERSION ? wxString::Format(L"SDK %d → %d. ", sdk, URK_SDK_VERSION)
-                                                          : wxString();
+    wxString versions =
+        sdk > 0 && sdk != URK_SDK_VERSION ? wxString::Format(L"SDK %d → %d. ", sdk, URK_SDK_VERSION) : wxString();
     if (conflicts > 0 && !overwrite_->GetValue()) {
         if (!inspection.hasGeneratedFileLedger)
             status_->Set(StatusCard::Tone::Warning, "This project is from an older version",
@@ -249,9 +248,7 @@ void UpdatePage::ShowChanges() {
     for (const UrkProject::PlannedChange &change : preview_->changes)
         ordered.push_back(&change);
     std::ranges::stable_sort(
-        ordered, [](const auto *left, const auto *right) {
-        return ChangeRank(left->kind) < ChangeRank(right->kind);
-    });
+        ordered, [](const auto *left, const auto *right) { return ChangeRank(left->kind) < ChangeRank(right->kind); });
     long row = 0;
     for (const UrkProject::PlannedChange *change : ordered) {
         const long index = changes_->InsertItem(row++, ChangeLabel(change->kind));
@@ -327,8 +324,8 @@ void UpdatePage::Apply() {
     const int conflicts =
         static_cast<int>(UrkProject::CountChanges(preview_->changes, UrkProject::ChangeKind::Conflict));
     if (overwrite && conflicts > 0) {
-        const wxString question = wxString::Format(
-            "Replace %d file%s you edited?\n\nA backup is made first.", conflicts, conflicts == 1 ? "" : "s");
+        const wxString question = wxString::Format("Replace %d file%s you edited?\n\nA backup is made first.",
+                                                   conflicts, conflicts == 1 ? "" : "s");
         if (wxMessageBox(question, "Update", wxYES_NO | wxNO_DEFAULT | wxICON_WARNING, this) != wxYES)
             return;
     }
@@ -355,8 +352,8 @@ void UpdatePage::Apply() {
                     "Project unchanged; the update is in " + update.stagedUpdateDirectory.string());
             else if (update.updated)
                 log(UrkApp::LogLevel::Success, std::to_string(update.filesWritten) + " written, " +
-                                                   std::to_string(update.filesRemoved) + " removed. Backup: " +
-                                                   update.backupDirectory.string());
+                                                   std::to_string(update.filesRemoved) +
+                                                   " removed. Backup: " + update.backupDirectory.string());
             else
                 log(UrkApp::LogLevel::Success, "Nothing to apply");
         },

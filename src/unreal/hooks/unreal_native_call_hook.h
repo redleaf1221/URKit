@@ -25,10 +25,13 @@ class NativeCallHook {
 
     // Once: GNatives and FFrame::Code from execEndFunctionParms; later calls return the first answer.
     bool Prepare(const MemoryReader &reader, std::span<const ScanRegion> data, std::span<const ScanRegion> code,
-                 Address objectProcessEvent, std::int32_t funcOffset, OwnedValues &owned,
-                 PropertyVirtuals &virtuals);
-    bool Ready() const { return ready_; }
-    const std::string &Failure() const { return failure_; }
+                 Address objectProcessEvent, std::int32_t funcOffset, OwnedValues &owned, PropertyVirtuals &virtuals);
+    bool Ready() const {
+        return ready_;
+    }
+    const std::string &Failure() const {
+        return failure_;
+    }
 
     // Why a function is not routed (empty when it can be).
     static std::string Refusal(const FunctionInfo &info, const std::string &ownerName);

@@ -32,23 +32,23 @@ std::string Quoted(const std::string &text) {
     std::string out = "\"";
     for (const char ch : text) {
         switch (ch) {
-        case '"':
-            out += "\\\"";
-            break;
-        case '\\':
-            out += "\\\\";
-            break;
-        case '\n':
-            out += "\\n";
-            break;
-        case '\r':
-            out += "\\r";
-            break;
-        case '\t':
-            out += "\\t";
-            break;
-        default:
-            out += ch;
+            case '"':
+                out += "\\\"";
+                break;
+            case '\\':
+                out += "\\\\";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            default:
+                out += ch;
         }
     }
     return out + '"';
@@ -66,21 +66,21 @@ template <typename T> std::string Number(T value) {
 
 bool PlainBytes(PropertyKind kind) {
     switch (kind) {
-    case PropertyKind::Byte:
-    case PropertyKind::Int8:
-    case PropertyKind::Int16:
-    case PropertyKind::Int32:
-    case PropertyKind::Int64:
-    case PropertyKind::UInt16:
-    case PropertyKind::UInt32:
-    case PropertyKind::UInt64:
-    case PropertyKind::Float:
-    case PropertyKind::Double:
-    case PropertyKind::Enum:
-    case PropertyKind::Name:
-        return true;
-    default:
-        return false;
+        case PropertyKind::Byte:
+        case PropertyKind::Int8:
+        case PropertyKind::Int16:
+        case PropertyKind::Int32:
+        case PropertyKind::Int64:
+        case PropertyKind::UInt16:
+        case PropertyKind::UInt32:
+        case PropertyKind::UInt64:
+        case PropertyKind::Float:
+        case PropertyKind::Double:
+        case PropertyKind::Enum:
+        case PropertyKind::Name:
+            return true;
+        default:
+            return false;
     }
 }
 
@@ -141,8 +141,8 @@ const std::vector<ClassDefaults::Field> &ClassDefaults::FieldsOf(Address structO
     return entry.list;
 }
 
-void ClassDefaults::CompareObject(Address object, Address base, Address baseClass, const std::string &prefix,
-                                  int depth, const Scope &scope, std::string &out) {
+void ClassDefaults::CompareObject(Address object, Address base, Address baseClass, const std::string &prefix, int depth,
+                                  const Scope &scope, std::string &out) {
     const TypeQueries &types = engine_->Types();
     // Members of baseClass and its supers compare with base; the ones below it with zero.
     bool inherited = false;
@@ -154,9 +154,9 @@ void ClassDefaults::CompareObject(Address object, Address base, Address baseClas
     }
 }
 
-void ClassDefaults::CompareFields(const std::uint8_t *value, const std::uint8_t *base, Address owner,
-                                  Address baseOwner, const std::vector<Field> &fields, const std::string &prefix,
-                                  int depth, const Scope &scope, std::string &out) {
+void ClassDefaults::CompareFields(const std::uint8_t *value, const std::uint8_t *base, Address owner, Address baseOwner,
+                                  const std::vector<Field> &fields, const std::string &prefix, int depth,
+                                  const Scope &scope, std::string &out) {
     for (const Field &field : fields) {
         PropertyInfo one = field.info;
         one.arrayDim = 1;
@@ -172,8 +172,8 @@ void ClassDefaults::CompareFields(const std::uint8_t *value, const std::uint8_t 
     }
 }
 
-void ClassDefaults::CompareValue(const PlaceTarget &value, const PlaceTarget *base, const std::string &path,
-                                 int depth, const Scope &scope, std::string &out) {
+void ClassDefaults::CompareValue(const PlaceTarget &value, const PlaceTarget *base, const std::string &path, int depth,
+                                 const Scope &scope, std::string &out) {
     const PropertyInfo &info = value.info;
     const ObjectFinder &finder = engine_->Finder();
     const TypeQueries &types = engine_->Types();
@@ -237,113 +237,113 @@ void ClassDefaults::CompareValue(const PlaceTarget &value, const PlaceTarget *ba
 std::optional<std::string> ClassDefaults::Render(const PlaceTarget &value, int depth, const Scope &scope) {
     const PropertyInfo &info = value.info;
     switch (info.kind) {
-    case PropertyKind::Bool: {
-        bool flag = false;
-        return places_->ReadBool(value, &flag) ? std::optional<std::string>(flag ? "true" : "false") : std::nullopt;
-    }
-    case PropertyKind::Float:
-    case PropertyKind::Double: {
-        double number = 0;
-        if (!places_->ReadFloating(value, &number))
-            return std::nullopt;
-        return info.kind == PropertyKind::Float ? Number(static_cast<float>(number)) : Number(number);
-    }
-    case PropertyKind::Byte:
-    case PropertyKind::Enum:
-        if (info.typeObject != kNullAddress) {
-            if (std::optional<std::string> name = places_->ReadText(value, true))
-                return std::string(EnumNames::ShortName(*name));
+        case PropertyKind::Bool: {
+            bool flag = false;
+            return places_->ReadBool(value, &flag) ? std::optional<std::string>(flag ? "true" : "false") : std::nullopt;
         }
-        [[fallthrough]];
-    case PropertyKind::Int8:
-    case PropertyKind::Int16:
-    case PropertyKind::Int32:
-    case PropertyKind::Int64:
-    case PropertyKind::UInt16:
-    case PropertyKind::UInt32:
-    case PropertyKind::UInt64: {
-        std::int64_t number = 0;
-        if (!places_->ReadInteger(value, &number))
-            return std::nullopt;
-        return std::to_string(number);
-    }
-    case PropertyKind::Name:
-        return places_->ReadText(value, true);
-    case PropertyKind::String:
-    case PropertyKind::Utf8String:
-    case PropertyKind::AnsiString:
-    case PropertyKind::Text: {
-        const std::optional<std::string> text = places_->ReadText(value, true);
-        return text ? std::optional<std::string>(Quoted(*text)) : std::nullopt;
-    }
-    case PropertyKind::SoftObject:
-    case PropertyKind::FieldPath: {
-        const std::optional<std::string> path = places_->ReadText(value, true);
-        return path ? std::optional<std::string>(path->empty() ? "None" : *path) : std::nullopt;
-    }
-    case PropertyKind::Object:
-    case PropertyKind::Class:
-    case PropertyKind::WeakObject:
-    case PropertyKind::Interface:
-        return ObjectText(places_->ReadObject(value, true), scope);
-    case PropertyKind::Struct: {
-        if (depth >= kMaxDepth)
-            return std::nullopt;
-        std::string text = "(";
-        for (Address type = info.inner; type != kNullAddress; type = engine_->Types().SuperOf(type)) {
-            for (const Field &field : FieldsOf(type)) {
-                PropertyInfo one = field.info;
-                one.arrayDim = 1;
-                const PlaceTarget inner{value.value + field.info.offset, one, false, value.owner};
-                const std::optional<std::string> part = Render(inner, depth + 1, scope);
-                text += (text.size() > 1 ? ", " : "") + field.name + '=' + part.value_or("?");
+        case PropertyKind::Float:
+        case PropertyKind::Double: {
+            double number = 0;
+            if (!places_->ReadFloating(value, &number))
+                return std::nullopt;
+            return info.kind == PropertyKind::Float ? Number(static_cast<float>(number)) : Number(number);
+        }
+        case PropertyKind::Byte:
+        case PropertyKind::Enum:
+            if (info.typeObject != kNullAddress) {
+                if (std::optional<std::string> name = places_->ReadText(value, true))
+                    return std::string(EnumNames::ShortName(*name));
             }
+            [[fallthrough]];
+        case PropertyKind::Int8:
+        case PropertyKind::Int16:
+        case PropertyKind::Int32:
+        case PropertyKind::Int64:
+        case PropertyKind::UInt16:
+        case PropertyKind::UInt32:
+        case PropertyKind::UInt64: {
+            std::int64_t number = 0;
+            if (!places_->ReadInteger(value, &number))
+                return std::nullopt;
+            return std::to_string(number);
         }
-        return text + ')';
-    }
-    case PropertyKind::Optional: {
-        const std::int32_t set = places_->Count(value, true);
-        if (set <= 0)
-            return set == 0 ? std::optional<std::string>("unset") : std::nullopt;
-        const std::optional<PlaceTarget> inner = Step(value, URK_UNREAL_STEP_ELEMENT, 0);
-        return inner ? Render(*inner, depth + 1, scope) : std::nullopt;
-    }
-    case PropertyKind::Array:
-    case PropertyKind::Set:
-    case PropertyKind::Map: {
-        const std::int32_t count = places_->Count(value, true);
-        if (count < 0)
-            return std::nullopt;
-        std::vector<std::int32_t> slots(static_cast<std::size_t>(std::min(count, kMaxElements)));
-        if (info.kind == PropertyKind::Array) {
-            for (std::size_t i = 0; i < slots.size(); ++i)
-                slots[i] = static_cast<std::int32_t>(i);
-        } else if (!slots.empty()) {
-            std::vector<std::int32_t> all(static_cast<std::size_t>(count));
-            const std::int32_t found = places_->Slots(value, all.data(), count);
-            slots.assign(all.begin(), all.begin() + std::min<std::int32_t>(std::max(found, 0), kMaxElements));
+        case PropertyKind::Name:
+            return places_->ReadText(value, true);
+        case PropertyKind::String:
+        case PropertyKind::Utf8String:
+        case PropertyKind::AnsiString:
+        case PropertyKind::Text: {
+            const std::optional<std::string> text = places_->ReadText(value, true);
+            return text ? std::optional<std::string>(Quoted(*text)) : std::nullopt;
         }
-        const bool map = info.kind == PropertyKind::Map;
-        std::string text = map ? "{" : "[";
-        for (std::size_t i = 0; i < slots.size(); ++i) {
-            text += i ? ", " : "";
-            if (map) {
-                const std::optional<PlaceTarget> key = Step(value, URK_UNREAL_STEP_KEY, slots[i]);
-                const std::optional<PlaceTarget> entry = Step(value, URK_UNREAL_STEP_VALUE, slots[i]);
-                const std::optional<std::string> k = key ? Render(*key, depth + 1, scope) : std::nullopt;
-                const std::optional<std::string> v = entry ? Render(*entry, depth + 1, scope) : std::nullopt;
-                text += k.value_or("?") + ": " + v.value_or("?");
-            } else {
-                const std::optional<PlaceTarget> element = Step(value, URK_UNREAL_STEP_ELEMENT, slots[i]);
-                text += (element ? Render(*element, depth + 1, scope) : std::nullopt).value_or("?");
+        case PropertyKind::SoftObject:
+        case PropertyKind::FieldPath: {
+            const std::optional<std::string> path = places_->ReadText(value, true);
+            return path ? std::optional<std::string>(path->empty() ? "None" : *path) : std::nullopt;
+        }
+        case PropertyKind::Object:
+        case PropertyKind::Class:
+        case PropertyKind::WeakObject:
+        case PropertyKind::Interface:
+            return ObjectText(places_->ReadObject(value, true), scope);
+        case PropertyKind::Struct: {
+            if (depth >= kMaxDepth)
+                return std::nullopt;
+            std::string text = "(";
+            for (Address type = info.inner; type != kNullAddress; type = engine_->Types().SuperOf(type)) {
+                for (const Field &field : FieldsOf(type)) {
+                    PropertyInfo one = field.info;
+                    one.arrayDim = 1;
+                    const PlaceTarget inner{value.value + field.info.offset, one, false, value.owner};
+                    const std::optional<std::string> part = Render(inner, depth + 1, scope);
+                    text += (text.size() > 1 ? ", " : "") + field.name + '=' + part.value_or("?");
+                }
             }
+            return text + ')';
         }
-        if (count > static_cast<std::int32_t>(slots.size()))
-            text += ", ... " + std::to_string(count) + " in all";
-        return text + (map ? "}" : "]");
-    }
-    default:
-        return std::nullopt;
+        case PropertyKind::Optional: {
+            const std::int32_t set = places_->Count(value, true);
+            if (set <= 0)
+                return set == 0 ? std::optional<std::string>("unset") : std::nullopt;
+            const std::optional<PlaceTarget> inner = Step(value, URK_UNREAL_STEP_ELEMENT, 0);
+            return inner ? Render(*inner, depth + 1, scope) : std::nullopt;
+        }
+        case PropertyKind::Array:
+        case PropertyKind::Set:
+        case PropertyKind::Map: {
+            const std::int32_t count = places_->Count(value, true);
+            if (count < 0)
+                return std::nullopt;
+            std::vector<std::int32_t> slots(static_cast<std::size_t>(std::min(count, kMaxElements)));
+            if (info.kind == PropertyKind::Array) {
+                for (std::size_t i = 0; i < slots.size(); ++i)
+                    slots[i] = static_cast<std::int32_t>(i);
+            } else if (!slots.empty()) {
+                std::vector<std::int32_t> all(static_cast<std::size_t>(count));
+                const std::int32_t found = places_->Slots(value, all.data(), count);
+                slots.assign(all.begin(), all.begin() + std::min<std::int32_t>(std::max(found, 0), kMaxElements));
+            }
+            const bool map = info.kind == PropertyKind::Map;
+            std::string text = map ? "{" : "[";
+            for (std::size_t i = 0; i < slots.size(); ++i) {
+                text += i ? ", " : "";
+                if (map) {
+                    const std::optional<PlaceTarget> key = Step(value, URK_UNREAL_STEP_KEY, slots[i]);
+                    const std::optional<PlaceTarget> entry = Step(value, URK_UNREAL_STEP_VALUE, slots[i]);
+                    const std::optional<std::string> k = key ? Render(*key, depth + 1, scope) : std::nullopt;
+                    const std::optional<std::string> v = entry ? Render(*entry, depth + 1, scope) : std::nullopt;
+                    text += k.value_or("?") + ": " + v.value_or("?");
+                } else {
+                    const std::optional<PlaceTarget> element = Step(value, URK_UNREAL_STEP_ELEMENT, slots[i]);
+                    text += (element ? Render(*element, depth + 1, scope) : std::nullopt).value_or("?");
+                }
+            }
+            if (count > static_cast<std::int32_t>(slots.size()))
+                text += ", ... " + std::to_string(count) + " in all";
+            return text + (map ? "}" : "]");
+        }
+        default:
+            return std::nullopt;
     }
 }
 

@@ -62,9 +62,9 @@ bool OnDispatchStack(const CallbackRecord *record) {
 
 HMODULE ModuleForAddress(const void *address) {
     HMODULE module = nullptr;
-    if (!address || !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS |
-                                           GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                                       reinterpret_cast<LPCSTR>(address), &module)) {
+    if (!address ||
+        !GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            static_cast<LPCSTR>(address), &module)) {
         return nullptr;
     }
     return module;
@@ -144,7 +144,8 @@ void WaitUntilIdle(const std::shared_ptr<CallbackRecord> &record) {
 bool RestoreIfUnused(HWND window, WindowRecord &record) {
     if (!record.callbacks.empty())
         return false;
-    if (IsWindow(window) && GetWindowLongPtr(window, GWLP_WNDPROC) == reinterpret_cast<LONG_PTR>(&DispatchWindowMessage)) {
+    if (IsWindow(window) &&
+        GetWindowLongPtr(window, GWLP_WNDPROC) == reinterpret_cast<LONG_PTR>(&DispatchWindowMessage)) {
         SetLastError(ERROR_SUCCESS);
         const LONG_PTR previous = SetWindowLongPtr(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(record.original));
         if (!previous && GetLastError() != ERROR_SUCCESS) {
@@ -168,7 +169,8 @@ int WindowMessage_Register(void *windowValue, URK_WindowMessageCallback callback
     auto found = Windows().find(window);
     if (found == Windows().end()) {
         SetLastError(ERROR_SUCCESS);
-        const LONG_PTR previous = SetWindowLongPtr(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&DispatchWindowMessage));
+        const LONG_PTR previous =
+            SetWindowLongPtr(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&DispatchWindowMessage));
         if (!previous && GetLastError() != ERROR_SUCCESS) {
             Log("[window-messages][ERROR] failed to install dispatcher for window=%p error=%lu.", window,
                 GetLastError());
@@ -177,7 +179,8 @@ int WindowMessage_Register(void *windowValue, URK_WindowMessageCallback callback
         found = Windows().emplace(window, WindowRecord{reinterpret_cast<WNDPROC>(previous), {}, true}).first;
     } else if (!found->second.installed) {
         SetLastError(ERROR_SUCCESS);
-        const LONG_PTR previous = SetWindowLongPtr(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&DispatchWindowMessage));
+        const LONG_PTR previous =
+            SetWindowLongPtr(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&DispatchWindowMessage));
         if (!previous && GetLastError() != ERROR_SUCCESS) {
             Log("[window-messages][ERROR] failed to reinstall dispatcher for window=%p error=%lu.", window,
                 GetLastError());
@@ -187,7 +190,8 @@ int WindowMessage_Register(void *windowValue, URK_WindowMessageCallback callback
         found->second.installed = true;
     }
 
-    const auto duplicate = std::find_if(found->second.callbacks.begin(), found->second.callbacks.end(),
+    const auto duplicate = std::ranges::find_if(
+        found->second.callbacks,
                                         [callback](const auto &record) { return record->callback == callback; });
     if (duplicate != found->second.callbacks.end())
         return 1;
@@ -210,7 +214,8 @@ int WindowMessage_Unregister(void *windowValue, URK_WindowMessageCallback callba
         const auto found = Windows().find(window);
         if (found == Windows().end())
             return 0;
-        const auto callbackIt = std::find_if(found->second.callbacks.begin(), found->second.callbacks.end(),
+        const auto callbackIt = std::ranges::find_if(
+            found->second.callbacks,
                                              [callback](const auto &record) { return record->callback == callback; });
         if (callbackIt == found->second.callbacks.end())
             return 0;
@@ -249,8 +254,7 @@ int WindowMessage_UnregisterModule(void *moduleValue) {
         for (const auto &[window, record] : Windows()) {
             (void)window;
             for (const auto &callback : record.callbacks) {
-                if (callback->owner == module &&
-                    OnDispatchStack(callback.get()))
+                if (callback->owner == module && OnDispatchStack(callback.get()))
                     return -1;
             }
         }

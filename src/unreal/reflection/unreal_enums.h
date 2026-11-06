@@ -15,12 +15,17 @@ namespace URK::Unreal {
 
 class EnumNames {
   public:
-    EnumNames(const ObjectFinder &finder, const StructOffsets &structs) : finder_(&finder), structs_(structs) {}
+    EnumNames(const ObjectFinder &finder, const StructOffsets &structs) : finder_(&finder), structs_(structs) {
+    }
 
     // Game thread, once. False (with Failure) when no storage agreed.
     bool Measure(EngineCalls &engine);
-    bool Measured() const { return state_.load(std::memory_order_acquire) == 1; }
-    const std::string &Failure() const { return failure_; }
+    bool Measured() const {
+        return state_.load(std::memory_order_acquire) == 1;
+    }
+    const std::string &Failure() const {
+        return failure_;
+    }
 
     struct Entry {
         std::string name; // as stored, "Enum::Value" for scoped enums
@@ -34,7 +39,10 @@ class EnumNames {
     std::optional<std::string> NameOf(Address enumObject, std::int64_t value) const;
 
   private:
-    enum class Form { Pairs, Parallel };
+    enum class Form {
+        Pairs,
+        Parallel
+    };
     std::optional<std::vector<Entry>> Read(Address enumObject, std::int32_t offset, Form form) const;
 
     const ObjectFinder *finder_;

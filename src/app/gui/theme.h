@@ -27,9 +27,7 @@ inline const wxColour kError(0xf0, 0x5a, 0x62);
 
 inline wxColour Mix(const wxColour &a, const wxColour &b, double t) {
     t = t < 0 ? 0 : t > 1 ? 1 : t;
-    auto channel = [t](unsigned char x, unsigned char y) {
-        return static_cast<unsigned char>(x + (y - x) * t + 0.5);
-    };
+    auto channel = [t](unsigned char x, unsigned char y) { return static_cast<unsigned char>(x + (y - x) * t + 0.5); };
     return wxColour(channel(a.Red(), b.Red()), channel(a.Green(), b.Green()), channel(a.Blue(), b.Blue()));
 }
 

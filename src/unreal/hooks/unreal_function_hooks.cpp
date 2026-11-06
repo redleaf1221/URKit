@@ -47,11 +47,17 @@ void Disarm(FunctionHooks::Entry &entry) {
 
 } // namespace
 
-FunctionHooks::Quiet::Quiet() { ++t_quiet; }
+FunctionHooks::Quiet::Quiet() {
+    ++t_quiet;
+}
 
-FunctionHooks::Quiet::~Quiet() { --t_quiet; }
+FunctionHooks::Quiet::~Quiet() {
+    --t_quiet;
+}
 
-bool FunctionHooks::QuietHere() { return t_quiet > 0; }
+bool FunctionHooks::QuietHere() {
+    return t_quiet > 0;
+}
 
 bool FunctionHooks::Hooked(Address function) const {
     std::shared_lock lock(mutex_);

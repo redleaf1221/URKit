@@ -33,7 +33,8 @@ std::unique_ptr<wxFileConfig> OpenConfig() {
 
 class FileDrop : public wxFileDropTarget {
   public:
-    explicit FileDrop(std::function<void(const wxArrayString &)> handler) : handler_(std::move(handler)) {}
+    explicit FileDrop(std::function<void(const wxArrayString &)> handler) : handler_(std::move(handler)) {
+    }
     bool OnDropFiles(wxCoord, wxCoord, const wxArrayString &files) override {
         handler_(files);
         return true;
@@ -75,8 +76,7 @@ void Settings::Save() const {
 }
 
 MainFrame::MainFrame(const std::wstring &openPath)
-    : wxFrame(nullptr, wxID_ANY, "URKit", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE),
-      slideTimer_(this) {
+    : wxFrame(nullptr, wxID_ANY, "URKit", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE), slideTimer_(this) {
     settings_.Load();
     wxWindowBase::SetBackgroundColour(Theme::kWindow);
     wxWindow::SetFont(Theme::UiFont());

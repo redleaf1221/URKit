@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <map>
+#include <ranges>
 #include <set>
 #include <sstream>
 
@@ -80,7 +80,7 @@ class Usmap {
     std::string Build(const TypeMap &types) {
         std::string enums, structs;
         std::uint32_t enumCount = 0, structCount = 0;
-        for (const auto &[key, type] : types) {
+        for (const auto &type : types | std::views::values) {
             if (!type.isEnum)
                 continue;
             ++enumCount;
@@ -97,7 +97,7 @@ class Usmap {
                 Int32(enums, Name(type.values[i].first));
             }
         }
-        for (const auto &[key, type] : types) {
+        for (const auto &type : types | std::views::values) {
             if (type.isEnum)
                 continue;
             ++structCount;
@@ -152,7 +152,9 @@ class Usmap {
         std::memcpy(bytes, &value, sizeof(T));
         out.append(bytes, sizeof(T));
     }
-    static void Int32(std::string &out, std::int32_t value) { Put<std::int32_t>(out, value); }
+    static void Int32(std::string &out, std::int32_t value) {
+        Put<std::int32_t>(out, value);
+    }
 
     std::int32_t Name(const std::string &name) {
         const auto [found, added] = index_.try_emplace(name, static_cast<std::int32_t>(names_.size()));
@@ -163,15 +165,31 @@ class Usmap {
 
     // An enum-valued shape: EnumProperty over the underlying integer, as the engine serializes it.
     void Property(std::string &out, const Shape &shape, int depth) {
-        static const std::map<std::string, std::uint8_t> plain = {
-            {"bool", kUBool},       {"int8", kUInt8},       {"int16", kUInt16},     {"int32", kUInt},
-            {"int64", kUInt64},     {"uint16", kUUInt16},   {"uint32", kUUInt32},   {"uint64", kUUInt64},
-            {"float", kUFloat},     {"double", kUDouble},   {"name", kUName},       {"string", kUStr},
-            {"text", kUText},       {"object", kUObject},   {"class", kUObject},    {"weak object", kUWeakObject},
-            {"lazy object", kULazyObject}, {"soft object", kUSoftObject}, {"interface", kUInterface},
-            {"delegate", kUDelegate}, {"multicast delegate", kUMulticastDelegate},
-            {"sparse delegate", kUMulticastDelegate}, {"field path", kUFieldPath}, {"utf8 string", kUUtf8Str},
-            {"ansi string", kUAnsiStr}};
+        static const std::map<std::string, std::uint8_t> plain = {{"bool", kUBool},
+                                                                  {"int8", kUInt8},
+                                                                  {"int16", kUInt16},
+                                                                  {"int32", kUInt},
+                                                                  {"int64", kUInt64},
+                                                                  {"uint16", kUUInt16},
+                                                                  {"uint32", kUUInt32},
+                                                                  {"uint64", kUUInt64},
+                                                                  {"float", kUFloat},
+                                                                  {"double", kUDouble},
+                                                                  {"name", kUName},
+                                                                  {"string", kUStr},
+                                                                  {"text", kUText},
+                                                                  {"object", kUObject},
+                                                                  {"class", kUObject},
+                                                                  {"weak object", kUWeakObject},
+                                                                  {"lazy object", kULazyObject},
+                                                                  {"soft object", kUSoftObject},
+                                                                  {"interface", kUInterface},
+                                                                  {"delegate", kUDelegate},
+                                                                  {"multicast delegate", kUMulticastDelegate},
+                                                                  {"sparse delegate", kUMulticastDelegate},
+                                                                  {"field path", kUFieldPath},
+                                                                  {"utf8 string", kUUtf8Str},
+                                                                  {"ansi string", kUAnsiStr}};
         const auto element = [&](std::size_t i) {
             if (i < shape.elements.size() && depth < 8)
                 Property(out, shape.elements[i], depth + 1);
@@ -185,9 +203,9 @@ class Usmap {
             }
             Put<std::uint8_t>(out, kUEnum);
             const std::uint8_t underlying = shape.kind == "byte" || shape.size == 1 ? kUByte
-                                            : shape.size == 2                      ? kUUInt16
-                                            : shape.size == 8                      ? kUInt64
-                                                                                   : kUInt;
+                                            : shape.size == 2                       ? kUUInt16
+                                            : shape.size == 8                       ? kUInt64
+                                                                                    : kUInt;
             Put<std::uint8_t>(out, underlying);
             Int32(out, Name(shape.inner));
             return;
@@ -223,7 +241,7 @@ class Layouts {
         for (const char *word : kReserved)
             taken_.insert(word);
         // Size of FName and FText as the dump sees them.
-        for (const auto &[key, type] : types) {
+        for (const auto &type : types | std::views::values) {
             for (const Member &member : type.members) {
                 if (member.shape.kind == "name")
                     nameSize_ = member.shape.size;
@@ -231,20 +249,23 @@ class Layouts {
                     textSize_ = member.shape.size;
             }
         }
-        for (const auto &[key, type] : types) {
-            std::string base = type.isEnum ? Ident(type.ident) : (type.isStruct ? "F" : Prefix(type)) + Ident(type.ident);
+        for (const auto &type : types | std::views::values) {
+            std::string base =
+                type.isEnum ? Ident(type.ident) : (type.isStruct ? "F" : Prefix(type)) + Ident(type.ident);
             std::string name = base;
-            for (int n = 2; taken_.count(name); ++n)
+            for (int n = 2; taken_.contains(name); ++n)
                 name = base + '_' + std::to_string(n);
             taken_.insert(name);
             names_[&type] = name;
         }
     }
 
-    const std::string &NameOf(const Type &type) const { return names_.at(&type); }
+    const std::string &NameOf(const Type &type) const {
+        return names_.at(&type);
+    }
 
     std::string Header(const std::string &project) {
-        for (const auto &[key, type] : types_) {
+        for (const auto &type : types_ | std::views::values) {
             if (!type.isEnum)
                 Emit(type);
         }
@@ -268,16 +289,17 @@ class Layouts {
             << "typedef struct FUtf8String {\n    char *Data;\n    int32 Num;\n    int32 Max;\n} FUtf8String;\n"
             << "typedef struct FAnsiString {\n    char *Data;\n    int32 Num;\n    int32 Max;\n} FAnsiString;\n"
             << "typedef struct FText {\n    uint8 Bytes[" << textSize_ << "];\n} FText;\n"
-            << "typedef struct FWeakObjectPtr {\n    int32 ObjectIndex;\n    int32 ObjectSerialNumber;\n} FWeakObjectPtr;\n"
+            << "typedef struct FWeakObjectPtr {\n    int32 ObjectIndex;\n    int32 ObjectSerialNumber;\n} "
+               "FWeakObjectPtr;\n"
             << "typedef struct FScriptInterface {\n    struct UObject *ObjectPointer;\n    void *InterfacePointer;\n"
             << "} FScriptInterface;\n"
             << "typedef struct TArray {\n    void *Data;\n    int32 Num;\n    int32 Max;\n} TArray;\n\n";
-        for (const auto &[key, type] : types_) {
+        for (const auto &type : types_ | std::views::values) {
             if (!type.isEnum)
                 out << "typedef struct " << NameOf(type) << ' ' << NameOf(type) << ";\n";
         }
         out << '\n';
-        for (const auto &[key, type] : types_) {
+        for (const auto &type : types_ | std::views::values) {
             if (type.isEnum)
                 out << EnumText(type);
         }
@@ -286,14 +308,24 @@ class Layouts {
     }
 
   private:
-    static constexpr const char *kReserved[] = {
-        "auto", "break", "case", "char", "const", "continue", "default", "do", "double", "else", "enum", "extern",
-        "float", "for", "goto", "if", "inline", "int", "long", "register", "restrict", "return", "short", "signed",
-        "sizeof", "static", "struct", "switch", "typedef", "union", "unsigned", "void", "volatile", "while", "bool",
-        "class", "private", "public", "protected", "template", "this", "new", "delete", "operator", "virtual",
-        "namespace", "true", "false", "wchar_t", "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64",
-        "uint64", "FName", "FString", "FUtf8String", "FAnsiString", "FText", "FWeakObjectPtr", "FScriptInterface",
-        "TArray", "Super", "near", "far", "interface"};
+    static constexpr const char *kReserved[] = {"auto",        "break",     "case",           "char",
+                                                "const",       "continue",  "default",        "do",
+                                                "double",      "else",      "enum",           "extern",
+                                                "float",       "for",       "goto",           "if",
+                                                "inline",      "int",       "long",           "register",
+                                                "restrict",    "return",    "short",          "signed",
+                                                "sizeof",      "static",    "struct",         "switch",
+                                                "typedef",     "union",     "unsigned",       "void",
+                                                "volatile",    "while",     "bool",           "class",
+                                                "private",     "public",    "protected",      "template",
+                                                "this",        "new",       "delete",         "operator",
+                                                "virtual",     "namespace", "true",           "false",
+                                                "wchar_t",     "int8",      "uint8",          "int16",
+                                                "uint16",      "int32",     "uint32",         "int64",
+                                                "uint64",      "FName",     "FString",        "FUtf8String",
+                                                "FAnsiString", "FText",     "FWeakObjectPtr", "FScriptInterface",
+                                                "TArray",      "Super",     "near",           "far",
+                                                "interface"};
 
     const Type *Find(const std::string &package, const std::string &name) const {
         const auto found = types_.find(Key(package, name));
@@ -341,27 +373,37 @@ class Layouts {
     // Integer spellings by size, for bytes and enums.
     static std::string Integer(int size) {
         switch (size) {
-        case 1:
-            return "uint8";
-        case 2:
-            return "uint16";
-        case 4:
-            return "uint32";
-        case 8:
-            return "uint64";
-        default:
-            return {};
+            case 1:
+                return "uint8";
+            case 2:
+                return "uint16";
+            case 4:
+                return "uint32";
+            case 8:
+                return "uint64";
+            default:
+                return {};
         }
     }
 
     // The C type of a value of this shape, exactly shape.size bytes; empty when it has none.
     std::string ValueType(const Shape &shape, std::string &note) {
         static const std::map<std::string, std::pair<std::string, int>> fixed = {
-            {"bool", {"bool", 1}},     {"int8", {"int8", 1}},     {"int16", {"int16", 2}},   {"int32", {"int32", 4}},
-            {"int64", {"int64", 8}},   {"uint16", {"uint16", 2}}, {"uint32", {"uint32", 4}}, {"uint64", {"uint64", 8}},
-            {"float", {"float", 4}},   {"double", {"double", 8}}, {"string", {"FString", 16}},
-            {"utf8 string", {"FUtf8String", 16}}, {"ansi string", {"FAnsiString", 16}},
-            {"weak object", {"FWeakObjectPtr", 8}}, {"interface", {"FScriptInterface", 16}}};
+            {"bool", {"bool", 1}},
+            {"int8", {"int8", 1}},
+            {"int16", {"int16", 2}},
+            {"int32", {"int32", 4}},
+            {"int64", {"int64", 8}},
+            {"uint16", {"uint16", 2}},
+            {"uint32", {"uint32", 4}},
+            {"uint64", {"uint64", 8}},
+            {"float", {"float", 4}},
+            {"double", {"double", 8}},
+            {"string", {"FString", 16}},
+            {"utf8 string", {"FUtf8String", 16}},
+            {"ansi string", {"FAnsiString", 16}},
+            {"weak object", {"FWeakObjectPtr", 8}},
+            {"interface", {"FScriptInterface", 16}}};
         if (const auto found = fixed.find(shape.kind); found != fixed.end())
             return found->second.second == shape.size ? found->second.first : std::string();
         if (shape.kind == "byte" || shape.kind == "enum") {
@@ -386,7 +428,7 @@ class Layouts {
             if (!target || !target->isStruct || Size(*target) != shape.size)
                 return {};
             Emit(*target);
-            return defined_.count(target) ? NameOf(*target) : std::string();
+            return defined_.contains(target) ? NameOf(*target) : std::string();
         }
         if (shape.kind == "array" && shape.size == 16)
             return ArrayType(shape);
@@ -405,24 +447,24 @@ class Layouts {
         if (element.back() == '*')
             name = "TArray_" + Ident(element.substr(0, element.size() - 2)) + "_ptr";
         if (arrayTypes_.insert(name).second)
-            arrays_ << "typedef struct " << name << " {\n    " << element << " *Data;\n    int32 Num;\n    int32 Max;\n} "
-                    << name << ";\n";
+            arrays_ << "typedef struct " << name << " {\n    " << element
+                    << " *Data;\n    int32 Num;\n    int32 Max;\n} " << name << ";\n";
         return name;
     }
 
     std::string Unique(const std::string &base, std::set<std::string> &used) const {
         std::string name = base;
-        if (taken_.count(name))
+        if (taken_.contains(name))
             name += '_';
         std::string candidate = name;
-        for (int n = 2; used.count(candidate); ++n)
+        for (int n = 2; used.contains(candidate); ++n)
             candidate = name + '_' + std::to_string(n);
         used.insert(candidate);
         return candidate;
     }
 
     void Emit(const Type &type) {
-        if (emitted_.count(&type) || visiting_.count(&type) || type.isEnum)
+        if (emitted_.contains(&type) || visiting_.contains(&type) || type.isEnum)
             return;
         visiting_.insert(&type);
         const Type *super = Find(type.superPackage, type.superName);
@@ -450,9 +492,9 @@ class Layouts {
             }
             items.push_back({member.offset + (bitfield ? member.boolByte : 0), &member, bit});
         }
-        std::stable_sort(items.begin(), items.end(), [](const Item &a, const Item &b) {
-            return a.at != b.at ? a.at < b.at : a.bit < b.bit;
-        });
+        std::ranges::stable_sort(
+            items,
+                         [](const Item &a, const Item &b) { return a.at != b.at ? a.at < b.at : a.bit < b.bit; });
 
         std::ostringstream body;
         std::set<std::string> used;
@@ -460,17 +502,19 @@ class Layouts {
         const bool object = type.name == "Object" && type.package == "/Script/CoreUObject";
         if (object && type.size == 0x28 && nameSize_ == 8) {
             // UObjectBase, 4.25-5.8.
-            body << "    void **VTable;\n    int32 ObjectFlags;\n    int32 InternalIndex;\n    struct UClass *ClassPrivate;\n"
+            body << "    void **VTable;\n    int32 ObjectFlags;\n    int32 InternalIndex;\n    struct UClass "
+                    "*ClassPrivate;\n"
                  << "    FName NamePrivate;\n    struct UObject *OuterPrivate;\n";
             cursor = 0x28;
-        } else if (super && defined_.count(super) && super->size > 0) {
+        } else if (super && defined_.contains(super) && super->size > 0) {
             body << "    " << NameOf(*super) << " Super;\n";
             cursor = Size(*super);
         }
         const auto pad = [&](int to) {
             if (to > cursor)
-                body << "    uint8 " << Unique("pad_" + std::string(Hex(static_cast<std::uint64_t>(cursor))).substr(2), used)
-                     << '[' << Hex(static_cast<std::uint64_t>(to - cursor)) << "];\n";
+                body << "    uint8 "
+                     << Unique("pad_" + std::string(Hex(static_cast<std::uint64_t>(cursor))).substr(2), used) << '['
+                     << Hex(static_cast<std::uint64_t>(to - cursor)) << "];\n";
             cursor = std::max(cursor, to);
         };
         for (std::size_t i = 0; i < items.size();) {
@@ -520,7 +564,8 @@ class Layouts {
             return;
         defined_.insert(&type);
         structs_ << "struct " << NameOf(type) << " { // " << Hex(static_cast<std::uint64_t>(Size(type))) << ", "
-                 << type.package << '.' << type.name << "\n" << body.str() << "};\n\n";
+                 << type.package << '.' << type.name << "\n"
+                 << body.str() << "};\n\n";
     }
 
     const TypeMap &types_;
@@ -597,7 +642,8 @@ std::string GhidraScript(const std::string &project, const std::string &lists) {
         << "# unreal_types.h. Run from the Script Manager with the game's executable open. Offsets are the\n"
         << "# dumped build's; another build gets wrong names.\n"
         << "# @category URKit\n"
-        << "import os\n\nfrom ghidra.program.model.symbol import SourceType\n\n" << lists << R"PY(
+        << "import os\n\nfrom ghidra.program.model.symbol import SourceType\n\n"
+        << lists << R"PY(
 
 def namespace(owner):
     symbols = currentProgram.getSymbolTable()
@@ -663,7 +709,7 @@ std::vector<ExportFile> ReverseEngineeringFiles(const TypeMap &types, const Glob
     files.push_back({"unreal_types.h", layouts.Header(project)});
 
     std::vector<std::pair<std::uint64_t, std::string>> functions;
-    for (const auto &[key, type] : types) {
+    for (const auto &type : types | std::views::values) {
         if (type.isEnum || type.isStruct)
             continue;
         for (const Function &function : type.functions) {
@@ -671,14 +717,14 @@ std::vector<ExportFile> ReverseEngineeringFiles(const TypeMap &types, const Glob
                 functions.emplace_back(function.nativeRva, layouts.NameOf(type) + "::exec" + function.name);
         }
     }
-    std::sort(functions.begin(), functions.end());
+    std::ranges::sort(functions);
     // One name per thunk: shared thunks (the same exec for several functions) keep the first.
-    functions.erase(std::unique(functions.begin(), functions.end(),
-                                [](const auto &a, const auto &b) { return a.first == b.first; }),
+    functions.erase(
+        std::ranges::unique(functions, [](const auto &a, const auto &b) { return a.first == b.first; }).begin(),
                     functions.end());
     const std::string lists = Lists(functions, globals);
-    files.push_back({"ida_import.py", IdaScript(label, lists)});
-    files.push_back({"ghidra_import.py", GhidraScript(label, lists)});
+    files.push_back({.name = "ida_import.py", .contents = IdaScript(label, lists)});
+    files.push_back({.name = "ghidra_import.py", .contents = GhidraScript(label, lists)});
     return files;
 }
 
