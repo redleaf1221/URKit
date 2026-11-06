@@ -40,19 +40,37 @@ const char *RuntimeSelectionKey() {
 std::string DefaultIni() {
     const Config defaults;
     std::ostringstream out;
-    out << "; Generated automatically by URKit.\n"
+    out << "; Generated automatically by URKit. Values are read once at startup;\n"
+        << "; restart the game after editing them. Lines starting with ';' are comments.\n"
+        << "\n"
         << "[Loader]\n"
+        << "; 1 opens a console window with the live log. 0 logs to URKit_logs.log only.\n"
         << "ShowConsole=" << BoolInt(defaults.showConsole) << "\n"
+        << "; 1 runs runtime detection only: no mods are loaded and no runtime hooks\n"
+        << "; are installed. Useful to tell a loader problem from a mod problem.\n"
         << "SafeMode=" << BoolInt(defaults.safeMode) << "\n"
+        << "; Milliseconds to wait after the runtime is detected, before the first\n"
+        << "; metadata probe. Raise it for games that initialize late.\n"
         << "InitDelayMs=" << defaults.initDelayMs << "\n"
+        << "; auto | mono | il2cpp | unreal. auto uses whatever the process loaded.\n"
         << RuntimeSelectionKey() << "=" << defaults.runtime << "\n"
+        << "; Folder scanned for native mod DLLs, relative to this file.\n"
         << "ModsDir=" << defaults.modsDir << "\n"
-        << "; Splash=0 skips the startup progress window.\n"
+        << "; 0 skips the startup progress window and its final hold.\n"
         << "Splash=" << BoolInt(defaults.splash) << "\n"
         << "\n"
         << "[Logging]\n"
-        << "; Unity=1 copies UnityEngine.Debug output into the URKit log.\n"
-        << "Unity=" << BoolInt(defaults.unityLogs) << "\n";
+        << "; 1 copies UnityEngine.Debug output into URKit_logs.log as\n"
+        << "; \"[info] [Unity] ...\", \"[warning] ...\" and \"[error] ...\".\n"
+        << "Unity=" << BoolInt(defaults.unityLogs) << "\n"
+        << "\n"
+        << "[Unreal]\n"
+        << "; 1 writes the reflected classes that urk.exe needs for typed headers.\n"
+        << "; Needs the game loop to run, so it does nothing in safe mode.\n"
+        << "DumpTypes=" << BoolInt(defaults.unrealDumpTypes) << "\n"
+        << "; 1 also hooks native functions that Blueprint calls directly, not just\n"
+        << "; the ones the Unreal SDK routes through script. Off until proven per game.\n"
+        << "NativeFromBlueprint=" << BoolInt(defaults.unrealNativeFromBlueprint) << "\n";
     return out.str();
 }
 
