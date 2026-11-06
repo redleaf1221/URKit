@@ -22,8 +22,6 @@ std::string ConfigModule(const ModuleProjectOptions &options) {
         << "inline constexpr const char* default_language = \"en\";\n"
         << "// Lets ImGui windows move to another monitor.\n"
         << "inline bool enable_detached_viewports = false;\n";
-    if (!IsUnrealProject(options))
-        out << "inline bool enable_unity_log_hook = true;\n";
     out << "// Win32 virtual-key code used by the generated ImGui WndProc toggle.\n"
         << "// Default: VK_TAB (0x09). Change this value to customize the menu key.\n"
         << "inline int menu_toggle_key = 0x09;\n";
@@ -169,9 +167,6 @@ std::string ModHooksSource(const ModuleProjectOptions &options) {
         << "#include \"sdk/runtime_api.h\"\n"
         << "#include \"sdk/hook_api.h\"\n"
         << "#include \"render_imgui_hook.h\"\n";
-    const bool unity = !IsUnrealProject(options);
-    if (unity)
-        out << "#include \"unity_log_hook.h\"\n";
     out << "#include \"" << BackendRuntimeHeader(options) << "\"\n"
         << "#include \"" << BackendHelperHeader(options) << "\"\n";
     out << R"URK(
@@ -193,9 +188,6 @@ if (!URK::hooks::available()) {
 
 // Register validated targets with g_hooks so uninstall() can detach them.
 )URK";
-    if (unity)
-        out << "if (ModConfig::enable_unity_log_hook && !ModUnityLogHook::install(ctx))\n"
-            << "    ModLog::warn(\"Unity log hooks were requested but not installed\");\n";
     out << R"URK(if (!ModRenderHook::install(ctx))
     ModLog::warn("ImGui render hook could not be installed; continuing without menu");
 
@@ -205,8 +197,6 @@ return true;
 
 void uninstall() {
 )URK";
-    if (unity)
-        out << "    ModUnityLogHook::uninstall();\n";
     out << R"URK(    if (!ModRenderHook::uninstall())
         ModLog::error("ImGui render hook shutdown was incomplete; see hook diagnostics");
     g_hooks.detach_all();

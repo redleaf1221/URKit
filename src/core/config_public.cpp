@@ -46,7 +46,11 @@ std::string DefaultIni() {
         << "SafeMode=" << BoolInt(defaults.safeMode) << "\n"
         << "InitDelayMs=" << defaults.initDelayMs << "\n"
         << RuntimeSelectionKey() << "=" << defaults.runtime << "\n"
-        << "ModsDir=" << defaults.modsDir << "\n";
+        << "ModsDir=" << defaults.modsDir << "\n"
+        << "\n"
+        << "[Logging]\n"
+        << "; Unity=1 copies UnityEngine.Debug output into the URKit log.\n"
+        << "Unity=" << BoolInt(defaults.unityLogs) << "\n";
     return out.str();
 }
 
@@ -83,6 +87,7 @@ void ReadPublicConfig(const std::string &ini, Config &c) {
     c.runtime = buf;
     GetPrivateProfileStringA(section.c_str(), "ModsDir", c.modsDir.c_str(), buf, sizeof(buf), ini.c_str());
     c.modsDir = buf;
+    c.unityLogs = GetPrivateProfileIntA("Logging", "Unity", c.unityLogs, ini.c_str()) != 0;
     c.unrealDumpTypes = GetPrivateProfileIntA("Unreal", "DumpTypes", c.unrealDumpTypes, ini.c_str()) != 0;
     c.unrealNativeFromBlueprint =
         GetPrivateProfileIntA("Unreal", "NativeFromBlueprint", c.unrealNativeFromBlueprint, ini.c_str()) != 0;

@@ -788,7 +788,6 @@ bool WriteModuleProject(const ModuleProjectOptions &options, std::string *error)
          Win32ViewportPolicySourceModule(), true, false},
         {"mod/hooks/render_imgui_hook.h", OutputFilePolicy::GeneratedOverwrite, RenderHookHeaderModule(), true, true},
         {"mod/hooks/render_imgui_hook.cpp", OutputFilePolicy::GeneratedOverwrite, RenderHookSourceModule(), true, false},
-        {"mod/hooks/unity_log_hook.h", OutputFilePolicy::EditablePreserve, UnityLogHookModule(project), true, true},
         {"mod/generated/mod_lifecycle.h", OutputFilePolicy::GeneratedOverwrite, ModLifecycleHeader(), true, true},
         {"mod/generated/mod_lifecycle.cpp", OutputFilePolicy::GeneratedOverwrite, ModLifecycleSource(project), true,
          false},
@@ -805,7 +804,7 @@ bool WriteModuleProject(const ModuleProjectOptions &options, std::string *error)
     if (IsUnrealProject(project)) {
         std::erase_if(writes, [](const PlannedWrite &write) {
             const std::string path = write.relativePath.generic_string();
-            return path.starts_with("sdk/unity/") || path == "mod/hooks/unity_log_hook.h";
+            return path.starts_with("sdk/unity/");
         });
         for (PlannedWrite &write : writes)
             if (write.relativePath == "mod/ui/highlight.h")

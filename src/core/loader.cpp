@@ -33,6 +33,10 @@ static Config &LoaderConfig() {
     return config;
 }
 
+const Config &Config_Current() {
+    return LoaderConfig();
+}
+
 namespace {
 constexpr DWORD kIntroFinalHoldMs = 900;
 constexpr unsigned kProcessQualificationTimeoutMs = 30000;

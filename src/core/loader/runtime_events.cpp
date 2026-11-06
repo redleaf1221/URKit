@@ -1,5 +1,6 @@
 #include "runtime_events.h"
 
+#include "config.h"
 #include "hooks.h"
 #include "cursor_lease_registry.h"
 #include "il2cpp_api.h"
@@ -14,6 +15,7 @@
 #include <algorithm>
 #include <atomic>
 #include <bit>
+#include <cstdio>
 #include <cstring>
 #include <mutex>
 #include <new>
@@ -183,6 +185,28 @@ struct Il2CppObjectDestroyMethods {
     }
 };
 
+// Debug.Log/LogWarning/LogError take a boxed object, so a single signature covers
+// both the string overloads and the ones that pass a context object.
+struct MonoLogMethods {
+    MonoMethod *log = nullptr;
+    MonoMethod *logWarning = nullptr;
+    MonoMethod *logError = nullptr;
+
+    bool ready() const {
+        return log && logWarning && logError;
+    }
+};
+
+struct Il2CppLogMethods {
+    const Il2CppMethod *log = nullptr;
+    const Il2CppMethod *logWarning = nullptr;
+    const Il2CppMethod *logError = nullptr;
+
+    bool ready() const {
+        return log && logWarning && logError;
+    }
+};
+
 enum class RuntimeEventsBackend {
     None,
     Mono,
@@ -214,6 +238,8 @@ using MonoDestroyFn = void (*)(MonoObject *object, float delaySeconds);
 using MonoDestroyImmediateFn = void (*)(MonoObject *object, bool allowDestroyingAssets);
 using Il2CppDestroyFn = void (*)(Il2CppObject *object, float delaySeconds, const void *methodInfo);
 using Il2CppDestroyImmediateFn = void (*)(Il2CppObject *object, bool allowDestroyingAssets, const void *methodInfo);
+using MonoUnityLogFn = void (*)(MonoObject *message, const void *methodInfo);
+using Il2CppUnityLogFn = void (*)(Il2CppObject *message, const void *methodInfo);
 
 std::mutex g_eventsMutex;
 RuntimeEventsBackend g_backend = RuntimeEventsBackend::None;
@@ -250,6 +276,14 @@ MonoDestroyFn g_originalMonoDestroy = nullptr;
 MonoDestroyImmediateFn g_originalMonoDestroyImmediate = nullptr;
 Il2CppDestroyFn g_originalIl2CppDestroy = nullptr;
 Il2CppDestroyImmediateFn g_originalIl2CppDestroyImmediate = nullptr;
+MonoLogMethods g_monoLogMethods{};
+Il2CppLogMethods g_il2cppLogMethods{};
+MonoUnityLogFn g_originalMonoUnityLog = nullptr;
+MonoUnityLogFn g_originalMonoUnityLogWarning = nullptr;
+MonoUnityLogFn g_originalMonoUnityLogError = nullptr;
+Il2CppUnityLogFn g_originalIl2CppUnityLog = nullptr;
+Il2CppUnityLogFn g_originalIl2CppUnityLogWarning = nullptr;
+Il2CppUnityLogFn g_originalIl2CppUnityLogError = nullptr;
 
 URK_SceneInfo g_currentScene{};
 bool g_haveScene = false;
@@ -278,6 +312,8 @@ bool g_il2cppSceneHookInstallFailed = false;
 bool g_il2cppMouseHookInstallFailed = false;
 bool g_il2cppApplicationQuitHookInstallFailed = false;
 bool g_il2cppObjectDestroyHookInstallFailed = false;
+bool g_monoLogHookInstallFailed = false;
+bool g_il2cppLogHookInstallFailed = false;
 bool g_il2cppFrameResolutionLogged = false;
 bool g_il2cppSceneResolutionLogged = false;
 bool g_il2cppCursorResolutionLogged = false;
@@ -312,6 +348,12 @@ void MonoDestroyDetour(MonoObject *object, float delaySeconds);
 void MonoDestroyImmediateDetour(MonoObject *object, bool allowDestroyingAssets);
 void Il2CppDestroyDetour(Il2CppObject *object, float delaySeconds, const void *methodInfo);
 void Il2CppDestroyImmediateDetour(Il2CppObject *object, bool allowDestroyingAssets, const void *methodInfo);
+void MonoUnityLogDetour(MonoObject *message, const void *methodInfo);
+void MonoUnityLogWarningDetour(MonoObject *message, const void *methodInfo);
+void MonoUnityLogErrorDetour(MonoObject *message, const void *methodInfo);
+void Il2CppUnityLogDetour(Il2CppObject *message, const void *methodInfo);
+void Il2CppUnityLogWarningDetour(Il2CppObject *message, const void *methodInfo);
+void Il2CppUnityLogErrorDetour(Il2CppObject *message, const void *methodInfo);
 uint64_t TryActivateMonoRuntimeEvents(MonoApi &mono);
 uint64_t TryActivateIl2CppRuntimeEvents(Il2CppApi &il2cpp);
 void StartMonoActivationWorker(MonoApi &mono);
@@ -663,6 +705,24 @@ Il2CppFrameMethods ResolveIl2CppFrameMethods(Il2CppApi &il2cpp) {
     return methods;
 }
 
+MonoLogMethods ResolveMonoLogMethods(MonoApi &mono) {
+    MonoLogMethods methods{};
+    const char *boxedObject[] = {"System.Object"};
+    methods.log = FindUnityMethodExact(mono, "UnityEngine", "Debug", "Log", boxedObject, 1);
+    methods.logWarning = FindUnityMethodExact(mono, "UnityEngine", "Debug", "LogWarning", boxedObject, 1);
+    methods.logError = FindUnityMethodExact(mono, "UnityEngine", "Debug", "LogError", boxedObject, 1);
+    return methods;
+}
+
+Il2CppLogMethods ResolveIl2CppLogMethods(Il2CppApi &il2cpp) {
+    Il2CppLogMethods methods{};
+    const char *boxedObject[] = {"System.Object"};
+    methods.log = FindIl2CppUnityMethodExact(il2cpp, "UnityEngine", "Debug", "Log", boxedObject, 1);
+    methods.logWarning = FindIl2CppUnityMethodExact(il2cpp, "UnityEngine", "Debug", "LogWarning", boxedObject, 1);
+    methods.logError = FindIl2CppUnityMethodExact(il2cpp, "UnityEngine", "Debug", "LogError", boxedObject, 1);
+    return methods;
+}
+
 Il2CppApplicationMethods ResolveIl2CppApplicationMethods(Il2CppApi &il2cpp) {
     Il2CppApplicationMethods methods{};
     methods.internalApplicationQuit = FindIl2CppUnityMethodExact(il2cpp, "UnityEngine", "Application",
@@ -810,6 +870,80 @@ std::string MonoStringToUtf8(MonoObject *object) {
     std::string text(raw);
     g_mono->free_(raw);
     return text;
+}
+
+// Unity hands Debug.Log a boxed object; only System.String carries text, so
+// everything else degrades to a type name instead of an unreadable handle.
+std::string Il2CppLogMessageText(Il2CppObject *message) {
+    if (!message)
+        return "<null>";
+    if (!g_il2cpp)
+        return "<unreadable Unity log message>";
+
+    const char *namespc = nullptr;
+    const char *name = nullptr;
+    if (g_il2cpp->il2cpp_object_get_class && g_il2cpp->il2cpp_class_get_name) {
+        Il2CppClass *klass = g_il2cpp->il2cpp_object_get_class(message);
+        if (klass) {
+            name = g_il2cpp->il2cpp_class_get_name(klass);
+            namespc = g_il2cpp->il2cpp_class_get_namespace ? g_il2cpp->il2cpp_class_get_namespace(klass) : nullptr;
+        }
+    }
+
+    if (name && std::strcmp(name, "String") == 0 && (!namespc || std::strcmp(namespc, "System") == 0)) {
+        std::string text = Il2CppStringToUtf8(message);
+        if (!text.empty())
+            return text;
+    }
+
+    char fallback[192]{};
+    std::snprintf(fallback, sizeof(fallback), "<%s%s%s object at %p>", namespc && namespc[0] ? namespc : "",
+                  namespc && namespc[0] ? "." : "", name && name[0] ? name : "unknown",
+                  static_cast<void *>(message));
+    return fallback;
+}
+
+std::string MonoLogMessageText(MonoObject *message) {
+    if (!message)
+        return "<null>";
+    if (!g_mono)
+        return "<unreadable Unity log message>";
+
+    const char *namespc = nullptr;
+    const char *name = nullptr;
+    if (g_mono->object_get_class && g_mono->class_get_name) {
+        MonoClass *klass = g_mono->object_get_class(message);
+        if (klass) {
+            name = g_mono->class_get_name(klass);
+            namespc = g_mono->class_get_namespace ? g_mono->class_get_namespace(klass) : nullptr;
+        }
+    }
+
+    if (name && std::strcmp(name, "String") == 0 && (!namespc || std::strcmp(namespc, "System") == 0)) {
+        std::string text = MonoStringToUtf8(message);
+        if (!text.empty())
+            return text;
+    }
+
+    char fallback[192]{};
+    std::snprintf(fallback, sizeof(fallback), "<%s%s%s object at %p>", namespc && namespc[0] ? namespc : "",
+                  namespc && namespc[0] ? "." : "", name && name[0] ? name : "unknown",
+                  reinterpret_cast<void *>(message));
+    return fallback;
+}
+
+// A Unity message can carry newlines; one record per line keeps the log parseable.
+void EmitUnityLog(const char *level, const std::string &text) {
+    std::size_t start = 0;
+    for (;;) {
+        const std::size_t end = text.find('\n', start);
+        const std::string line = end == std::string::npos ? text.substr(start) : text.substr(start, end - start);
+        if (!line.empty())
+            Log("[%s] [Unity] %s", level, line.c_str());
+        if (end == std::string::npos)
+            break;
+        start = end + 1;
+    }
 }
 
 void FillObjectDestroyRequest(URK_ObjectDestroyRequest *request, uintptr_t object, int32_t instanceId,
@@ -1479,6 +1613,42 @@ void Il2CppBeforeRenderDetour(const void *methodInfo) {
     RuntimeEvents_Pump();
 }
 
+void MonoUnityLogDetour(MonoObject *message, const void *methodInfo) {
+    EmitUnityLog("info", MonoLogMessageText(message));
+    if (g_originalMonoUnityLog)
+        g_originalMonoUnityLog(message, methodInfo);
+}
+
+void MonoUnityLogWarningDetour(MonoObject *message, const void *methodInfo) {
+    EmitUnityLog("warning", MonoLogMessageText(message));
+    if (g_originalMonoUnityLogWarning)
+        g_originalMonoUnityLogWarning(message, methodInfo);
+}
+
+void MonoUnityLogErrorDetour(MonoObject *message, const void *methodInfo) {
+    EmitUnityLog("error", MonoLogMessageText(message));
+    if (g_originalMonoUnityLogError)
+        g_originalMonoUnityLogError(message, methodInfo);
+}
+
+void Il2CppUnityLogDetour(Il2CppObject *message, const void *methodInfo) {
+    EmitUnityLog("info", Il2CppLogMessageText(message));
+    if (g_originalIl2CppUnityLog)
+        g_originalIl2CppUnityLog(message, methodInfo);
+}
+
+void Il2CppUnityLogWarningDetour(Il2CppObject *message, const void *methodInfo) {
+    EmitUnityLog("warning", Il2CppLogMessageText(message));
+    if (g_originalIl2CppUnityLogWarning)
+        g_originalIl2CppUnityLogWarning(message, methodInfo);
+}
+
+void Il2CppUnityLogErrorDetour(Il2CppObject *message, const void *methodInfo) {
+    EmitUnityLog("error", Il2CppLogMessageText(message));
+    if (g_originalIl2CppUnityLogError)
+        g_originalIl2CppUnityLogError(message, methodInfo);
+}
+
 void DispatchApplicationQuit(const char *backend) {
     if (!g_applicationQuitObserved.exchange(true, std::memory_order_acq_rel)) {
         Log("[runtime][events][%s] Application quit observed; starting loader shutdown.",
@@ -1834,6 +2004,23 @@ void ResetStateLocked() {
     if (g_originalIl2CppDestroyImmediate)
         Hook_Detach(reinterpret_cast<void **>(&g_originalIl2CppDestroyImmediate),
                     reinterpret_cast<void *>(&Il2CppDestroyImmediateDetour));
+    if (g_originalMonoUnityLog)
+        Hook_Detach(reinterpret_cast<void **>(&g_originalMonoUnityLog), reinterpret_cast<void *>(&MonoUnityLogDetour));
+    if (g_originalMonoUnityLogWarning)
+        Hook_Detach(reinterpret_cast<void **>(&g_originalMonoUnityLogWarning),
+                    reinterpret_cast<void *>(&MonoUnityLogWarningDetour));
+    if (g_originalMonoUnityLogError)
+        Hook_Detach(reinterpret_cast<void **>(&g_originalMonoUnityLogError),
+                    reinterpret_cast<void *>(&MonoUnityLogErrorDetour));
+    if (g_originalIl2CppUnityLog)
+        Hook_Detach(reinterpret_cast<void **>(&g_originalIl2CppUnityLog),
+                    reinterpret_cast<void *>(&Il2CppUnityLogDetour));
+    if (g_originalIl2CppUnityLogWarning)
+        Hook_Detach(reinterpret_cast<void **>(&g_originalIl2CppUnityLogWarning),
+                    reinterpret_cast<void *>(&Il2CppUnityLogWarningDetour));
+    if (g_originalIl2CppUnityLogError)
+        Hook_Detach(reinterpret_cast<void **>(&g_originalIl2CppUnityLogError),
+                    reinterpret_cast<void *>(&Il2CppUnityLogErrorDetour));
     if (g_originalMonoSceneLoaded)
         Hook_Detach(reinterpret_cast<void **>(&g_originalMonoSceneLoaded),
                     reinterpret_cast<void *>(&MonoSceneLoadedDetour));
@@ -1899,6 +2086,12 @@ void ResetStateLocked() {
     g_originalMonoDestroyImmediate = nullptr;
     g_originalIl2CppDestroy = nullptr;
     g_originalIl2CppDestroyImmediate = nullptr;
+    g_originalMonoUnityLog = nullptr;
+    g_originalMonoUnityLogWarning = nullptr;
+    g_originalMonoUnityLogError = nullptr;
+    g_originalIl2CppUnityLog = nullptr;
+    g_originalIl2CppUnityLogWarning = nullptr;
+    g_originalIl2CppUnityLogError = nullptr;
 
     g_currentScene = {};
     g_haveScene = false;
@@ -1925,6 +2118,8 @@ void ResetStateLocked() {
     g_il2cppMouseHookInstallFailed = false;
     g_il2cppApplicationQuitHookInstallFailed = false;
     g_il2cppObjectDestroyHookInstallFailed = false;
+    g_monoLogHookInstallFailed = false;
+    g_il2cppLogHookInstallFailed = false;
     g_il2cppFrameResolutionLogged = false;
     g_il2cppSceneResolutionLogged = false;
     g_il2cppCursorResolutionLogged = false;
@@ -2036,6 +2231,74 @@ bool InstallIl2CppFrameHook(Il2CppApi &il2cpp, const Il2CppFrameMethods &methods
     Log("[SUCCESS][runtime][events][IL2CPP] hooked Application.InvokeOnBeforeRender "
         "target=%p for once-per-frame main-thread dispatch.",
         target);
+    return true;
+}
+
+bool InstallMonoLogHook(MonoApi &mono, const MonoLogMethods &methods) {
+    if (!methods.ready() || !mono.compile_method) {
+        Log("[runtime][events][Mono][WARNING] Unity log capture unavailable: "
+            "Debug.Log/LogWarning/LogError=%s mono_compile_method=%s.",
+            BoolText(methods.ready()), BoolText(mono.compile_method != nullptr));
+        return false;
+    }
+
+    MonoMethod *managed[3] = {methods.log, methods.logWarning, methods.logError};
+    MonoUnityLogFn *originals[3] = {&g_originalMonoUnityLog, &g_originalMonoUnityLogWarning,
+                                    &g_originalMonoUnityLogError};
+    MonoUnityLogFn detours[3] = {&MonoUnityLogDetour, &MonoUnityLogWarningDetour, &MonoUnityLogErrorDetour};
+
+    for (std::size_t index = 0; index < 3; ++index) {
+        void *target = mono.CompileMethodSafe(managed[index]);
+        *originals[index] = reinterpret_cast<MonoUnityLogFn>(target);
+        if (!IsExecutableAddress(target) ||
+            !Hook_Attach(reinterpret_cast<void **>(originals[index]), reinterpret_cast<void *>(detours[index]))) {
+            *originals[index] = nullptr;
+            while (index > 0) {
+                --index;
+                Hook_Detach(reinterpret_cast<void **>(originals[index]), reinterpret_cast<void *>(detours[index]));
+                *originals[index] = nullptr;
+            }
+            Log("[runtime][events][Mono][WARNING] Failed to hook UnityEngine.Debug log methods; "
+                "Unity output stays out of the URKit log.");
+            return false;
+        }
+    }
+
+    Log("[runtime][events][Mono] forwarding UnityEngine.Debug output into the URKit log.");
+    return true;
+}
+
+bool InstallIl2CppLogHook(Il2CppApi &il2cpp, const Il2CppLogMethods &methods) {
+    if (!methods.ready()) {
+        Log("[runtime][events][IL2CPP][WARNING] Unity log capture unavailable: "
+            "Debug.Log/LogWarning/LogError were not resolved.");
+        return false;
+    }
+
+    const Il2CppMethod *managed[3] = {methods.log, methods.logWarning, methods.logError};
+    Il2CppUnityLogFn *originals[3] = {&g_originalIl2CppUnityLog, &g_originalIl2CppUnityLogWarning,
+                                      &g_originalIl2CppUnityLogError};
+    Il2CppUnityLogFn detours[3] = {&Il2CppUnityLogDetour, &Il2CppUnityLogWarningDetour,
+                                   &Il2CppUnityLogErrorDetour};
+
+    for (std::size_t index = 0; index < 3; ++index) {
+        void *target = Il2CppMethodPointerForHook(il2cpp, managed[index]);
+        *originals[index] = reinterpret_cast<Il2CppUnityLogFn>(target);
+        if (!IsExecutableAddress(target) ||
+            !Hook_Attach(reinterpret_cast<void **>(originals[index]), reinterpret_cast<void *>(detours[index]))) {
+            *originals[index] = nullptr;
+            while (index > 0) {
+                --index;
+                Hook_Detach(reinterpret_cast<void **>(originals[index]), reinterpret_cast<void *>(detours[index]));
+                *originals[index] = nullptr;
+            }
+            Log("[runtime][events][IL2CPP][WARNING] Failed to hook UnityEngine.Debug log methods; "
+                "Unity output stays out of the URKit log.");
+            return false;
+        }
+    }
+
+    Log("[runtime][events][IL2CPP] forwarding UnityEngine.Debug output into the URKit log.");
     return true;
 }
 
@@ -2348,6 +2611,7 @@ uint64_t TryActivateMonoRuntimeEvents(MonoApi &mono) {
     bool needMouseSuppression = false;
     bool needApplicationQuit = false;
     bool needObjectDestroy = false;
+    bool needLogs = false;
 
     {
         std::lock_guard lock(g_eventsMutex);
@@ -2363,8 +2627,9 @@ uint64_t TryActivateMonoRuntimeEvents(MonoApi &mono) {
         needApplicationQuit = g_originalMonoApplicationQuit == nullptr && !g_monoApplicationQuitHookInstallFailed;
         needObjectDestroy = (capabilities & URK_RUNTIME_CAP_OBJECT_DESTROY_REQUEST_EVENTS) == 0 &&
                             !g_monoObjectDestroyHookInstallFailed;
+        needLogs = Config_Current().unityLogs && g_originalMonoUnityLog == nullptr && !g_monoLogHookInstallFailed;
         if (!needFrame && !needGraphics && !needScene && !needCursor && !needInput && !needMouseSuppression &&
-            !needApplicationQuit && !needObjectDestroy) {
+            !needApplicationQuit && !needObjectDestroy && !needLogs) {
             return capabilities;
         }
     }
@@ -2389,6 +2654,20 @@ uint64_t TryActivateMonoRuntimeEvents(MonoApi &mono) {
         }
         if (installed)
             Log("[SUCCESS][runtime][events][Mono] object destroy request events activated after UnityEngine methods became available.");
+    }
+
+    if (needLogs) {
+        const MonoLogMethods logMethods = ResolveMonoLogMethods(mono);
+        {
+            std::lock_guard lock(g_eventsMutex);
+            if (g_backend != RuntimeEventsBackend::Mono || g_mono != &mono)
+                return g_capabilities;
+            g_monoLogMethods = logMethods;
+        }
+        if (logMethods.ready() && !InstallMonoLogHook(mono, logMethods)) {
+            std::lock_guard lock(g_eventsMutex);
+            g_monoLogHookInstallFailed = true;
+        }
     }
 
     if (needFrame || needGraphics) {
@@ -2532,6 +2811,7 @@ uint64_t TryActivateIl2CppRuntimeEvents(Il2CppApi &il2cpp) {
     bool needInput = false;
     bool needMouseSuppression = false;
     bool needApplicationQuit = false;
+    bool needLogs = false;
 
     {
         std::lock_guard lock(g_eventsMutex);
@@ -2546,9 +2826,25 @@ uint64_t TryActivateIl2CppRuntimeEvents(Il2CppApi &il2cpp) {
         needMouseSuppression = !g_mouseInputSuppressionInstalled && !g_il2cppMouseHookInstallFailed;
         needApplicationQuit =
             g_originalIl2CppApplicationQuit == nullptr && !g_il2cppApplicationQuitHookInstallFailed;
+        needLogs = Config_Current().unityLogs && g_originalIl2CppUnityLog == nullptr &&
+                   !g_il2cppLogHookInstallFailed;
         if (!needFrame && !needGraphics && !needScene && !needCursor && !needInput && !needMouseSuppression &&
-            !needApplicationQuit) {
+            !needApplicationQuit && !needLogs) {
             return capabilities;
+        }
+    }
+
+    if (needLogs) {
+        const Il2CppLogMethods logMethods = ResolveIl2CppLogMethods(il2cpp);
+        {
+            std::lock_guard lock(g_eventsMutex);
+            if (g_backend != RuntimeEventsBackend::Il2Cpp || g_il2cpp != &il2cpp)
+                return g_capabilities;
+            g_il2cppLogMethods = logMethods;
+        }
+        if (logMethods.ready() && !InstallIl2CppLogHook(il2cpp, logMethods)) {
+            std::lock_guard lock(g_eventsMutex);
+            g_il2cppLogHookInstallFailed = true;
         }
     }
 
