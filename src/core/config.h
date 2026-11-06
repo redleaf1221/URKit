@@ -8,6 +8,8 @@ struct Config {
     int initDelayMs = 0;
     std::string runtime = "auto";
     std::string modsDir = "Mods";
+    // [Loader] Splash: show the progress window while the loader starts up.
+    bool splash = true;
     // [Logging] Unity: forward UnityEngine.Debug output into the URKit log.
     bool unityLogs = true;
     // [Unreal] DumpTypes: write reflected classes for the typed headers urk.exe generates.

@@ -47,6 +47,8 @@ std::string DefaultIni() {
         << "InitDelayMs=" << defaults.initDelayMs << "\n"
         << RuntimeSelectionKey() << "=" << defaults.runtime << "\n"
         << "ModsDir=" << defaults.modsDir << "\n"
+        << "; Splash=0 skips the startup progress window.\n"
+        << "Splash=" << BoolInt(defaults.splash) << "\n"
         << "\n"
         << "[Logging]\n"
         << "; Unity=1 copies UnityEngine.Debug output into the URKit log.\n"
@@ -87,6 +89,7 @@ void ReadPublicConfig(const std::string &ini, Config &c) {
     c.runtime = buf;
     GetPrivateProfileStringA(section.c_str(), "ModsDir", c.modsDir.c_str(), buf, sizeof(buf), ini.c_str());
     c.modsDir = buf;
+    c.splash = GetPrivateProfileIntA(section.c_str(), "Splash", c.splash, ini.c_str()) != 0;
     c.unityLogs = GetPrivateProfileIntA("Logging", "Unity", c.unityLogs, ini.c_str()) != 0;
     c.unrealDumpTypes = GetPrivateProfileIntA("Unreal", "DumpTypes", c.unrealDumpTypes, ini.c_str()) != 0;
     c.unrealNativeFromBlueprint =

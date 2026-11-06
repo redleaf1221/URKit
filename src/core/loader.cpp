@@ -103,9 +103,11 @@ LoaderRunStatus Loader_Run(LoaderStartMode mode) {
     Log_Init(LoaderConfig().showConsole, logDirectory);
     const RuntimeBackendDescriptor &backend = RuntimeBackend_Select(LoaderConfig());
 
-    IntroSession introSession;
-    Intro::Show("URKit", "Preparing runtime and mods", Loader_GameName(), backend.name, 45, 125, 245, 0);
-    introSession.MarkShown();
+    if (LoaderConfig().splash) {
+        IntroSession introSession;
+        Intro::Show("URKit", "Preparing runtime and mods", Loader_GameName(), backend.name, 45, 125, 245, 0);
+        introSession.MarkShown();
+    }
     IntroStage(kIntroPreparing, "Preparing runtime and mods");
     IntroStage(kIntroConfigLoaded, "Config loaded");
 
@@ -122,10 +124,14 @@ LoaderRunStatus Loader_Run(LoaderStartMode mode) {
     const bool backendReady = RuntimeBackend_Run(backend, LoaderConfig());
 
     Intro::Progress(kIntroComplete);
-    if (HANDLE stopEvent = LoaderLifecycle_StopEvent())
-        WaitForSingleObject(stopEvent, kIntroFinalHoldMs);
-    else
-        Sleep(kIntroFinalHoldMs);
+    // The hold exists so the finished progress bar is visible; nothing to wait for
+    // when there is no window.
+    if (LoaderConfig().splash) {
+        if (HANDLE stopEvent = LoaderLifecycle_StopEvent())
+            WaitForSingleObject(stopEvent, kIntroFinalHoldMs);
+        else
+            Sleep(kIntroFinalHoldMs);
+    }
     if (backendReady) {
         Log("=== Loader initialization succeeded ===");
         return LoaderRunStatus::Succeeded;
