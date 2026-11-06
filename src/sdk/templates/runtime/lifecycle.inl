@@ -124,10 +124,8 @@ std::string ModLifecycleSource(const ModuleProjectOptions &options) {
         << "  if (!ModRuntime::start(ctx)) { ModNetwork::shutdown(); g_network_initialized = false; URK::set_context(nullptr); g_ctx = nullptr; ModLog::shutdown(); return false; }\n"
         << "  g_runtime_started = true;\n"
         << "  if (!ModHooks::install(ctx)) { ModRuntime::stop(); g_runtime_started = false; ModNetwork::shutdown(); g_network_initialized = false; URK::set_context(nullptr); g_ctx = nullptr; ModLog::shutdown(); return false; }\n\n"
-        << "  const bool can_register_update = "
-           "context_has_field(ctx, field_end(offsetof(URK_ModContext, MainThreadRegister), "
-           "sizeof(ctx->MainThreadRegister))) && ctx->MainThreadRegister;\n"
-        << "  if (can_register_update) {\n"
+        << "  if (context_has_field(ctx, field_end(offsetof(URK_ModContext, MainThreadRegister), "
+           "sizeof(ctx->MainThreadRegister))) && ctx->MainThreadRegister) {\n"
         << "    g_update_registered = ctx->MainThreadRegister(&runtime_update) != 0;\n"
         << "    if (!g_update_registered)\n"
         << "      ModLog::warn(\"main-thread update registration failed\");\n"
@@ -187,9 +185,13 @@ std::string ModEntrySource() {
 #endif
 
 extern "C" URK_EXPORT const URK_ModInfo *URKGetModInfo() {
-    static const URK_ModInfo info{
-        ModConfig::project_name, ModConfig::display_name, ModConfig::author,
-        ModConfig::version,      ModConfig::url,          ModConfig::description,
+    static constexpr URK_ModInfo info{
+        .projectName = ModConfig::project_name,
+        .displayName = ModConfig::display_name,
+        .author = ModConfig::author,
+        .version = ModConfig::version,
+        .url = ModConfig::url,
+        .description = ModConfig::description,
     };
     return &info;
 }

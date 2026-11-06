@@ -42,7 +42,6 @@ bool desktop_mouse_to_imgui(HWND window, bool multiViewport, POINT *position) no
 std::string Win32MessagePumpHeaderModule() {
     return R"URK(#pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <span>
 

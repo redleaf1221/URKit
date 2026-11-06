@@ -18,8 +18,6 @@ std::string RenderHookSourceModule() {
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <cstdio>
-#include <cstring>
 #include <cwchar>
 #include <d3d11.h>
 #include <d3d12.h>

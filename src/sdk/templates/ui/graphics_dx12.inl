@@ -2,7 +2,6 @@ std::string Dx12OverlayResourcesHeaderModule() {
     return R"URK(#pragma once
 
 #include <array>
-#include <cstdint>
 #include <vector>
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -47,12 +46,12 @@ class Dx12OverlayResources final {
     [[nodiscard]] bool has_command_queue() const noexcept;
     [[nodiscard]] bool has_device_objects() const noexcept;
     [[nodiscard]] bool create(IDXGISwapChain *swapChain) noexcept;
-    [[nodiscard]] bool wait_for_idle() noexcept;
+    [[nodiscard]] bool wait_for_idle() const noexcept;
     void release_device_objects() noexcept;
     void shutdown() noexcept;
 
     [[nodiscard]] Dx12BeginFrameStatus begin_frame(Dx12FrameSubmission *submission) noexcept;
-    [[nodiscard]] bool submit_frame(const Dx12FrameSubmission &submission) noexcept;
+    [[nodiscard]] bool submit_frame(const Dx12FrameSubmission &submission) const noexcept;
     [[nodiscard]] bool complete_frame(const Dx12FrameSubmission &submission) noexcept;
 
     [[nodiscard]] ID3D12Device *device() const noexcept;
@@ -241,7 +240,7 @@ bool Dx12OverlayResources::create(IDXGISwapChain *swapChain) noexcept {
     return true;
 }
 
-bool Dx12OverlayResources::wait_for_idle() noexcept {
+bool Dx12OverlayResources::wait_for_idle() const noexcept {
     if (synchronizationLost_)
         return false;
     if (!fence_ || !fenceEvent_)
@@ -352,7 +351,7 @@ Dx12BeginFrameStatus Dx12OverlayResources::begin_frame(Dx12FrameSubmission *subm
     return Dx12BeginFrameStatus::ready;
 }
 
-bool Dx12OverlayResources::submit_frame(const Dx12FrameSubmission &submission) noexcept {
+bool Dx12OverlayResources::submit_frame(const Dx12FrameSubmission &submission) const noexcept {
     if (!commandQueue_ || !submission.commandList || submission.frameIndex >= frames_.size() ||
         FAILED(submission.commandList->Close())) {
         return false;

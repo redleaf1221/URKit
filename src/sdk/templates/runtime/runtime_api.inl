@@ -246,7 +246,7 @@ inline bool current_scene(SceneInfo *scene) {
 }
 inline bool set_menu_cursor_open(bool open) {
     const auto *ctx = context();
-    static const unsigned char owner_token = 0;
+    static constexpr unsigned char owner_token = 0;
     if (runtime_api_has_field(offsetof(RuntimeApi, menu_cursor_set_open_owned) +
                               sizeof(ctx->runtime->menu_cursor_set_open_owned)) &&
         ctx->runtime->menu_cursor_set_open_owned)
@@ -257,7 +257,7 @@ inline bool set_menu_cursor_open(bool open) {
 }
 inline bool set_menu_mouse_capture(bool capture) {
     const auto *ctx = context();
-    static const unsigned char owner_token = 0;
+    static constexpr unsigned char owner_token = 0;
     return runtime_api_has_field(offsetof(RuntimeApi, menu_mouse_capture_set_owned) +
                                  sizeof(ctx->runtime->menu_mouse_capture_set_owned)) &&
            ctx->runtime->menu_mouse_capture_set_owned &&

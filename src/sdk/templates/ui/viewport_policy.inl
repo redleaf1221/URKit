@@ -59,7 +59,7 @@ namespace ModRenderHook {
 namespace {
 
 [[nodiscard]] bool contains_window(std::span<const HWND> windows, HWND candidate) {
-    return std::find(windows.begin(), windows.end(), candidate) != windows.end();
+    return std::ranges::find(windows, candidate) != windows.end();
 }
 
 [[nodiscard]] bool same_thread(HWND left, HWND right) {
@@ -69,7 +69,7 @@ namespace {
 } // namespace
 
 bool Win32ViewportPolicy::is_configured(HWND window, HWND owner) const noexcept {
-    return std::any_of(configuredWindows_.begin(), configuredWindows_.end(), [window, owner](const auto &configured) {
+    return std::ranges::any_of(configuredWindows_, [window, owner](const auto &configured) {
         return configured.window == window && configured.owner == owner;
     });
 }

@@ -321,31 +321,6 @@ std::string CMakePresets() {
 )URK";
 }
 
-std::string VsCodeCppProperties() {
-    return R"URK({
-  "version": 4,
-  "configurations": [
-    {
-      "name": "Win32-Clang",
-      "compilerPath": "C:/Program Files/LLVM/bin/clang++.exe",
-      "intelliSenseMode": "windows-clang-x64",
-      "cppStandard": "c++20",
-      "compileCommands": "${workspaceFolder}/cmake-build-relwithdebinfo/compile_commands.json",
-      "mergeConfigurations": true
-    },
-    {
-      "name": "Win32-MSVC",
-      "compilerPath": "cl.exe",
-      "intelliSenseMode": "windows-msvc-x64",
-      "cppStandard": "c++20",
-      "compileCommands": "${workspaceFolder}/cmake-build-relwithdebinfo/compile_commands.json",
-      "mergeConfigurations": true
-    }
-  ]
-}
-)URK";
-}
-
 std::string Readme(const ModuleProjectOptions &options) {
     std::ostringstream out;
     out << "# " << options.projectName << "\n\n"
@@ -798,8 +773,23 @@ bool WriteModuleProject(const ModuleProjectOptions &options, std::string *error)
          "CompileFlags:\n  CompilationDatabase: out/build/clang-relwithdebinfo\n  Compiler: clang++\n\nIndex:\n  "
          "Background: Build\n",
          true, false},
+        // Same style the generator already passes to clang-format, so the IDE and
+        // the generated output agree instead of fighting over indentation.
+        {".clang-format", OutputFilePolicy::GeneratedOverwrite,
+         "BasedOnStyle: Microsoft\n"
+         "IndentWidth: 4\n"
+         "TabWidth: 4\n"
+         "UseTab: Never\n"
+         "BreakBeforeBraces: Attach\n"
+         "AllowShortIfStatementsOnASingleLine: Never\n"
+         "AllowShortLoopsOnASingleLine: false\n"
+         "AllowShortBlocksOnASingleLine: Never\n"
+         "AllowShortFunctionsOnASingleLine: None\n"
+         "IndentCaseLabels: true\n"
+         "ColumnLimit: 120\n"
+         "SortIncludes: Never\n",
+         true, false},
         {"CMakePresets.json", OutputFilePolicy::GeneratedOverwrite, CMakePresets(), true, false},
-        {".vscode/c_cpp_properties.json", OutputFilePolicy::GeneratedOverwrite, VsCodeCppProperties(), true, false},
     };
     for (PlannedWrite &write : writes)
         write.content = KeepBackendBlocks(write.content, IsUnrealProject(project));

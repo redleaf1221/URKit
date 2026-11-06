@@ -29,8 +29,6 @@ std::string DxgiHookDiscoverySourceModule() {
 #define NOMINMAX
 #endif
 #include <Windows.h>
-#include <cstddef>
-#include <cstdint>
 #include <cstdio>
 #include <d3d11.h>
 #include <d3d12.h>

@@ -2,15 +2,15 @@ std::string ConfigModule(const ModuleProjectOptions &options) {
     std::ostringstream out;
     out << "#pragma once\n\n"
         << "namespace ModConfig {\n"
-        << "inline constexpr const char* project_name = \"" << EscapeString(options.projectName) << "\";\n"
+        << "inline constexpr auto project_name = \"" << EscapeString(options.projectName) << "\";\n"
         << "// Stable namespace for this mod's deployed resources. Do not change it after release.\n"
-        << "inline constexpr const char* mod_id = \"" << EscapeString(options.modId) << "\";\n"
-        << "inline constexpr const char* display_name = \"" << EscapeString(options.projectName) << "\";\n"
-        << "inline constexpr const char* author = \"\";\n"
-        << "inline constexpr const char* version = \"0.1.0\";\n"
-        << "inline constexpr const char* url = \"\";\n"
-        << "inline constexpr const char* social = \"\";\n"
-        << "inline constexpr const char* description = \"" << EscapeString(options.description) << "\";\n"
+        << "inline constexpr auto mod_id = \"" << EscapeString(options.modId) << "\";\n"
+        << "inline constexpr auto display_name = \"" << EscapeString(options.projectName) << "\";\n"
+        << "inline constexpr auto author = \"\";\n"
+        << "inline constexpr auto version = \"0.1.0\";\n"
+        << "inline constexpr auto url = \"\";\n"
+        << "inline constexpr auto social = \"\";\n"
+        << "inline constexpr auto description = \"" << EscapeString(options.description) << "\";\n"
         << "inline constexpr bool is_il2cpp_backend = "
         << (options.backendNamespace == "URK::il2cpp" ? "true" : "false") << ";\n";
     for (const std::string &line : options.configExtraLines)
@@ -19,7 +19,7 @@ std::string ConfigModule(const ModuleProjectOptions &options) {
         << "inline bool show_menu = false;\n"
         << "// English is used as the fixed language when localization support is not generated.\n"
         << "inline bool enable_localization = " << (options.enableLocalization ? "true" : "false") << ";\n"
-        << "inline constexpr const char* default_language = \"en\";\n"
+        << "inline constexpr auto default_language = \"en\";\n"
         << "// Lets ImGui windows move to another monitor.\n"
         << "inline bool enable_detached_viewports = false;\n";
     out << "// Win32 virtual-key code used by the generated ImGui WndProc toggle.\n"
@@ -51,7 +51,6 @@ std::string BackendApiField(const ModuleProjectOptions &options) {
 std::string RuntimeBootstrapModule(const ModuleProjectOptions &options) {
     std::ostringstream out;
     out << "#pragma once\n\n"
-        << "#include \"runtime_api.h\"\n"
         << "#include \"" << BackendRuntimeHeader(options) << "\"\n\n"
         << "namespace URK {\n"
         << "inline bool initialize_backend(const ModContext* context) {\n"
@@ -238,7 +237,6 @@ void shutdown() {
 std::string GameRuntimeHeader() {
     return R"URK(#pragma once
 
-#include "sdk/mod_async.h"
 #include "sdk/mod_sdk.h"
 
 namespace ModRuntime {

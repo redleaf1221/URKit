@@ -60,7 +60,7 @@ template <class... Args> class Signal {
             compact();
     }
 
-    bool empty() const {
+    [[nodiscard]] bool empty() const {
         return std::none_of(slots_.begin(), slots_.end(), [](const Slot &slot) { return slot.active; });
     }
 
@@ -134,7 +134,6 @@ void cancel_all();
 std::string CoroutinesModule() {
     return R"URK(#pragma once
 
-#include <algorithm>
 #include <chrono>
 #include <coroutine>
 #include <cstdint>
@@ -236,7 +235,7 @@ struct FlowState {
 };
 
 struct NextFrameAwaiter {
-    bool await_ready() const noexcept {
+    [[nodiscard]] bool await_ready() const noexcept {
         return false;
     }
     void await_suspend(Task::Handle handle) const noexcept {
@@ -250,7 +249,7 @@ struct NextFrameAwaiter {
 
 struct WaitForAwaiter {
     Clock::duration duration{};
-    bool await_ready() const noexcept {
+    [[nodiscard]] bool await_ready() const noexcept {
         return duration <= Clock::duration::zero();
     }
     void await_suspend(Task::Handle handle) const noexcept {
@@ -265,7 +264,7 @@ struct WaitForAwaiter {
 struct WaitUntilAwaiter {
     Predicate predicate{};
     void *user{};
-    bool await_ready() const noexcept {
+    [[nodiscard]] bool await_ready() const noexcept {
         return predicate && predicate(user);
     }
     void await_suspend(Task::Handle handle) const noexcept {
@@ -347,16 +346,14 @@ inline void tick(FlowState &state, Clock::time_point now = Clock::now()) {
         }
     }
 
-    state.tasks.erase(std::remove_if(state.tasks.begin(), state.tasks.end(),
-                                     [](Task::Handle handle) {
-                                         if (!handle)
-                                             return true;
-                                         if (!handle.done() && !handle.promise().error)
-                                             return false;
-                                         handle.destroy();
-                                         return true;
-                                     }),
-                      state.tasks.end());
+    std::erase_if(state.tasks, [](Task::Handle handle) {
+        if (!handle)
+            return true;
+        if (!handle.done() && !handle.promise().error)
+            return false;
+        handle.destroy();
+        return true;
+    });
 }
 } // namespace URK::coroutines
 )URK";

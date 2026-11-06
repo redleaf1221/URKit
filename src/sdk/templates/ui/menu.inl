@@ -78,9 +78,9 @@ inline void render_menu() {
     if (size_scale > 1.35f)
         size_scale = 1.35f;
 
-    const ImVec2 base_window_size(640.0f, 330.0f);
-    const ImVec2 base_min_size(560.0f, 300.0f);
-    const ImVec2 base_max_size(900.0f, 680.0f);
+    constexpr ImVec2 base_window_size(640.0f, 330.0f);
+    constexpr ImVec2 base_min_size(560.0f, 300.0f);
+    constexpr ImVec2 base_max_size(900.0f, 680.0f);
 
     ImGui::SetNextWindowSize(ImVec2(base_window_size.x * size_scale, base_window_size.y * size_scale),
                              ImGuiCond_FirstUseEver);
@@ -131,7 +131,7 @@ inline void render_menu() {
     ImGui::PopStyleColor();
 
     ImGui::SetCursorPos(ImVec2(12.0f, 44.0f));
-    const float nav_width = 0.0f;
+    constexpr float nav_width = 0.0f;
     if (Widgets::tab_button(Localization::translate("menu.config"), active_tab() == Tab::Config, nullptr, nav_width))
         active_tab() = Tab::Config;
     ImGui::SameLine(0.0f, sp.tab_gap);

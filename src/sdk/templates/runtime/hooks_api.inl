@@ -5,7 +5,6 @@ std::string HooksRuntimeModule() {
 
 #include <cstddef>
 #include <cstdint>
-#include <utility>
 
 namespace URK::hooks {
 inline bool available() {
@@ -139,7 +138,7 @@ class MidHook {
         handle_ = URK::hooks::mid_attach(target, callback, user_data);
         return handle_ != nullptr;
     }
-    bool set_enabled(bool enabled) {
+    [[nodiscard]] bool set_enabled(bool enabled) const {
         return handle_ && URK::hooks::mid_set_enabled(handle_, enabled);
     }
     void reset() {
@@ -148,7 +147,7 @@ class MidHook {
             handle_ = nullptr;
         }
     }
-    bool valid() const {
+    [[nodiscard]] bool valid() const {
         return handle_ != nullptr;
     }
     explicit operator bool() const {
@@ -205,13 +204,13 @@ class HookSet {
             detach(entry.original, entry.detour);
         }
     }
-    std::size_t size() const {
+    [[nodiscard]] std::size_t size() const {
         return count_;
     }
-    constexpr std::size_t capacity() const {
+    [[nodiscard]] constexpr std::size_t capacity() const {
         return max_entries;
     }
-    bool full() const {
+    [[nodiscard]] bool full() const {
         return count_ >= max_entries;
     }
 

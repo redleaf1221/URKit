@@ -24,7 +24,7 @@ struct Response {
     bool body_truncated = false;
     bool error_truncated = false;
 
-    bool ok() const {
+    [[nodiscard]] bool ok() const {
         return completed && status >= 200 && status < 300;
     }
 };

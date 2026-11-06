@@ -10,7 +10,6 @@ std::string ThemeModule() {
 #endif
 #include <Windows.h>
 #include <cmath>
-#include <cstddef>
 #include <cstdio>
 #include <imgui.h>
 
@@ -97,7 +96,8 @@ inline ImVec4 with_alpha(ImVec4 c, float alpha) {
 }
 
 inline ImVec4 mix(const ImVec4 &a, const ImVec4 &b, float t) {
-    return ImVec4(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t);
+    return {a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, a.z + (b.z - a.z) * t,
+            a.w + (b.w - a.w) * t};
 }
 
 inline const ImWchar *glyph_ranges() {
@@ -133,7 +133,7 @@ inline ImFont *&heading_font() {
     return value;
 }
 
-inline ImFont *load_windows_font(ImGuiIO &io, const char *file_name, float size_px,
+inline ImFont *load_windows_font(const ImGuiIO &io, const char *file_name, float size_px,
                                  const ImWchar *ranges = glyph_ranges(), bool merge_mode = false) {
     char windows_dir[MAX_PATH]{};
     const UINT windows_dir_len = GetWindowsDirectoryA(windows_dir, MAX_PATH);
@@ -159,7 +159,7 @@ inline ImFont *load_windows_font(ImGuiIO &io, const char *file_name, float size_
     return io.Fonts->AddFontFromFileTTF(font_path, size_px, &config, ranges);
 }
 
-inline bool merge_first_windows_font(ImGuiIO &io, const char *const *file_names, size_t file_name_count, float size_px,
+inline bool merge_first_windows_font(const ImGuiIO &io, const char *const *file_names, size_t file_name_count, float size_px,
                                      const ImWchar *ranges) {
     for (size_t index = 0; index < file_name_count; ++index) {
         if (load_windows_font(io, file_names[index], size_px, ranges, true))
@@ -168,9 +168,9 @@ inline bool merge_first_windows_font(ImGuiIO &io, const char *const *file_names,
     return false;
 }
 
-inline void merge_cjk_fallbacks(ImGuiIO &io, float size_px) {
-    static const char *const japanese_fonts[] = {"YuGothM.ttc", "meiryo.ttc", "msgothic.ttc"};
-    static const char *const chinese_fonts[] = {"msyh.ttc", "simsun.ttc", "msjh.ttc"};
+inline void merge_cjk_fallbacks(const ImGuiIO &io, float size_px) {
+    static constexpr const char *const japanese_fonts[] = {"YuGothM.ttc", "meiryo.ttc", "msgothic.ttc"};
+    static constexpr const char *const chinese_fonts[] = {"msyh.ttc", "simsun.ttc", "msjh.ttc"};
     const bool japanese_loaded = merge_first_windows_font(io, japanese_fonts, IM_ARRAYSIZE(japanese_fonts), size_px,
                                                           io.Fonts->GetGlyphRangesJapanese());
     const bool chinese_loaded = merge_first_windows_font(io, chinese_fonts, IM_ARRAYSIZE(chinese_fonts), size_px,
@@ -182,7 +182,7 @@ inline void merge_cjk_fallbacks(ImGuiIO &io, float size_px) {
 }
 
 inline float font_size_px() {
-    float size = std::floor((18.0f * dpi_scale()) + 0.5f);
+    float size = std::floor(18.0f * dpi_scale() + 0.5f);
     if (size < 18.0f)
         size = 18.0f;
     if (size > 28.0f)
@@ -203,8 +203,7 @@ inline void install_default_font() {
     loaded_font_name() = "default";
     using_ttf_font() = false;
     const float size_px = font_size_px();
-    ImFont *regular = load_windows_font(io, "segoeui.ttf", size_px);
-    if (regular) {
+    if (ImFont *regular = load_windows_font(io, "segoeui.ttf", size_px)) {
         merge_cjk_fallbacks(io, size_px);
         io.FontDefault = regular;
         heading_font() = load_windows_font(io, "seguisb.ttf", size_px + 2.0f);
@@ -523,7 +522,7 @@ inline bool checkbox(const char *label, bool *value) {
 
         const float mark_alpha = clamp01((checked_t - 0.28f) / 0.72f);
         const ImU32 mark_col = ImGui::GetColorU32(Theme::with_alpha(p.text_primary, mark_alpha));
-        const float thickness = 2.0f;
+        constexpr float thickness = 2.0f;
         const ImVec2 a(pos.x + square * 0.28f, pos.y + square * 0.53f);
         const ImVec2 b(pos.x + square * 0.43f, pos.y + square * 0.68f);
         const ImVec2 c(pos.x + square * 0.73f, pos.y + square * 0.34f);
@@ -545,7 +544,7 @@ inline bool button(const char *label, const ImVec2 &size = ImVec2(0.0f, 0.0f), b
 
     ImGui::PushID(text);
     const ImVec2 label_size = ImGui::CalcTextSize(text);
-    const ImVec2 padding(14.0f, 9.0f);
+    constexpr ImVec2 padding(14.0f, 9.0f);
     ImVec2 resolved_size(size.x > 0.0f ? size.x : label_size.x + padding.x * 2.0f,
                          size.y > 0.0f ? size.y : label_size.y + padding.y * 2.0f);
     const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -631,7 +630,7 @@ inline bool slider_float(const char *label, float *value, float min_value, float
     ImDrawList *dl = ImGui::GetWindowDrawList();
     const ImVec4 frame_col = mix3(p.surface_raised, p.surface_hover, p.surface_active, anim.hover, anim.active);
     const ImVec2 end(pos.x + width, pos.y + height);
-    const float track_h = 6.0f;
+    constexpr float track_h = 6.0f;
     const ImVec2 track_min(pos.x, pos.y + (height - track_h) * 0.5f);
     const ImVec2 track_max(end.x, track_min.y + track_h);
     dl->AddRectFilled(track_min, track_max, ImGui::GetColorU32(frame_col), Theme::radius().pill);
@@ -746,9 +745,9 @@ inline bool toggle(const char *label, bool *value) {
     const char *text = label && label[0] ? label : "toggle";
     ImGui::PushID(text);
     const Theme::Palette &p = Theme::palette();
-    const float row_height = 30.0f;
+    constexpr float row_height = 30.0f;
     const float track_w = 42.0f;
-    const float track_h = 22.0f;
+    constexpr float track_h = 22.0f;
     const float row_width = ImGui::GetContentRegionAvail().x;
     const ImVec2 pos = ImGui::GetCursorScreenPos();
     const ImGuiID id = ImGui::GetID("##toggle_row");
@@ -779,7 +778,7 @@ inline bool toggle(const char *label, bool *value) {
     const ImVec4 off_col = Theme::mix(p.surface_raised, p.surface_hover, anim.hover);
     const ImVec4 track_col = Theme::mix(off_col, p.toggle_on, ease_out_cubic(anim.checked));
     dl->AddRectFilled(track_pos, track_end, ImGui::GetColorU32(track_col), rh);
-    const float knob_r = rh - 3.0f;
+    constexpr float knob_r = rh - 3.0f;
     const float knob_x = track_pos.x + rh + ((track_w - track_h) * ease_out_cubic(anim.checked));
     const ImVec2 knob_c(knob_x, track_pos.y + rh);
     const float knob_scale = 1.0f - (ease_out_cubic(anim.active) * 0.06f);
@@ -868,7 +867,7 @@ inline void tab_indicator(const char *id_text, const ImVec2 &target_min, const I
 // A readable name for a virtual-key code; the code itself when there is none.
 inline std::string key_name(int vk) {
     if ((vk >= 'A' && vk <= 'Z') || (vk >= '0' && vk <= '9'))
-        return std::string(1, static_cast<char>(vk));
+        return {static_cast<char>(vk)};
     if (vk >= 0x70 && vk <= 0x87)
         return "F" + std::to_string(vk - 0x6F);
     switch (vk) {
