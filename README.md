@@ -1,11 +1,12 @@
 # URKit
 
-[![GitHub Release](https://img.shields.io/github/v/release/Jadis0x/URKit?label=Release)](https://github.com/Jadis0x/URKit/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/Jadis0x/URKit/total?label=Downloads)](https://github.com/Jadis0x/URKit/releases)
-[![GitHub Stars](https://img.shields.io/github/stars/Jadis0x/URKit?style=flat&label=Stars)](https://github.com/Jadis0x/URKit/stargazers)
-[![Discord](https://img.shields.io/badge/Discord-Join%20Server-5865F2?logo=discord&logoColor=white)](https://discord.com/invite/XC7RUpGp6e)
-[![Support](https://img.shields.io/badge/Support-GitHub%20Issues-blue?logo=github)](https://github.com/Jadis0x/URKit/issues)
-[![License](https://img.shields.io/github/license/Jadis0x/URKit)](https://github.com/Jadis0x/URKit/blob/main/LICENSE)
+[![GitHub Release](https://img.shields.io/github/v/release/redleaf1221/URKit?label=Release)](https://github.com/redleaf1221/URKit/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/redleaf1221/URKit/total?label=Downloads)](https://github.com/redleaf1221/URKit/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/redleaf1221/URKit?style=flat&label=Stars)](https://github.com/redleaf1221/URKit/stargazers)
+[![Support](https://img.shields.io/badge/Support-GitHub%20Issues-blue?logo=github)](https://github.com/redleaf1221/URKit/issues)
+[![License](https://img.shields.io/github/license/redleaf1221/URKit)](https://github.com/redleaf1221/URKit/blob/main/LICENSE)
+
+**THIS IS A FORK!! DO NOT SUBMIT ISSUES TO UPSTREAM UNLESS IT'S CONFIRMED THERE!!**
 
 URKit lets you write mods for Windows x64 Unity games in plain C++. You point
 it at a game, and it hands you a CMake project that already builds. From
@@ -16,7 +17,7 @@ with both Mono and IL2CPP games.
 Unreal Engine support is on the way, but it isn't ready yet. See
 [where it stands](#unreal-engine-work-in-progress).
 
-<img src="showcase/ss1.png" width="100%">
+<img src="showcase/ss1.png" width="1211" alt="Showcase of mod framework generating">
 
 ## What's in a release
 
