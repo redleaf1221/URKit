@@ -2,13 +2,8 @@
 
 #include "main_frame.h"
 #include "pages.h"
-#include "text_util.h"
-#include "theme.h"
 #include "widgets.h"
 
-#include <wx/msgdlg.h>
-#include <wx/sizer.h>
-#include <wx/stattext.h>
 #include <wx/utils.h>
 
 #include <filesystem>

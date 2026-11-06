@@ -4,6 +4,7 @@
 #include "project_ledger.h"
 #include "project_version.h"
 
+#include <cstddef>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -32,8 +33,8 @@ namespace fs = std::filesystem;
 constexpr std::wstring_view kGitHubApiHost = L"api.github.com";
 constexpr std::wstring_view kLatestReleasePath = L"/repos/Jadis0x/URKit/releases/latest";
 constexpr std::string_view kExpectedDownloadPrefix = "https://github.com/Jadis0x/URKit/releases/download/";
-constexpr size_t kMaxReleaseMetadataBytes = 1024 * 1024;
-constexpr size_t kMaxDownloadBytes = 128 * 1024 * 1024;
+constexpr size_t kMaxReleaseMetadataBytes = static_cast<size_t>(1024 * 1024);
+constexpr size_t kMaxDownloadBytes = static_cast<size_t>(128 * 1024 * 1024);
 constexpr std::wstring_view kSelfUpdateHelperName = L"urk.update-helper.exe";
 
 struct SemanticVersion {

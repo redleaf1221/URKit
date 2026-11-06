@@ -2,6 +2,7 @@
 
 #include "project_version.h"
 
+#include <cstddef>
 #include <cstdio>
 #include <ctime>
 #include <system_error>
@@ -20,7 +21,7 @@ namespace {
 
 namespace fs = std::filesystem;
 
-constexpr std::uintmax_t kRotateBytes = 2 * 1024 * 1024;
+constexpr std::uintmax_t kRotateBytes = static_cast<std::uintmax_t>(2 * 1024 * 1024);
 
 std::tm LocalTime(std::chrono::system_clock::time_point time) {
     const std::time_t seconds = std::chrono::system_clock::to_time_t(time);

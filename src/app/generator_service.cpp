@@ -48,21 +48,21 @@ std::size_t CountFiles(const fs::path &root) {
 }
 
 std::string SizeText(std::uintmax_t bytes) {
-    if (bytes >= 1024 * 1024)
-        return std::to_string(bytes / (1024 * 1024)) + " MB";
+    if (bytes >= static_cast<std::uintmax_t>(1024 * 1024))
+        return std::to_string(bytes / (static_cast<std::uintmax_t>(1024 * 1024))) + " MB";
     return std::to_string((bytes + 1023) / 1024) + " KB";
 }
 
 } // namespace
 
 std::string Lower(std::string value) {
-    std::transform(value.begin(), value.end(), value.begin(),
+    std::ranges::transform(value, value.begin(),
                    [](unsigned char ch) { return static_cast<char>(std::tolower(ch)); });
     return value;
 }
 
 std::string TrimPath(std::string value) {
-    const auto first = std::find_if_not(value.begin(), value.end(), [](unsigned char ch) { return std::isspace(ch); });
+    const auto first = std::ranges::find_if_not(value, [](unsigned char ch) { return std::isspace(ch); });
     const auto last =
         std::find_if_not(value.rbegin(), value.rend(), [](unsigned char ch) { return std::isspace(ch); }).base();
     if (first >= last)
@@ -130,8 +130,7 @@ std::string ExecutableMachine(const fs::path &exe) {
     if (!input.read(reinterpret_cast<char *>(header), sizeof(header)) || header[0] != 'P' || header[1] != 'E' ||
         header[2] != 0 || header[3] != 0)
         return {};
-    const std::uint16_t machine = static_cast<std::uint16_t>(header[4] | (header[5] << 8));
-    switch (machine) {
+    switch (static_cast<std::uint16_t>(header[4] | (header[5] << 8))) {
         case 0x8664:
             return "x64";
         case 0x014c:

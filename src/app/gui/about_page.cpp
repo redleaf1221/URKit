@@ -3,9 +3,9 @@
 #include "mod_sdk.h"
 #include "project_version.h"
 #include "self_update.h"
+#include "theme.h"
 
 #include <wx/dcbuffer.h>
-#include <wx/graphics.h>
 
 namespace UrkGui {
 
@@ -63,7 +63,7 @@ AboutPage::AboutPage(wxWindow *parent, MainFrame *frame)
         const char *display;
         const char *url;
     };
-    const Link items[] = {
+    constexpr Link items[] = {
         {Theme::Icon::kCode, "Source code", "github.com/Jadis0x/URKit", "https://github.com/Jadis0x/URKit"},
         {Theme::Icon::kBug, "Report a problem", "github.com/Jadis0x/URKit/issues",
          "https://github.com/Jadis0x/URKit/issues"},

@@ -15,7 +15,6 @@
 
 #include <algorithm>
 #include <chrono>
-#include <cmath>
 #include <memory>
 
 namespace UrkGui {
@@ -236,10 +235,10 @@ void DrawSpinner(wxGraphicsContext &gc, double cx, double cy, double radius, dou
 Button::Button(wxWindow *parent, const wxString &label, Kind kind, wchar_t icon)
     : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS), kind_(kind),
       icon_(icon), ticker_(this, [this] { return hover_.Running() || press_.Running() || busy_; }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetFont(Theme::UiFont(9.5, kind == Kind::Primary ? wxFONTWEIGHT_SEMIBOLD : wxFONTWEIGHT_MEDIUM));
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxControlBase::SetFont(Theme::UiFont(9.5, kind == Kind::Primary ? wxFONTWEIGHT_SEMIBOLD : wxFONTWEIGHT_MEDIUM));
     wxControl::SetLabel(label);
-    SetCursor(wxCursor(wxCURSOR_HAND));
+    wxWindowBase::SetCursor(wxCursor(wxCURSOR_HAND));
     Bind(wxEVT_PAINT, &Button::OnPaint, this);
     for (const auto &type : {wxEVT_ENTER_WINDOW, wxEVT_LEAVE_WINDOW, wxEVT_LEFT_DOWN, wxEVT_LEFT_DCLICK, wxEVT_LEFT_UP})
         Bind(type, &Button::OnMouse, this);
@@ -395,8 +394,8 @@ void Button::Click() {
 // Surface
 
 Surface::Surface(wxWindow *parent, int padding) : wxPanel(parent, wxID_ANY) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetBackgroundColour(Theme::kSurface);
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxWindowBase::SetBackgroundColour(Theme::kSurface);
     Bind(wxEVT_PAINT, [this](wxPaintEvent &) {
         wxAutoBufferedPaintDC dc(this);
         ClearToParent(dc, this);
@@ -426,8 +425,8 @@ Segmented::Segmented(wxWindow *parent, std::vector<wxString> items, Style style,
               running = running || tween.Running();
           return running;
       }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetFont(Theme::UiFont(style == Style::Nav ? 9.5 : 9.0, wxFONTWEIGHT_MEDIUM));
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxControlBase::SetFont(Theme::UiFont(style == Style::Nav ? 9.5 : 9.0, wxFONTWEIGHT_MEDIUM));
     Bind(wxEVT_PAINT, &Segmented::OnPaint, this);
     for (const auto &type : {wxEVT_MOTION, wxEVT_LEAVE_WINDOW, wxEVT_LEFT_DOWN})
         Bind(type, &Segmented::OnMouse, this);
@@ -590,7 +589,7 @@ ChoiceTiles::ChoiceTiles(wxWindow *parent, std::vector<Item> items, std::functio
               running = running || selectT_[index].Running() || hoverT_[index].Running();
           return running;
       }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
     if (!selectT_.empty())
         selectT_[0].Jump(1.0);
     Bind(wxEVT_PAINT, &ChoiceTiles::OnPaint, this);
@@ -750,10 +749,10 @@ void ChoiceTiles::OnPaint(wxPaintEvent &) {
 Toggle::Toggle(wxWindow *parent, const wxString &label, std::function<void(bool)> onChange)
     : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS),
       onChange_(std::move(onChange)), ticker_(this, [this] { return knob_.Running(); }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetFont(Theme::UiFont(9.5));
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxControlBase::SetFont(Theme::UiFont(9.5));
     wxControl::SetLabel(label);
-    SetCursor(wxCursor(wxCURSOR_HAND));
+    wxWindowBase::SetCursor(wxCursor(wxCURSOR_HAND));
     Bind(wxEVT_PAINT, &Toggle::OnPaint, this);
     Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) {
         SetFocus();
@@ -844,8 +843,8 @@ void Toggle::OnPaint(wxPaintEvent &) {
 
 TextField::TextField(wxWindow *parent, const wxString &value, const wxString &hint)
     : wxPanel(parent, wxID_ANY), ticker_(this, [this] { return focus_.Running(); }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetBackgroundColour(Theme::kInput);
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxWindowBase::SetBackgroundColour(Theme::kInput);
     ctrl_ = new wxTextCtrl(this, wxID_ANY, value, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE);
     ctrl_->SetBackgroundColour(Theme::kInput);
     ctrl_->SetForegroundColour(Theme::kText);
@@ -855,7 +854,7 @@ TextField::TextField(wxWindow *parent, const wxString &value, const wxString &hi
     auto *sizer = new wxBoxSizer(wxHORIZONTAL);
     sizer->Add(ctrl_, 1, wxALIGN_CENTER_VERTICAL | wxLEFT | wxRIGHT, FromDIP(12));
     SetSizer(sizer);
-    SetMinSize(wxSize(FromDIP(120), FromDIP(40)));
+    wxWindowBase::SetMinSize(wxSize(FromDIP(120), FromDIP(40)));
 
     Bind(wxEVT_PAINT, &TextField::OnPaint, this);
     Bind(wxEVT_SIZE, [this](wxSizeEvent &event) {
@@ -863,7 +862,7 @@ TextField::TextField(wxWindow *parent, const wxString &value, const wxString &hi
         event.Skip();
     });
     Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) { ctrl_->SetFocus(); });
-    SetCursor(wxCursor(wxCURSOR_IBEAM));
+    wxWindowBase::SetCursor(wxCursor(wxCURSOR_IBEAM));
     ctrl_->Bind(wxEVT_SET_FOCUS, [this](wxFocusEvent &event) {
         event.Skip();
         focus_.Set(1.0, 180);
@@ -924,8 +923,8 @@ DropZone::DropZone(wxWindow *parent, Mode mode, const wxString &emptyTitle, std:
     : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS), mode_(mode),
       emptyTitle_(emptyTitle), onPick_(std::move(onPick)),
       ticker_(this, [this] { return hover_.Running() || drag_.Running() || fresh_.Running(); }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetCursor(wxCursor(wxCURSOR_HAND));
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxWindowBase::SetCursor(wxCursor(wxCURSOR_HAND));
     Bind(wxEVT_PAINT, &DropZone::OnPaint, this);
     BindHover(this, hovered_, hover_, ticker_);
     Bind(wxEVT_LEFT_UP, [this](wxMouseEvent &) { Browse(); });
@@ -940,7 +939,7 @@ DropZone::DropZone(wxWindow *parent, Mode mode, const wxString &emptyTitle, std:
             HandleTab(this, event);
     });
     RefreshOnFocus(this);
-    SetDropTarget(new DropZoneTarget(this, onPick_));
+    wxWindow::SetDropTarget(new DropZoneTarget(this, onPick_));
     SetInitialSize();
 }
 
@@ -1111,8 +1110,8 @@ StatusCard::StatusCard(wxWindow *parent)
     : wxPanel(parent, wxID_ANY), ticker_(this, [this] {
           return fresh_.Running() || tone_ == Tone::Busy || tone_ == Tone::Waiting;
       }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetBackgroundColour(Theme::kSurface);
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxWindowBase::SetBackgroundColour(Theme::kSurface);
     Bind(wxEVT_PAINT, &StatusCard::OnPaint, this);
     auto *sizer = new wxBoxSizer(wxHORIZONTAL);
     textItem_ = sizer->Add(0, 0, 1, wxALIGN_CENTER_VERTICAL);
@@ -1268,10 +1267,10 @@ class Collapsible::Header : public wxControl {
     Header(wxWindow *parent, const wxString &title, std::function<void()> onToggle)
         : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS),
           onToggle_(std::move(onToggle)), ticker_(this, [this] { return open_.Running() || hover_.Running(); }) {
-        SetBackgroundStyle(wxBG_STYLE_PAINT);
-        SetFont(Theme::UiFont(9.5, wxFONTWEIGHT_MEDIUM));
+        wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+        wxControlBase::SetFont(Theme::UiFont(9.5, wxFONTWEIGHT_MEDIUM));
         wxControl::SetLabel(title);
-        SetCursor(wxCursor(wxCURSOR_HAND));
+        wxWindowBase::SetCursor(wxCursor(wxCURSOR_HAND));
         Bind(wxEVT_PAINT, &Header::OnPaint, this);
         BindHover(this, hovered_, hover_, ticker_);
         Bind(wxEVT_LEFT_DOWN, [this](wxMouseEvent &) {
@@ -1346,7 +1345,7 @@ class Collapsible::Header : public wxControl {
 };
 
 Collapsible::Collapsible(wxWindow *parent, const wxString &title) : wxPanel(parent, wxID_ANY), timer_(this) {
-    SetBackgroundColour(parent->GetBackgroundColour());
+    wxWindowBase::SetBackgroundColour(parent->GetBackgroundColour());
     auto *sizer = new wxBoxSizer(wxVERTICAL);
     if (!title.empty()) {
         header_ = new Header(this, title, [this] { SetExpanded(!expanded_); });
@@ -1418,10 +1417,10 @@ void Collapsible::SetExpanded(bool expanded, bool animate) {
 LinkRow::LinkRow(wxWindow *parent, wchar_t icon, const wxString &label, const wxString &display, const wxString &url)
     : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE | wxWANTS_CHARS), icon_(icon),
       display_(display), url_(url), ticker_(this, [this] { return hover_.Running(); }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetFont(Theme::UiFont(10, wxFONTWEIGHT_MEDIUM));
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxControlBase::SetFont(Theme::UiFont(10, wxFONTWEIGHT_MEDIUM));
     wxControl::SetLabel(label);
-    SetCursor(wxCursor(wxCURSOR_HAND));
+    wxWindowBase::SetCursor(wxCursor(wxCURSOR_HAND));
     SetToolTip(url);
     Bind(wxEVT_PAINT, &LinkRow::OnPaint, this);
     BindHover(this, hovered_, hover_, ticker_);
@@ -1480,9 +1479,9 @@ void LinkRow::OnPaint(wxPaintEvent &) {
 StatusStrip::StatusStrip(wxWindow *parent, std::function<void()> onToggle)
     : wxControl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE), onToggle_(std::move(onToggle)),
       ticker_(this, [this] { return busy_ || open_.Running() || fresh_.Running(); }) {
-    SetBackgroundStyle(wxBG_STYLE_PAINT);
-    SetBackgroundColour(Theme::kWindow);
-    SetCursor(wxCursor(wxCURSOR_HAND));
+    wxWindowBase::SetBackgroundStyle(wxBG_STYLE_PAINT);
+    wxWindowBase::SetBackgroundColour(Theme::kWindow);
+    wxWindowBase::SetCursor(wxCursor(wxCURSOR_HAND));
     SetToolTip("Show or hide the activity log");
     Bind(wxEVT_PAINT, &StatusStrip::OnPaint, this);
     Bind(wxEVT_ENTER_WINDOW, [this](wxMouseEvent &) {
@@ -1604,9 +1603,9 @@ LogView::LogView(wxWindow *parent)
     : wxListCtrl(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                  wxLC_REPORT | wxLC_VIRTUAL | wxLC_NO_HEADER | wxBORDER_NONE) {
     const wxColour background = parent->GetBackgroundColour();
-    SetBackgroundColour(background);
-    SetForegroundColour(Theme::kText);
-    SetFont(Theme::MonoFont(8.75));
+    wxListCtrl::SetBackgroundColour(background);
+    wxListCtrl::SetForegroundColour(Theme::kText);
+    wxControlBase::SetFont(Theme::MonoFont(8.75));
     AppendColumn("Time", wxLIST_FORMAT_LEFT, FromDIP(92));
     AppendColumn("Message", wxLIST_FORMAT_LEFT, FromDIP(600));
     const wxColour levelColours[5] = {Theme::kTextFaint, Theme::kTextMuted, Theme::kSuccess, Theme::kWarning,
@@ -1709,10 +1708,10 @@ void LogView::OnContextMenu(wxContextMenuEvent &) {
 
 WrapText::WrapText(wxWindow *parent, const wxString &text, bool muted, double points)
     : wxStaticText(parent, wxID_ANY, text, wxDefaultPosition, wxDefaultSize, wxST_NO_AUTORESIZE), raw_(text) {
-    SetFont(Theme::UiFont(points));
-    SetForegroundColour(muted ? Theme::kTextMuted : Theme::kText);
+    wxStaticText::SetFont(Theme::UiFont(points));
+    wxWindowBase::SetForegroundColour(muted ? Theme::kTextMuted : Theme::kText);
     // The sizer decides the width; the text only reports the height it needs there.
-    SetMinSize(wxSize(FromDIP(60), -1));
+    wxWindowBase::SetMinSize(wxSize(FromDIP(60), -1));
     Bind(wxEVT_SIZE, [this](wxSizeEvent &event) {
         event.Skip();
         if (event.GetSize().x != wrappedWidth_)

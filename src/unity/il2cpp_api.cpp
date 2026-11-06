@@ -10,6 +10,7 @@
 #include <array>
 #include <cctype>
 #include <chrono>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <initializer_list>
@@ -26,7 +27,7 @@ namespace {
 Il2CppApi *g_api = nullptr;
 thread_local std::string g_lastError;
 
-constexpr std::size_t kMaxManagedStringUtf8Bytes = 4u * 1024u * 1024u;
+constexpr std::size_t kMaxManagedStringUtf8Bytes = static_cast<std::size_t>(4u * 1024u * 1024u);
 constexpr std::int32_t kMaxManagedStringUtf16Units = 1024 * 1024;
 
 std::string JoinTypes(const char *const *types, int count);
@@ -199,9 +200,9 @@ std::string ImageLookupKey(const char *imageName) {
 
 std::string RuntimeCachePrefix(const Il2CppApi &api) {
     std::string key = PointerKey(api.cachedDomain);
-    key += "|";
+    key += '|';
     key += std::to_string(api.gameAssemblyBase);
-    key += "|";
+    key += '|';
     key += std::to_string(api.unityPlayerBase);
     return key;
 }
@@ -210,9 +211,9 @@ std::string ClassLookupKey(const Il2CppApi &api, const char *imageName, const ch
     std::string key = RuntimeCachePrefix(api);
     key += "|class|";
     key += ImageLookupKey(imageName);
-    key += "|";
+    key += '|';
     key += namespc ? namespc : "";
-    key += "|";
+    key += '|';
     key += name ? name : "";
     return key;
 }
@@ -221,7 +222,7 @@ std::string MethodLookupKey(const Il2CppClass *klass, const char *name, int argc
     std::string key = PointerKey(klass);
     key += "|method|";
     key += name ? name : "";
-    key += "|";
+    key += '|';
     key += std::to_string(argc);
     return key;
 }
@@ -231,10 +232,10 @@ std::string ExactMethodLookupKey(const Il2CppClass *klass, const char *name, con
     std::string key = PointerKey(klass);
     key += "|exact|";
     key += name ? name : "";
-    key += "|";
+    key += '|';
     key += std::to_string(parameterCount);
     for (int i = 0; i < parameterCount; ++i) {
-        key += "|";
+        key += '|';
         key += NormalizeTypeName(parameterTypes && parameterTypes[i] ? parameterTypes[i] : "");
     }
     return key;
@@ -270,14 +271,14 @@ std::string ManagedMethodIdentity(const URK_Il2CppManagedMethodDesc &desc) {
     out += " / ";
     if (desc.namespc && desc.namespc[0]) {
         out += desc.namespc;
-        out += ".";
+        out += '.';
     }
     out += desc.class_name ? desc.class_name : "<null-class>";
     out += " / ";
     out += desc.method_name ? desc.method_name : "<null-method>";
-    out += "(";
+    out += '(';
     out += JoinTypes(desc.parameter_type_names, desc.parameter_count > 0 ? desc.parameter_count : 0);
-    out += ")";
+    out += ')';
     return out;
 }
 
@@ -364,13 +365,13 @@ const char *ExportAbiValueName(ExportAbiValue value) {
 
 std::string ExportAbiName(const ExportAbiSignature &signature) {
     std::string text = ExportAbiValueName(signature.result);
-    text += "(";
+    text += '(';
     for (std::uint8_t i = 0; i < signature.argumentCount; ++i) {
         if (i)
-            text += ",";
+            text += ',';
         text += ExportAbiValueName(signature.arguments[i]);
     }
-    text += ")";
+    text += ')';
     return text;
 }
 
@@ -688,7 +689,7 @@ bool ValidateMetadataCString(const char *value, const char *operation) {
         SetError(std::string("IL2CPP: ") + (operation ? operation : "metadata string") + " returned null");
         return false;
     }
-    constexpr size_t kMaxMetadataNameBytes = 16 * 1024;
+    constexpr size_t kMaxMetadataNameBytes = static_cast<size_t>(16 * 1024);
     size_t length = 0;
     DWORD exceptionCode = 0;
     if (!SehBoundedStringLength(value, kMaxMetadataNameBytes, &length, &exceptionCode)) {

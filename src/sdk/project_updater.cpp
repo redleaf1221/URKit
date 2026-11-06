@@ -1168,7 +1168,7 @@ bool RecoverInterruptedUpdate(const fs::path &projectRoot, bool *recovered, fs::
     if (recovered)
         *recovered = true;
     if (backupDirectory)
-        *backupDirectory = backup;
+        *backupDirectory = std::move(backup);
     return true;
 }
 
@@ -1244,6 +1244,7 @@ bool ApplyUpdate(const UpdatePreview &preview, const ApplyOptions &options, Upda
 
     // Backup: every file about to change plus the metadata.
     std::vector<BackupEntry> entries;
+    entries.reserve(applied.size());
     for (const PlannedChange *change : applied)
         entries.push_back({change->relativePath.generic_string(), !change->currentHash.empty()});
     for (const char *metadata : {kProjectManifestRelativePath, kGeneratedFileLedgerRelativePath,

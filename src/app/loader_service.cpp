@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdio>
 #include <cwctype>
 #include <fstream>
@@ -197,7 +198,7 @@ bool IsUrkitBinary(const fs::path &dll) {
         return false;
     const char *marker = reinterpret_cast<const char *>(kMarker.data());
     const size_t markerBytes = kMarker.size() * sizeof(wchar_t);
-    std::vector<char> buffer(1024 * 1024 + markerBytes);
+    std::vector<char> buffer(static_cast<size_t>(1024 * 1024) + markerBytes);
     size_t carried = 0;
     while (input) {
         input.read(buffer.data() + carried, static_cast<std::streamsize>(buffer.size() - carried));

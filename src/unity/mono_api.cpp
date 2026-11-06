@@ -206,7 +206,7 @@ static std::string PointerKey(const void *ptr) {
 
 static std::string MonoRuntimeCachePrefix(const MonoApi &api) {
     std::string key = PointerKey(api.module);
-    key += "|";
+    key += '|';
     key += PointerKey(g_publishedMonoDomain.load(std::memory_order_acquire));
     return key;
 }
@@ -219,9 +219,9 @@ static std::string MonoClassLookupKey(const MonoApi &api, const char *image, con
     std::string key = MonoRuntimeCachePrefix(api);
     key += "|class|";
     key += MonoImageLookupKey(image);
-    key += "|";
+    key += '|';
     key += LowerString(namespc ? namespc : "");
-    key += "|";
+    key += '|';
     key += LowerString(name ? name : "");
     return key;
 }
@@ -230,7 +230,7 @@ static std::string MonoMethodLookupKey(const MonoClass *klass, const char *metho
     std::string key = PointerKey(klass);
     key += "|method|";
     key += LowerString(methodName ? methodName : "");
-    key += "|";
+    key += '|';
     key += std::to_string(argc);
     return key;
 }
@@ -240,10 +240,10 @@ static std::string MonoExactMethodLookupKey(const MonoClass *klass, const char *
     std::string key = PointerKey(klass);
     key += "|exact|";
     key += LowerString(methodName ? methodName : "");
-    key += "|";
+    key += '|';
     key += std::to_string(parameterCount);
     for (int i = 0; i < parameterCount; ++i) {
-        key += "|";
+        key += '|';
         key += NormalizeMonoTypeName(parameterTypes && parameterTypes[i] ? parameterTypes[i] : "");
     }
     return key;

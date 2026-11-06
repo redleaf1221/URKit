@@ -1,0 +1,77 @@
+# clang-tidy configuration for URKit.
+#
+# Configure a build tree first, then point clang-tidy at it so the flags
+# (MSVC, C++23, include paths) come from compile_commands.json:
+#
+#   clang-tidy -p cmake-build-relwithdebinfo src/core/loader/runtime_events.cpp
+#
+# The check set is bug-focused on purpose. Findings have to stay actionable, so
+# style-only checks, checks written for a different house style, and checks that
+# produce thousands of advisory hits on this codebase are disabled below. Enable
+# them back one at a time as the codebase catches up: a run that reports 100k
+# findings helps nobody.
+#
+# Disabled on purpose, with the reason:
+#   bugprone-easily-swappable-parameters  interface style, fires on nearly every
+#                                         helper, no defect signal
+#   bugprone-narrowing-conversions        size/int/uint narrowing across the
+#   bugprone-signed-bitwise               IL2CPP and Win32 boundaries and flag
+#                                         enums combined with | are intentional
+#   bugprone-reserved-identifier          _deps, __try, Win32-ish names
+#   bugprone-macro-parentheses            macro style; the compiler checks each
+#                                         use site
+#   clang-analyzer-optin.performance.Padding
+#                                         experimental, reports on code that is
+#                                         provably fine at run time
+#   performance-enum-size                 ABI hazard, not a defect: ModContext
+#                                         and the event structs are shared with
+#                                         mods, their enum sizes must not shrink
+#   performance-no-int-to-ptr             turning an address the game handed us
+#                                         into a pointer is the job here
+#   performance-unnecessary-value-param   advisory, fires on intentional copies
+#   performance-noexcept-swap             advisory, same
+#   portability-avoid-pragma-once         #pragma once is the house style
+#   portability-template-virtual-member-function
+#                                         exotic corner that does not apply here
+#   modernize-*                           would rewrite the public headers
+#                                         wholesale (C arrays, trailing return
+#                                         types, nodiscard, override,
+#                                         include-cleaner); revisit separately
+#
+# modernize-use-nullptr is the one modernization kept: it is a pure defect check.
+
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  portability-*,
+  misc-definitions-in-headers,
+  misc-misplaced-const,
+  misc-redundant-expression,
+  misc-unused-using-decls,
+  misc-use-anonymous-namespace,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-signed-bitwise,
+  -bugprone-reserved-identifier,
+  -bugprone-macro-parentheses,
+  -clang-analyzer-optin.performance.Padding,
+  -performance-enum-size,
+  -performance-no-int-to-ptr,
+  -performance-unnecessary-value-param,
+  -performance-noexcept-swap,
+  -portability-avoid-pragma-once,
+  -portability-template-virtual-member-function,
+  -modernize-*,
+  modernize-use-nullptr
+
+# Report diagnostics from the project's own headers, and only those: everything
+# under _deps (wxWidgets and friends) is not ours to fix.
+HeaderFilterRegex: '(?i).*[\\/](src|sdk)[\\/].*'
+ExcludeHeaderFilterRegex: '(?i).*[\\/](_deps|third_party|cmake-build-[^\\/]*)[\\/].*'
+
+FormatStyle: none
+UseColor: true
+WarningsAsErrors: ''
+SystemHeaders: false

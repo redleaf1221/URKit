@@ -124,6 +124,23 @@ cmake --build out/build/msvc-release
 
 `clang-release`, `clang-relwithdebinfo` and `msvc-relwithdebinfo` work too.
 
+### Static analysis
+
+`.clang-tidy` holds the project's check set. It is deliberately bug-focused:
+style-only checks, and checks that produce thousands of advisory hits on this
+codebase, are disabled right in the file next to the reason, so a clean run
+means something. Add them back one at a time as the code catches up.
+
+clang-tidy reads the compile flags from a configured build tree:
+
+```powershell
+cmake --preset msvc-relwithdebinfo
+clang-tidy -p cmake-build-relwithdebinfo src/core/loader/runtime_events.cpp
+```
+
+CLion reads the same `.clang-tidy` for its inspections, so the settings apply
+whether you run it by hand or let the IDE do it.
+
 ## Antivirus warnings
 
 The loaders get into a game's process and hook functions there. That's just

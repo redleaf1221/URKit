@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cctype>
+#include <cstddef>
 #include <cstring>
 #include <mutex>
 #include <string>
@@ -14,8 +15,8 @@
 namespace {
 constexpr uint32_t kDefaultTimeoutMs = 5000;
 constexpr uint32_t kMaxTimeoutMs = 30000;
-constexpr size_t kMaxRequestBodyBytes = 1024 * 1024;
-constexpr size_t kDefaultMaxResponseBytes = 1024 * 1024;
+constexpr size_t kMaxRequestBodyBytes = static_cast<size_t>(1024 * 1024);
+constexpr size_t kDefaultMaxResponseBytes = static_cast<size_t>(1024 * 1024);
 
 const std::string &JsonAcceptHeader() {
     static const std::string value = "Accept: application/json";

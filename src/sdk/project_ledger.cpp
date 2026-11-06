@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -170,7 +171,7 @@ bool HashFileSha256(const fs::path &path, std::string *hash, std::string *error)
     }
 
     Sha256 digest;
-    std::array<std::uint8_t, 64 * 1024> buffer{};
+    std::array<std::uint8_t, static_cast<size_t>(64 * 1024)> buffer{};
     while (input) {
         input.read(reinterpret_cast<char *>(buffer.data()), static_cast<std::streamsize>(buffer.size()));
         const std::streamsize count = input.gcount();

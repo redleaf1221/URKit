@@ -449,7 +449,7 @@ class Decoder {
         if (!Take(count))
             return false;
         out += tag;
-        out += "(";
+        out += '(';
         out += std::to_string(count);
         if (!Until(end, out, depth))
             return false;

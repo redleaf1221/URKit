@@ -18,7 +18,6 @@
 #include <wx/sizer.h>
 #include <wx/utils.h>
 
-#include <cmath>
 #include <memory>
 
 namespace UrkGui {
@@ -79,10 +78,10 @@ MainFrame::MainFrame(const std::wstring &openPath)
     : wxFrame(nullptr, wxID_ANY, "URKit", wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE),
       slideTimer_(this) {
     settings_.Load();
-    SetBackgroundColour(Theme::kWindow);
-    SetFont(Theme::UiFont());
+    wxWindowBase::SetBackgroundColour(Theme::kWindow);
+    wxWindow::SetFont(Theme::UiFont());
     // The whole icon group, so the title bar and the taskbar each get a size that fits their DPI.
-    SetIcons(wxIconBundle(wxS("urk_app"), wxGetInstance()));
+    wxTopLevelWindowMSW::SetIcons(wxIconBundle(wxS("urk_app"), wxGetInstance()));
 
     auto *root = new wxPanel(this);
     root->SetBackgroundColour(Theme::kWindow);
@@ -103,7 +102,7 @@ MainFrame::MainFrame(const std::wstring &openPath)
     rootSizer->Add(strip_, 0, wxEXPAND);
     root->SetSizer(rootSizer);
 
-    SetDropTarget(new FileDrop([this](const wxArrayString &files) { OnDropFiles(files); }));
+    wxWindow::SetDropTarget(new FileDrop([this](const wxArrayString &files) { OnDropFiles(files); }));
     Bind(wxEVT_CLOSE_WINDOW, &MainFrame::OnClose, this);
     Bind(wxEVT_TIMER, [this](wxTimerEvent &) {
         wxWindow *page = book_->GetCurrentPage();
@@ -124,7 +123,7 @@ MainFrame::MainFrame(const std::wstring &openPath)
             CallAfter([this, entry] { OnLogEntry(entry); });
     });
 
-    SetMinSize(FromDIP(wxSize(820, 640)));
+    wxTopLevelWindowBase::SetMinSize(FromDIP(wxSize(820, 640)));
     SetSize(FromDIP(wxSize(980, 760)));
     CentreOnScreen();
     ShowPage(kPageNew);

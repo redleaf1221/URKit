@@ -3,7 +3,6 @@
 #include <wx/colour.h>
 #include <wx/font.h>
 #include <wx/fontenum.h>
-#include <wx/settings.h>
 
 namespace UrkGui::Theme {
 

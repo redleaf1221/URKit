@@ -2,6 +2,7 @@
 #include "unreal/values/unreal_owned_values.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstring>
 
 namespace URK::Unreal {
@@ -51,11 +52,11 @@ std::int32_t HashBucketsFor(std::int32_t elements) {
 }
 
 bool BitAt(const std::uint8_t *words, std::int32_t index) {
-    return (Load<std::uint32_t>(words + (index / 32) * 4) >> (index % 32)) & 1u;
+    return (Load<std::uint32_t>(words + static_cast<ptrdiff_t>((index / 32) * 4)) >> (index % 32)) & 1u;
 }
 
 void SetBit(std::uint8_t *words, std::int32_t index, bool value) {
-    std::uint8_t *word = words + (index / 32) * 4;
+    std::uint8_t *word = words + static_cast<ptrdiff_t>((index / 32) * 4);
     std::uint32_t bits = Load<std::uint32_t>(word);
     const std::uint32_t mask = 1u << (index % 32);
     Store<std::uint32_t>(word, value ? (bits | mask) : (bits & ~mask));
@@ -159,7 +160,7 @@ std::optional<SetLayout> Containers::LayoutOf(const PropertyInfo &container) {
     cached.valueInner = container.valueInner;
     cached.elementSize = container.elementSize;
     const auto remember = [&](std::optional<SetLayout> layout, std::string why) {
-        cached.layout = std::move(layout);
+        cached.layout = layout;
         cached.failure = std::move(why);
         if (!cached.layout)
             failure_ = cached.failure;
@@ -212,7 +213,7 @@ std::optional<SetLayout> Containers::LayoutOf(const PropertyInfo &container) {
     for (std::int32_t at = after + 8; at + 20 <= after + 8 + kSearch && !found; at += 4) {
         bool same = true;
         for (int i = 0; i < 5 && same; ++i)
-            same = finder_->Reader().ReadInt32(container.field + at + i * 4).value_or(-1) == expected[i];
+            same = finder_->Reader().ReadInt32(container.field + at + static_cast<Address>(i * 4)).value_or(-1) == expected[i];
         if (same && layout.isMap) {
             // ValueOffset precedes the set layout (after zero Key/ElementOffset in older builds).
             same = finder_->Reader().ReadInt32(container.field + at - 4).value_or(-1) == layout.valueOffset ||

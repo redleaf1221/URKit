@@ -999,6 +999,7 @@ class Writer {
 
         // Layout: originals by offset, then copies grouped by stack; a jump where fall-through would land wrong.
         std::vector<int> layout;
+        layout.reserve(original.size());
         for (const auto &[index, id] : original)
             layout.push_back(id);
         std::vector<int> copies;

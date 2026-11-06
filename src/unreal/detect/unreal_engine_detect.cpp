@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstddef>
 #include <cstring>
 #include <optional>
 #include <vector>
@@ -182,7 +183,7 @@ std::string ReadModuleVersionString(const MemoryReader &reader, Address moduleBa
         return {};
 
     const Address directoryEntry =
-        optionalHeader + kPe32PlusDataDirectoryOffset + kResourceDirectoryIndex * 8;
+        optionalHeader + kPe32PlusDataDirectoryOffset + static_cast<Address>(kResourceDirectoryIndex * 8);
     const std::optional<std::uint32_t> resourceRva = reader.ReadUInt32(directoryEntry);
     const std::optional<std::uint32_t> resourceSize = reader.ReadUInt32(directoryEntry + 4);
     if (!resourceRva || *resourceRva == 0 || !resourceSize || *resourceSize == 0)

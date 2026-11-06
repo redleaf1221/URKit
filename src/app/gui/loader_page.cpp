@@ -1,4 +1,6 @@
 #include "page_common.h"
+#include "theme.h"
+#include "wx/msgdlg.h"
 
 #include <wx/listctrl.h>
 

@@ -1,6 +1,8 @@
 #include "page_common.h"
 
 #include "generator_service.h"
+#include "theme.h"
+#include "wx/msgdlg.h"
 
 #include <wx/listctrl.h>
 
@@ -44,7 +46,7 @@ wxListCtrl *MakeList(wxWindow *parent, int minHeight) {
 
 Page::Page(wxWindow *parent, MainFrame *frame, const wxString &title)
     : wxScrolled<wxPanel>(parent, wxID_ANY), frame_(frame) {
-    SetBackgroundColour(Theme::kWindow);
+    wxWindowBase::SetBackgroundColour(Theme::kWindow);
     SetScrollRate(0, FromDIP(24));
     auto *outer = new wxBoxSizer(wxVERTICAL);
     column_ = new wxBoxSizer(wxVERTICAL);

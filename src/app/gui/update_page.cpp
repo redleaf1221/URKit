@@ -1,6 +1,8 @@
 #include "page_common.h"
 
 #include "mod_sdk.h"
+#include "theme.h"
+#include "cmake-build-release/_deps/wxwidgets-src/include/wx/msgdlg.h"
 
 #include <wx/listctrl.h>
 
@@ -153,7 +155,7 @@ UpdatePage::UpdatePage(wxWindow *parent, MainFrame *frame) : Page(parent, frame,
 
     apply_->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { Apply(); });
     openResult_->Bind(wxEVT_BUTTON, [this](wxCommandEvent &) { OpenFolder(resultFolder_); });
-    OnProjectChanged();
+    UpdatePage::OnProjectChanged();
 }
 
 void UpdatePage::OnProjectChanged() {
@@ -246,7 +248,8 @@ void UpdatePage::ShowChanges() {
     std::vector<const UrkProject::PlannedChange *> ordered;
     for (const UrkProject::PlannedChange &change : preview_->changes)
         ordered.push_back(&change);
-    std::stable_sort(ordered.begin(), ordered.end(), [](const auto *left, const auto *right) {
+    std::ranges::stable_sort(
+        ordered, [](const auto *left, const auto *right) {
         return ChangeRank(left->kind) < ChangeRank(right->kind);
     });
     long row = 0;
