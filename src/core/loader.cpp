@@ -52,9 +52,9 @@ void IntroStage(float value, const char *status) {
 
 void LogConfigSummary(const RuntimeBackendDescriptor &backend) {
     Log("=== URKit started (safeMode=%s, runtime=%s) ===", LoaderConfig().safeMode ? "on" : "off", backend.name);
-    Log("[config] executableDir='%s', configPath='%s', selectedMods=%zu, initDelayMs=%d, console=%s.",
+    Log("[config] executableDir='%s', configPath='%s', selectedMods=%zu, initDelayMs=%d, console=%s, splash=%s.",
         Loader_ExeDir().c_str(), LoaderConfig().configPath.c_str(), LoaderConfig().modPaths.size(),
-        LoaderConfig().initDelayMs, LoaderConfig().showConsole ? "on" : "off");
+        LoaderConfig().initDelayMs, LoaderConfig().showConsole ? "on" : "off", LoaderConfig().splash ? "on" : "off");
 }
 
 void DebugSkip(const std::string &reason) {
