@@ -1065,6 +1065,30 @@ inline ResolvedGenericMethod find_generic_method(const void *klass, std::string_
     return {};
 }
 }
+
+void *detail::NewObject(TypeRef type) {
+    detail::clear_error();
+    const std::string type_name(type.name);
+    const void *klass = type.resolve_class();
+    if (!klass) {
+        detail::set_error(std::string("Object::New failed: ") +
+                          (type_name.empty() ? std::string("<null>") : type_name) + " class not found");
+        detail::append_backend_error();
+        return nullptr;
+    }
+    void *object = detail::Backend::object_new(klass);
+    if (!object) {
+        detail::set_error(std::string("Object::New failed: allocation of ") +
+                          (type_name.empty() ? std::string("<null>") : type_name) + " returned null");
+        detail::append_backend_error();
+    }
+    return object;
+}
+
+inline Object Object::New(TypeRef type) {
+    return Object{detail::NewObject(type)};
+}
+
 inline GameObject GameObject::CreateUi(std::string_view name) {
     detail::clear_error();
     const void *gameObjectClass = GameObjectType.resolve_class();

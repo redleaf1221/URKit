@@ -1393,6 +1393,8 @@ template <class T> void *field_value(T &v) {
     return a.ptr;
 }
 template <class Ret, class... Args> Ret InvokeStatic(TypeRef type, std::string_view methodName, Args &&...args);
+// Allocates an instance without running a constructor; the caller invokes ".ctor".
+void *NewObject(TypeRef type);
 template <class T, class... Args>
 std::vector<T> StaticArrayCall(TypeRef type, std::string_view methodName, Args &&...args);
 template <class T, class... ExtraArgs>
@@ -1438,6 +1440,16 @@ struct Object {
     std::string name() const;
     std::string ToString() const;
     std::string runtime_class_name() const;
+    // Allocates an instance without running a constructor: call ".ctor" yourself,
+    // or use the New() helper the type generator emits. Not valid for
+    // UnityEngine.Object subclasses, which need Instantiate() or AddComponent().
+    static Object New(TypeRef type);
+    void set_name(std::string_view value) const {
+        SetProperty("name", std::string(value));
+    }
+    void set_hideFlags(int value) const {
+        SetProperty("hideFlags", value);
+    }
     int hideFlags() const {
         return GetProperty<int>("hideFlags");
     }

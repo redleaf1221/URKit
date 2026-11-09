@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-#define URK_SDK_VERSION 34
+#define URK_SDK_VERSION 35
 #define URK_MONO_API_VERSION 8
 #define URK_RUNTIME_API_VERSION 10
 #define URK_IL2CPP_API_VERSION 7

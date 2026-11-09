@@ -220,6 +220,59 @@ struct Mesh : Object {
         return MeshType;
     }
 };
+// Values match UnityEngine's own enums: the runtime receives them as int32, so
+// only the numbers matter, but keeping the names makes call sites readable.
+enum class TextureFormat : int {
+    Alpha8 = 1,
+    ARGB4444 = 2,
+    RGB24 = 3,
+    RGBA32 = 4,
+    ARGB32 = 5,
+    RGB565 = 7,
+    R16 = 9,
+    DXT1 = 10,
+    DXT5 = 12,
+    RGBA4444 = 13,
+    BGRA32 = 14,
+    RHalf = 15,
+    RGHalf = 16,
+    RGBAHalf = 17,
+    RFloat = 18,
+    RGFloat = 19,
+    RGBAFloat = 20,
+    R8 = 63,
+};
+
+enum class FilterMode : int {
+    Point = 0,
+    Bilinear = 1,
+    Trilinear = 2,
+};
+
+enum class TextureWrapMode : int {
+    Repeat = 0,
+    Clamp = 1,
+    Mirror = 2,
+    MirrorOnce = 3,
+};
+
+enum class SpriteMeshType : int {
+    FullRect = 0,
+    Tight = 1,
+};
+
+enum class HideFlags : int {
+    None = 0,
+    HideInHierarchy = 1,
+    HideInInspector = 2,
+    DontSaveInEditor = 4,
+    NotEditable = 8,
+    DontSaveInBuild = 16,
+    DontUnloadUnusedAsset = 32,
+    DontSave = 52,
+    HideAndDontSave = 61,
+};
+
 struct Texture : Object {
     Texture() = default;
     explicit Texture(void *h) : Object(h) {
@@ -232,6 +285,18 @@ struct Texture : Object {
     }
     int height() const {
         return GetProperty<int>("height");
+    }
+    FilterMode filterMode() const {
+        return static_cast<FilterMode>(GetProperty<int>("filterMode"));
+    }
+    void set_filterMode(FilterMode value) const {
+        SetProperty("filterMode", static_cast<int>(value));
+    }
+    TextureWrapMode wrapMode() const {
+        return static_cast<TextureWrapMode>(GetProperty<int>("wrapMode"));
+    }
+    void set_wrapMode(TextureWrapMode value) const {
+        SetProperty("wrapMode", static_cast<int>(value));
     }
     int anisoLevel() const {
         return GetProperty<int>("anisoLevel");
@@ -249,6 +314,14 @@ struct Texture : Object {
 struct Texture2D : Texture {
     Texture2D() = default;
     explicit Texture2D(void *h) : Texture(h) {
+    }
+    // Managed constructor: allocates first, then runs Texture2D(int, int, TextureFormat, bool).
+    Texture2D(int width, int height, TextureFormat format, bool mipChain) {
+        handle_ = detail::NewObject(unity_type());
+        if (!handle_)
+            return;
+        CallExact<void>(".ctor", {"System.Int32", "System.Int32", "UnityEngine.TextureFormat", "System.Boolean"},
+                        width, height, static_cast<std::int32_t>(format), mipChain);
     }
     static constexpr TypeRef unity_type() {
         return Texture2DType;
@@ -1144,6 +1217,13 @@ struct Sprite : Object {
     }
     static constexpr TypeRef unity_type() {
         return SpriteType;
+    }
+    // Sprite.Create(Texture2D, Rect, Vector2[, float[, UInt32[, SpriteMeshType]]]).
+    // The overloads differ by arity, so passing every argument picks the six-arg one.
+    static Sprite Create(Texture2D texture, Rect rect, Vector2 pivot, float pixelsPerUnit, std::uint32_t extrude = 0,
+                         SpriteMeshType meshType = SpriteMeshType::Tight) {
+        return detail::InvokeStatic<Sprite>(SpriteType, "Create", texture, rect, pivot, pixelsPerUnit, extrude,
+                                            static_cast<std::int32_t>(meshType));
     }
 };
 struct Graphic : Behaviour {
