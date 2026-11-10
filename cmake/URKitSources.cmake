@@ -1,6 +1,6 @@
 set(URK_ROOT_DIR "${CMAKE_CURRENT_LIST_DIR}/..")
-set(URK_SRC_DIR "${URK_ROOT_DIR}/src")
-set(URK_SDK_DIR "${URK_ROOT_DIR}/sdk")
+set(URK_SRC_DIR "${URK_ROOT_DIR}/src/loader")
+set(URK_SDK_DIR "${URK_ROOT_DIR}/src/sdk")
 
 function(urk_validate_sources)
     foreach(source_path IN LISTS ARGN)
@@ -11,13 +11,13 @@ function(urk_validate_sources)
 endfunction()
 
 set(URK_INCLUDE_DIRS
+    ${URK_ROOT_DIR}/src
     ${URK_SRC_DIR}
     ${URK_SRC_DIR}/platform
     ${URK_SRC_DIR}/core
     ${URK_SRC_DIR}/core/loader
     ${URK_SRC_DIR}/unity
     ${URK_SRC_DIR}/ui
-    ${URK_SRC_DIR}/sdk
     ${URK_SRC_DIR}/proxy
     ${URK_SDK_DIR}
 )
@@ -40,21 +40,15 @@ set(URK_CORE_SRC
     ${URK_SRC_DIR}/core/loader/il2cpp_runtime_backend.cpp
     ${URK_SRC_DIR}/core/loader/main_thread_dispatcher.cpp
     ${URK_SRC_DIR}/core/loader/mod_context.cpp
-    ${URK_SRC_DIR}/core/loader/mono_mod_context.cpp
-    ${URK_SRC_DIR}/core/loader/mono_runtime_backend.cpp
-    ${URK_SRC_DIR}/core/loader/mono_runtime_bootstrap.cpp
     ${URK_SRC_DIR}/core/loader/native_mod_loader.cpp
     ${URK_SRC_DIR}/core/loader/runtime_backend.cpp
     ${URK_SRC_DIR}/core/loader/runtime_discovery.cpp
     ${URK_SRC_DIR}/core/loader/cursor_guard.cpp
     ${URK_SRC_DIR}/core/loader/runtime_events.cpp
     ${URK_SRC_DIR}/core/loader/steam_identity.cpp
-    ${URK_SRC_DIR}/core/loader/unreal_mod_context.cpp
-    ${URK_SRC_DIR}/core/loader/unreal_runtime_backend.cpp
     ${URK_SRC_DIR}/core/loader/window_message_dispatcher.cpp
     ${URK_SRC_DIR}/core/logger.cpp
     ${URK_SRC_DIR}/core/mod_api.cpp
-    ${URK_SRC_DIR}/core/mod_api_mono.cpp
     ${URK_SRC_DIR}/core/mod_lifecycle.cpp
     ${URK_SRC_DIR}/core/network_http.cpp
     ${URK_SRC_DIR}/core/platform_paths.cpp
@@ -64,193 +58,31 @@ set(URK_CORE_SRC
 
 set(URK_UNITY_SRC
     ${URK_SRC_DIR}/unity/il2cpp_api.cpp
-    ${URK_SRC_DIR}/unity/mono_api.cpp
 )
 
-# unreal_remote_memory.cpp is deliberately absent: the out-of-process reader
-# belongs to the probe tooling, not to a loader that runs inside the game.
-set(URK_UNREAL_SRC
-    ${URK_SRC_DIR}/unreal/detect/unreal_bootstrap.cpp
-    ${URK_SRC_DIR}/unreal/detect/unreal_code_anchors.cpp
-    ${URK_SRC_DIR}/unreal/detect/unreal_engine_detect.cpp
-    ${URK_SRC_DIR}/unreal/game/unreal_game_loop.cpp
-    ${URK_SRC_DIR}/unreal/game/unreal_world.cpp
-    ${URK_SRC_DIR}/unreal/hooks/unreal_function_hooks.cpp
-    ${URK_SRC_DIR}/unreal/hooks/unreal_object_life_hook.cpp
-    ${URK_SRC_DIR}/unreal/hooks/unreal_process_event.cpp
-    ${URK_SRC_DIR}/unreal/hooks/unreal_process_event_hook.cpp
-    ${URK_SRC_DIR}/unreal/hooks/unreal_script_hook.cpp
-    ${URK_SRC_DIR}/unreal/layout/unreal_offsets.cpp
-    ${URK_SRC_DIR}/unreal/layout/unreal_property_offsets.cpp
-    ${URK_SRC_DIR}/unreal/layout/unreal_struct_offsets.cpp
-    ${URK_SRC_DIR}/unreal/memory/unreal_module.cpp
-    ${URK_SRC_DIR}/unreal/memory/unreal_process_memory.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_enums.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_functions.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_names.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_object_array.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_object_finder.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_script_code.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_type_dump.cpp
-    ${URK_SRC_DIR}/unreal/reflection/unreal_type_queries.cpp
-    ${URK_SRC_DIR}/unreal/api/sdk_api_calls.cpp
-    ${URK_SRC_DIR}/unreal/api/sdk_api_core.cpp
-    ${URK_SRC_DIR}/unreal/api/sdk_api_hooks.cpp
-    ${URK_SRC_DIR}/unreal/api/sdk_api_members.cpp
-    ${URK_SRC_DIR}/unreal/api/sdk_api_places.cpp
-    ${URK_SRC_DIR}/unreal/api/sdk_api_subscriptions.cpp
-    ${URK_SRC_DIR}/unreal/api/sdk_api_table.cpp
-    ${URK_SRC_DIR}/unreal/unreal_engine.cpp
-    ${URK_SRC_DIR}/unreal/hooks/unreal_native_call_hook.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_containers.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_delegate_virtuals.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_engine_calls.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_owned_values.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_places.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_class_defaults.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_property_values.cpp
-    ${URK_SRC_DIR}/unreal/values/unreal_property_virtuals.cpp
-)
 
 # clang ignores __try for asynchronous faults unless asked; the reader's SEH
 # guard is what keeps a scan over stale pages from killing the game.
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    set_source_files_properties(${URK_SRC_DIR}/unreal/memory/unreal_process_memory.cpp
-        PROPERTIES COMPILE_OPTIONS "-fasync-exceptions")
-endif()
 
 set(URK_UI_SRC
     ${URK_SRC_DIR}/ui/intro.cpp
 )
 
-set(URK_SDK_GENERATOR_SRC
-    ${URK_SRC_DIR}/sdk/mod_project_generator_common.cpp
-    ${URK_SRC_DIR}/sdk/mono_sdk_generator.cpp
-    ${URK_SRC_DIR}/sdk/il2cpp_project_generator.cpp
-    ${URK_SRC_DIR}/sdk/unreal_sdk_generator.cpp
-    ${URK_SRC_DIR}/sdk/unreal_type_codegen.cpp
-    ${URK_SRC_DIR}/sdk/unreal_script_render.cpp
-    ${URK_SRC_DIR}/sdk/unreal_re_export.cpp
-    ${URK_SRC_DIR}/sdk/sdk_generator_contract.cpp
-    ${URK_SRC_DIR}/sdk/project_manifest.cpp
-    ${URK_SRC_DIR}/sdk/project_ledger.cpp
-)
-
-set(URK_PROJECT_UPDATER_SRC
-    ${URK_SRC_DIR}/sdk/project_updater.cpp
-)
-
-set(URK_DEV_MCP_CORE_SRC
-    ${URK_ROOT_DIR}/mcp/core/bridge_protocol.cpp
-    ${URK_ROOT_DIR}/mcp/core/bridge_protocol.h
-)
-
-set(URK_DEV_MCP_SERVER_LIBRARY_SRC
-    ${URK_ROOT_DIR}/mcp/server/bridge_client.cpp
-    ${URK_ROOT_DIR}/mcp/server/bridge_client.h
-    ${URK_ROOT_DIR}/mcp/server/json_rpc_session.cpp
-    ${URK_ROOT_DIR}/mcp/server/json_rpc_session.h
-    ${URK_ROOT_DIR}/mcp/server/mcp_server.cpp
-    ${URK_ROOT_DIR}/mcp/server/mcp_server.h
-    ${URK_ROOT_DIR}/mcp/server/process_runner.cpp
-    ${URK_ROOT_DIR}/mcp/server/process_runner.h
-    ${URK_ROOT_DIR}/mcp/server/project_service.cpp
-    ${URK_ROOT_DIR}/mcp/server/project_service.h
-    ${URK_ROOT_DIR}/mcp/server/stdio_transport.cpp
-    ${URK_ROOT_DIR}/mcp/server/stdio_transport.h
-    ${URK_ROOT_DIR}/mcp/server/tool_catalog.cpp
-    ${URK_ROOT_DIR}/mcp/server/tool_catalog.h
-    ${URK_SRC_DIR}/sdk/project_manifest.cpp
-    ${URK_SRC_DIR}/sdk/project_manifest.h
-    ${URK_SRC_DIR}/sdk/project_ledger.h
-    ${URK_DEV_MCP_CORE_SRC}
-)
 
 set(URK_DEV_BRIDGE_SRC
-    ${URK_ROOT_DIR}/dev/bridge/dev_bridge.cpp
-    ${URK_ROOT_DIR}/dev/bridge/dev_bridge.h
-    ${URK_ROOT_DIR}/dev/bridge/mod_entry.cpp
-    ${URK_ROOT_DIR}/dev/bridge/runtime_test_discovery.cpp
-    ${URK_ROOT_DIR}/dev/bridge/runtime_test_discovery.h
+    ${URK_ROOT_DIR}/src/dev/bridge/dev_bridge.cpp
+    ${URK_ROOT_DIR}/src/dev/bridge/dev_bridge.h
+    ${URK_ROOT_DIR}/src/dev/bridge/mod_entry.cpp
+    ${URK_ROOT_DIR}/src/dev/bridge/runtime_test_discovery.cpp
+    ${URK_ROOT_DIR}/src/dev/bridge/runtime_test_discovery.h
     ${URK_SDK_DIR}/dev_test.h
-    ${URK_DEV_MCP_CORE_SRC}
+    ${URK_ROOT_DIR}/src/dev/protocol/bridge_protocol.cpp
+    ${URK_ROOT_DIR}/src/dev/protocol/bridge_protocol.h
 )
-
-set(URK_APP_SRC
-    ${URK_SRC_DIR}/app/main.cpp
-    ${URK_SRC_DIR}/app/cli.cpp
-    ${URK_SRC_DIR}/app/cli.h
-    ${URK_SRC_DIR}/app/activity_log.cpp
-    ${URK_SRC_DIR}/app/activity_log.h
-    ${URK_SRC_DIR}/app/generator_service.cpp
-    ${URK_SRC_DIR}/app/generator_service.h
-    ${URK_SRC_DIR}/app/loader_service.cpp
-    ${URK_SRC_DIR}/app/loader_service.h
-    ${URK_SRC_DIR}/app/self_update.cpp
-    ${URK_SRC_DIR}/app/self_update.h
-    ${URK_SRC_DIR}/app/text_util.h
-    ${URK_SRC_DIR}/app/gui/gui_app.cpp
-    ${URK_SRC_DIR}/app/gui/gui_app.h
-    ${URK_SRC_DIR}/app/gui/main_frame.cpp
-    ${URK_SRC_DIR}/app/gui/main_frame.h
-    ${URK_SRC_DIR}/app/gui/pages.h
-    ${URK_SRC_DIR}/app/gui/page_common.h
-    ${URK_SRC_DIR}/app/gui/new_project_page.cpp
-    ${URK_SRC_DIR}/app/gui/update_page.cpp
-    ${URK_SRC_DIR}/app/gui/loader_page.cpp
-    ${URK_SRC_DIR}/app/gui/about_page.cpp
-    ${URK_SRC_DIR}/app/gui/theme.h
-    ${URK_SRC_DIR}/app/gui/widgets.cpp
-    ${URK_SRC_DIR}/app/gui/widgets.h
-    ${URK_SRC_DIR}/app/urk.rc
-    ${URK_SRC_DIR}/app/urk.manifest
-    ${URK_SDK_GENERATOR_SRC}
-    ${URK_PROJECT_UPDATER_SRC}
-    ${URK_DEV_MCP_SERVER_LIBRARY_SRC}
-)
-
-set(URK_SDK_TEMPLATE_FILES
-    ${URK_SRC_DIR}/sdk/templates/mod_project_generator_runtime.inl
-    ${URK_SRC_DIR}/sdk/templates/mod_project_generator_ui.inl
-    ${URK_SRC_DIR}/sdk/templates/mod_project_generator_unity.inl
-    ${URK_SRC_DIR}/sdk/templates/runtime/runtime_api.inl
-    ${URK_SRC_DIR}/sdk/templates/runtime/hooks_api.inl
-    ${URK_SRC_DIR}/sdk/templates/runtime/network_api.inl
-    ${URK_SRC_DIR}/sdk/templates/runtime/project_support.inl
-    ${URK_SRC_DIR}/sdk/templates/runtime/events_async.inl
-    ${URK_SRC_DIR}/sdk/templates/runtime/lifecycle.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/theme_widgets.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/localization.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/tabs.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/menu.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/highlight.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/graphics_dx11.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/graphics_dx12.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/graphics_discovery.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/win32_input.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/imgui_win32_module_scope.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/render_hook_api.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/viewport_policy.inl
-    ${URK_SRC_DIR}/sdk/templates/ui/render_hook_source.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/types.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/components.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/invoke.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/shortcuts.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/inspect_declarations.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/aliases.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/inspect_codegen.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/backend_codegen.inl
-    ${URK_SRC_DIR}/sdk/templates/unity/module_split.inl
-    ${URK_SRC_DIR}/sdk/templates/unreal/runtime.inl
-    ${URK_SRC_DIR}/sdk/templates/unreal/highlight.inl
-)
-set_source_files_properties(${URK_SDK_TEMPLATE_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
-list(APPEND URK_APP_SRC ${URK_SDK_TEMPLATE_FILES})
 
 set(URK_COMMON_SRC
     ${URK_CORE_SRC}
     ${URK_UNITY_SRC}
-    ${URK_UNREAL_SRC}
     ${URK_UI_SRC}
 )
 
@@ -281,7 +113,6 @@ set(URK_HEADER_CANDIDATES
     ${URK_SRC_DIR}/unity/il2cpp_api.h
     ${URK_SRC_DIR}/core/loader/main_thread_dispatcher.h
     ${URK_SRC_DIR}/core/loader/mod_context.h
-    ${URK_SRC_DIR}/core/loader/mono_runtime_bootstrap.h
     ${URK_SRC_DIR}/core/loader/native_mod_loader.h
     ${URK_SRC_DIR}/core/loader/runtime_backend.h
     ${URK_SRC_DIR}/core/loader/runtime_discovery.h
@@ -309,41 +140,8 @@ set(URK_HEADER_CANDIDATES
     ${URK_SRC_DIR}/sdk/project_manifest.h
     ${URK_SRC_DIR}/sdk/project_updater.h
 
-    ${URK_SRC_DIR}/unity/mono_api.h
     ${URK_SRC_DIR}/unity/il2cpp_export_policy.h
 
-    ${URK_SRC_DIR}/unreal/unreal_bootstrap.h
-    ${URK_SRC_DIR}/unreal/unreal_code_anchors.h
-    ${URK_SRC_DIR}/unreal/unreal_engine_detect.h
-    ${URK_SRC_DIR}/unreal/unreal_functions.h
-    ${URK_SRC_DIR}/unreal/unreal_game_loop.h
-    ${URK_SRC_DIR}/unreal/unreal_type_dump.h
-    ${URK_SRC_DIR}/unreal/unreal_owned_values.h
-    ${URK_SRC_DIR}/unreal/unreal_engine_calls.h
-    ${URK_SRC_DIR}/unreal/unreal_containers.h
-    ${URK_SRC_DIR}/unreal/unreal_property_virtuals.h
-    ${URK_SRC_DIR}/unreal/unreal_delegate_virtuals.h
-    ${URK_SRC_DIR}/unreal/unreal_script_hook.h
-    ${URK_SRC_DIR}/unreal/unreal_object_life_hook.h
-    ${URK_SRC_DIR}/unreal/unreal_enums.h
-    ${URK_SRC_DIR}/unreal/unreal_places.h
-    ${URK_SRC_DIR}/unreal/unreal_text.h
-    ${URK_SRC_DIR}/unreal/unreal_memory.h
-    ${URK_SRC_DIR}/unreal/unreal_module.h
-    ${URK_SRC_DIR}/unreal/unreal_names.h
-    ${URK_SRC_DIR}/unreal/unreal_object_array.h
-    ${URK_SRC_DIR}/unreal/unreal_object_finder.h
-    ${URK_SRC_DIR}/unreal/unreal_offsets.h
-    ${URK_SRC_DIR}/unreal/unreal_process_event.h
-    ${URK_SRC_DIR}/unreal/unreal_function_hooks.h
-    ${URK_SRC_DIR}/unreal/unreal_process_event_hook.h
-    ${URK_SRC_DIR}/unreal/unreal_process_memory.h
-    ${URK_SRC_DIR}/unreal/unreal_property_offsets.h
-    ${URK_SRC_DIR}/unreal/unreal_property_values.h
-    ${URK_SRC_DIR}/unreal/unreal_sdk_api.h
-    ${URK_SRC_DIR}/unreal/unreal_struct_offsets.h
-    ${URK_SRC_DIR}/unreal/unreal_type_queries.h
-    ${URK_SRC_DIR}/unreal/unreal_world.h
 
 
     ${URK_SDK_DIR}/mod_sdk.h
@@ -359,5 +157,15 @@ foreach(header_path IN LISTS URK_HEADER_CANDIDATES)
 endforeach()
 
 urk_validate_sources(${URK_COMMON_SRC})
-urk_validate_sources(${URK_APP_SRC})
 urk_validate_sources(${URK_DEV_BRIDGE_SRC})
+
+
+
+
+
+
+
+
+
+
+

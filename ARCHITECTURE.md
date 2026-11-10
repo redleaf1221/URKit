@@ -1,102 +1,75 @@
-# URKit architecture
+# URsdk architecture
 
-URKit has four main parts: proxy loader DLLs, a proxy-free loader DLL, a shared
-runtime, and the SDK project generator. The proxy and proxy-free entry forms
-reuse one object-library build of the runtime; only the proxy forwarding source
-and export definition differ.
+Three layers, one build:
+
+- **loader** — runs inside the game, finds IL2CPP, exposes the ABI, loads mods.
+- **sdk** — the headers a mod compiles against. Real files in `src/sdk/`, not generated text.
+- **mod** — one directory under `src/mods/`, one DLL, one `ModInitEx` export.
 
 ## Source map
 
 | Path | Responsibility |
 |---|---|
-| `sdk/mod_sdk.h` | Public ABI, versions, capabilities, contexts, and API tables. |
-| `src/proxy/` | `version.dll`, `winhttp.dll`, `winmm.dll`, `dwmapi.dll`, and `msimg32.dll` forwarding entry points. |
-| `src/platform/dllmain.cpp` | Minimal process attach/detach entry point. |
-| `src/core/loader.cpp` | Startup flow and backend selection. |
-| `src/core/loader/` | Runtime backends, mod loading, events, paths, and Steam identity. |
-| `src/core/` | Configuration, logging, hooks, lifecycle, networking, and shared state. |
-| `src/unity/` | Mono and IL2CPP export/metadata adapters. |
-| `src/ui/` | Loader splash UI. |
-| `src/app/` | `urk.exe`: generator, updater, loader install and injection, MCP entry, command line. |
-| `src/app/gui/` | wxWidgets window of `urk.exe`. |
-| `src/sdk/` | SDK/project writers and output validation. |
-| `src/sdk/templates/` | Generated runtime, Unity, and optional UI source. |
-| `mcp/` | Client-neutral stdio MCP server (run as `urk.exe mcp`), project services, and bounded bridge protocol. |
-| `dev/bridge/` | Optional in-game development bridge and runtime-test discovery. |
-| `sdk/dev_test.h` | Fixed C ABI for mod-owned runtime tests. |
-| `cmake/` | Source lists, embedded header generation, and release staging. |
-
-Generator templates follow the ownership of their generated artifacts:
-
-| Template path | Generated responsibility |
-|---|---|
-| `src/sdk/templates/runtime/` | Runtime ABI helpers, events, async support, lifecycle, and mod support files. |
-| `src/sdk/templates/unity/` | Unity types, components, invocation, inspection, aliases, and backend specialization. |
-| `src/sdk/templates/ui/` | Theme, widgets, localization, menu, highlight, graphics backends, Win32 input, and render hooks. |
-
-The three `mod_project_generator_*.inl` files are include catalogs only. New
-templates belong in the matching responsibility directory and must be added to
-`URK_SDK_TEMPLATE_FILES` so build systems track them as generator inputs.
+| `src/sdk/mod_sdk.h` | public ABI: versions, capabilities, contexts, API tables |
+| `src/loader/platform/` | `DllMain`, process filtering, start the bootstrap thread |
+| `src/loader/core/loader/` | startup flow, runtime discovery, mod loading, events |
+| `src/loader/core/` | config, logging, hooks, lifecycle, networking, shared state |
+| `src/loader/unity/` | the IL2CPP export resolver and its public adapter table |
+| `src/loader/proxy/` | `version.dll`, `winhttp.dll`, `winmm.dll`, `dwmapi.dll`, `msimg32.dll` |
+| `src/overlay/` | ImGui host, theme/widgets, D3D11/D3D12/OpenGL presentation hooks (compiled per mod) |
+| `src/sdk/` | runtime helpers, events, hooks, network, coroutines, Unity types, IL2CPP adapter |
+| `src/sdk/il2cpp/` | `URK::il2cpp`: thin, size-checked wrappers over `URK_Il2CppApi` |
+| `src/sdk/unity/` | `URK::Unity`: `TypeRef`, `Object`, components, invoke, inspect, shortcuts |
+| `src/mods/_template/` | the mod scaffold, copied by `urk new` |
+| `src/tools/urk/` | `new`, `deploy`, `dev` |
+| `src/dev/bridge/` | `URKitDevBridge.dll`: runtime test discovery over a named pipe |
 
 ## Runtime flow
 
-1. A selected proxy forwards to the real Windows DLL, or `urk.exe loader inject`
-   loads the dedicated `URKitInjector.dll` loader into the game.
-2. A process-wide owner marker ensures that only one URKit entry DLL starts the
-   shared runtime when a game loads more than one supported proxy.
-3. Startup qualifies the current process from loaded Unity modules. Launcher,
-   web, and helper processes remain forwarding-only even when game files are in
-   the same directory.
-4. The injected loader asks the user for the config `.ini` and one or more mod DLLs;
-   proxy startup retains its normal executable-directory configuration flow.
-5. Loader startup reads configuration and waits for Mono or IL2CPP.
-6. The backend attaches safely, resolves public runtime APIs, and configures
-   available services.
-7. The selected native DLLs receive a validated `URK_ModContext` through
-   `ModInitEx`.
-8. The runtime owns callback dispatch, hook records, and orderly shutdown.
+1. A proxy loader (or `URKitInjector.dll`) starts the runtime on a bootstrap
+   thread, outside `DllMain`.
+2. A process-wide owner mutex keeps exactly one runtime per process; other
+   proxies only forward.
+3. Startup qualifies the process by loaded modules: `GameAssembly.dll` means
+   IL2CPP, everything else forwards and returns.
+4. `Il2Cpp_BindExports` reads the GameAssembly export table, binds each export by
+   name **and** ABI signature, and publishes the validated table as
+   `URK_Il2CppApi` through `URK_ModContext`.
+5. Metadata readiness is probed with the IL2CPP thread attached; nothing is
+   guessed from private layouts.
+6. `Mods\*.dll` are loaded, `ModInitEx` runs, and the event pump starts.
 
-Development MCP project operations run out of process against one generated
-project manifest. Runtime requests enter through a current-user local named
-pipe, wait in a bounded queue, and execute from the DevBridge main-thread
-callback. Native mods expose tests through fixed discovery and execution
-exports; the bridge does not retain callbacks across requests.
+Capabilities stay explicit: a missing event pump, input service or backend entry
+point is simply absent from the context, and the SDK fails closed.
 
-Capabilities are explicit. A missing event pump, input service, or backend API
-stays unavailable instead of being inferred from private layouts.
-Native mod discovery runs before runtime-event activation, so processes without
-mod candidates and safe-mode sessions remain free of Unity function hooks.
+## The SDK is compiled, not printed
 
-Public context and API structures are versioned and append-only. Loader-internal
-lifecycle, backend discovery, and export validation changes do not alter the
-native mod ABI.
+`src/sdk/compile_check.cpp` includes the public surface and is built as
+`urk_sdk_check` in every configuration. That turns "the generated header is
+broken" into a build failure at the header, not in a user project three steps
+later. It already caught one real bug: a non-`inline` out-of-class definition in
+`unity_invoke.h` that collided as soon as two translation units included it.
+
+ImGui is optional per build: when `URK_WITH_IMGUI=OFF`, `urk_add_mod` drops the
+overlay sources and no ImGui, D3D or DXGI code is linked into the mod at all.
 
 ## Ownership rules
 
-- `sdk/mod_sdk.h` is the ABI source of truth. API tables are append-only.
-- Runtime state and loader-owned resources stay under `src/core`.
-- Mono/IL2CPP-specific lookup code stays in `src/unity` or its backend adapter.
-- Generated files are overwritten; user-owned generated-project files are
-  created only when missing.
-- Proxy files contain forwarding code only. Shared behavior belongs in the
-  `URKitRuntimeObjects` object library.
-
-When changing the ABI, update `sdk/mod_sdk.h`, context builders, capability
-checks, generated bootstrap code, and release notes together.
+- `src/sdk/mod_sdk.h` is the ABI source of truth. Tables are append-only and carry
+  `version`/`size` so either side can reject an incompatible peer.
+- Runtime state and loader-owned resources stay under `src/loader/core`.
+- IL2CPP lookup code stays in `src/loader/unity`; the SDK never resolves
+  exports or method pointers itself.
+- A mod owns its UI, hooks and config; the loader arbitrates the hook chain, the
+  window procedure and cursor leases.
 
 ## Concurrency
 
-The loader starts outside `DllMain`. Runtime worker threads use generation
-tokens during shutdown, managed calls use attach scopes, and callbacks are
-removed before a mod module is freed. Code running under the event mutex must
-remain short and must not call user code.
+The loader starts outside `DllMain`. Worker threads use generation tokens during
+shutdown, managed calls attach their thread, and hooks are removed before a mod
+module is freed. Code under the event mutex stays short and never calls user
+code.
 
-## Build layout
 
-- `CMakePresets.json`: Clang and MSVC Debug/Release builds.
-- `.clangd`: clangd index configuration.
-- `cmake/URKitSources.cmake`: the canonical root source list.
 
-Common runtime sources compile once into `URKitRuntimeObjects`, then link into
-the three proxies and `URKitInjector.dll`. This keeps loader behavior identical
-while avoiding duplicated compilation work.
+

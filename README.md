@@ -1,161 +1,141 @@
 # URKit
 
-[![GitHub Release](https://img.shields.io/github/v/release/redleaf1221/URKit?label=Release)](https://github.com/redleaf1221/URKit/releases/latest)
-[![Downloads](https://img.shields.io/github/downloads/redleaf1221/URKit/total?label=Downloads)](https://github.com/redleaf1221/URKit/releases)
-[![GitHub Stars](https://img.shields.io/github/stars/redleaf1221/URKit?style=flat&label=Stars)](https://github.com/redleaf1221/URKit/stargazers)
-[![Support](https://img.shields.io/badge/Support-GitHub%20Issues-blue?logo=github)](https://github.com/redleaf1221/URKit/issues)
-[![License](https://img.shields.io/github/license/redleaf1221/URKit)](https://github.com/redleaf1221/URKit/blob/main/LICENSE)
+A loader-sdk-mod monorepo for IL2CPP Unity mods on Windows x64. Everything is
+ordinary CMake: one repository builds the loader DLLs, the SDK, the mods and the
+`urk` command line.
 
-**THIS IS A FORK!! DO NOT SUBMIT ISSUES TO UPSTREAM UNLESS IT'S CONFIRMED THERE!!**
+This is a restructuring of URKit. Mono and Unreal support, the wxWidgets
+application, the MCP server and the string-based project generator are gone. What
+used to be generated text is now source code that the compiler checks.
 
-URKit lets you write mods for Windows x64 Unity games in plain C++. You point
-it at a game, and it hands you a CMake project that already builds. From
-there you can find and change game objects, call the game's own methods,
-hook functions, react to scene changes, and draw an ImGui overlay. It works
-with both Mono and IL2CPP games.
+## Layout
 
-Unreal Engine support is on the way, but it isn't ready yet. See
-[where it stands](#unreal-engine-work-in-progress).
-
-<img src="showcase/ss1.png" width="1211" alt="Showcase of mod framework generating">
-
-## What's in a release
-
-- `urk.exe` makes new mod projects, updates existing ones without touching
-  the files you wrote, and installs or injects the loader. Run it with no
-  arguments for the window, or see `urk.exe help`.
-- `version.dll`, `winhttp.dll`, `winmm.dll`, `dwmapi.dll` and `msimg32.dll` are the proxy
-  loaders. You only need the one the game actually loads. `version.dll` is a
-  good first try. If Windows loads its own copy first (some games get a
-  compatibility shim that does), try `dwmapi.dll`.
-- `URKitInjector.dll` is the loader for injector mode: `urk.exe` loads it into
-  the running game instead of placing a proxy next to it.
-- `URKitDevBridge.dll` is optional. With `urk.exe mcp` it lets AI coding
-  assistants build, deploy and inspect your mod.
-
-Keep these files together in one folder. `urk.exe` copies the proxy you pick
-next to the game's executable, and your built mods go in a `Mods` folder
-beside it. Only one proxy should be installed.
-
-## Quick start
-
-```powershell
-./urk.exe new --game-exe C:\Games\Example\Example.exe --name MyMod --loader proxy
-cd <GameDir>\urk-sdk-output\MyMod\project
-cmake --preset clang-relwithdebinfo
-cmake --build --preset clang-relwithdebinfo --parallel
+```
+src/loader/       the in-process runtime (loader, hooks, events, IL2CPP adapter)
+src/sdk/          the public SDK headers, compiled in every build
+src/overlay/      the ImGui host and D3D presentation hooks (compiled into each mod)
+src/mods/_template/  the scaffold every mod is copied from
+src/mods/<name>/     one mod: mod/ sources plus its own mod_config.h
+src/tools/urk/    the command line: new / deploy / dev
+cmake/            source lists and the urk_add_mod() rules
+src/dev/bridge/   URKitDevBridge.dll, the in-game test bridge
 ```
 
-URKit works out whether the game is Mono or IL2CPP for you, and
-`--loader proxy` puts `version.dll` next to the game. The build puts a debug
-DLL straight into the game's `Mods` folder. The same steps are on the
-**Create** page of `urk.exe`.
+A mod is a normal target, not generated output:
 
-You'll need CMake 3.28 or newer, Ninja, and either LLVM/Clang or MSVC (VS 2022
-Build Tools or newer). Prefer `cl.exe`? Use `msvc-relwithdebinfo`. When you're ready to
-share your mod, build with `clang-release` or `msvc-release`.
-
-Now start the game and open `URKit_logs.log` next to its executable. You
-should see your mod load. No log file at all usually means the game doesn't
-load the loader you picked. Try another proxy on the **Loader** page, or use
-injector mode there.
-
-## Unreal Engine (work in progress)
-
-We're working on Unreal support, and honestly it's not ready for real mods
-yet. Unity has an API we can ask about the game; Unreal doesn't, so URKit has
-to find everything on its own while the game runs. So far it has been tried
-on UE 4.27, 5.4 and 5.8 games. Here's where things stand:
-
-| What | Status | Notes |
-|---|---|---|
-| Finding the engine in a running game | Works | |
-| Calling game functions, hooking `ProcessEvent` | Works | |
-| Map load / map change events | Works | |
-| `update()` every frame | Works | |
-| Typed headers from the game (`DumpTypes`) | Works | |
-| Numbers, objects, structs, `FString`, `FName`, `FText`, `TArray` | Works | |
-| `TSet` and `TMap` | Mostly works | If an edit fails halfway, the container can be left broken |
-| Enums by name, soft and weak references, delegates | Works | |
-| Sparse delegates, interfaces, lazy pointers | Works | |
-| Engines older than 4.25 | Not supported | |
-
-If you want to poke at it anyway: put the loader next to the game's
-`-Win64-Shipping.exe`, add this to `URKit_config.ini` in the same folder,
-and play through the maps you care about:
-
-```ini
-[Unreal]
-DumpTypes=1
+```
+src/mods/hello/
+  mod/config/mod_config.h     name, mod id, author, version
+  mod/support/                logging
+  mod/lifecycle/              update(), network, runtime hooks
+  mod/hooks/                  your hooks, plus the optional ImGui overlay
+  mod/ui/                     menu, theme, tabs, highlight (ImGui builds only)
+  mod/mod_entry.cpp           the fixed exports (ModInitEx and friends)
 ```
 
-Then make a project with `--backend unreal`. The generated
-`sdk/unreal/README.md` explains the rest. If something breaks, an issue with
-your `URKit_logs.log` attached helps a lot.
+`src/mods/_template` is the scaffold. `urk new` copies it and rewrites the name; the
+copy is then edited by hand like any other source directory.
 
-## Learn the API
-
-New to URKit? Start with [Getting Started](docs/GETTING_STARTED.md). It walks
-you through a real mod, from printing your first log line to reading and
-changing game state.
-
-If you'd rather watch, there's the
-[URKit SDK Tutorial Series](https://youtube.com/playlist?list=PLP9lUXoova70&si=ATR-n7l7tVEliZlN)
-on YouTube.
-
-Once you know the basics, the [SDK Handbook](docs/SDK_HANDBOOK.md) is the full
-reference. It covers finding objects, threading rules, hooks, rendering and
-highlights, caching, and what to check when something doesn't work. Its first
-chapter is about updating projects, including hand-patched ones and running
-the updater from a script.
-
-Curious how URKit works inside? Read [ARCHITECTURE.md](ARCHITECTURE.md). The
-AI-assistant server has its own page in [docs/DEV_MCP.md](docs/DEV_MCP.md).
-
-## Building URKit yourself
-
-You'll need the same tools as for a mod project. For the MSVC presets, open a
-Developer PowerShell for Visual Studio first so `cl.exe` can be found. Then,
-from the repository root:
-
-```powershell
-cmake --preset msvc-release
-cmake --build out/build/msvc-release
-```
-
-`clang-release`, `clang-relwithdebinfo` and `msvc-relwithdebinfo` work too.
-
-### Static analysis
-
-`.clang-tidy` holds the project's check set. It is deliberately bug-focused:
-style-only checks, and checks that produce thousands of advisory hits on this
-codebase, are disabled right in the file next to the reason, so a clean run
-means something. Add them back one at a time as the code catches up.
-
-clang-tidy reads the compile flags from a configured build tree:
+## Build
 
 ```powershell
 cmake --preset msvc-relwithdebinfo
-clang-tidy -p cmake-build-relwithdebinfo src/core/loader/runtime_events.cpp
+cmake --build cmake-build-relwithdebinfo --parallel
 ```
 
-CLion reads the same `.clang-tidy` for its inspections, so the settings apply
-whether you run it by hand or let the IDE do it.
+Outputs:
 
-## Antivirus warnings
+| Target | File |
+|---|---|
+| `URKit`, `URKitWinHttp`, `URKitWinMm`, `URKitDwmApi`, `URKitMsImg32` | the proxy loaders |
+| `URKitInjected` | `URKitInjector.dll` |
+| `urk` | `urk.exe` |
+| `hello`, `demo`, ... | one DLL per mod under `src/mods/` |
+| `urk_sdk_check` | compiles `sdk/` so a broken header fails the build |
 
-The loaders get into a game's process and hook functions there. That's just
-what mod loaders do, but some antivirus software flags it anyway. A warning on
-its own doesn't mean a release is malicious.
+Without an overlay, everything ImGui-related is dropped from the build:
 
-To stay safe, only download releases from this repository and check the
-SHA-256 digest published with each one. The binaries are self-signed so you
-can tell if they were tampered with, but Windows won't trust that certificate
-by default, and it isn't meant as a seal of approval. Please don't turn off
-your antivirus to run URKit. If you hit a false positive, report it to the
-antivirus vendor or open an issue here, and include the detection name, the
-file and its SHA-256 digest.
+```powershell
+cmake -S . -B build-noimgui -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo `
+      -DURK_WITH_IMGUI=OFF
+cmake --build build-noimgui --target hello
+```
+
+The resulting mod links only `KERNEL32.dll` and is roughly a fifth of the size of
+an ImGui build.
+
+## Workflow
+
+```powershell
+.\cmake-build-relwithdebinfo\urk.exe new MyMod
+cmake --build cmake-build-relwithdebinfo --target MyMod
+.\cmake-build-relwithdebinfo\urk.exe deploy MyMod --game C:\Games\Example
+```
+
+`deploy` copies the built DLL into `<game>\Mods`. Start the game with a proxy
+loader next to its executable and read `URKit_logs.log`.
+
+With `URKitDevBridge.dll` in `Mods`, `urk dev` talks to the running game:
+
+```powershell
+.\cmake-build-relwithdebinfo\urk.exe dev status          # backend, capabilities, current scene
+.\cmake-build-relwithdebinfo\urk.exe dev tests           # runtime tests exported by loaded mods
+.\cmake-build-relwithdebinfo\urk.exe dev test MyMod.Basic
+```
+
+
+## The overlay belongs to the mod
+
+`src/overlay/` holds the ImGui host, the theme/widgets/localization kit and the
+D3D11/D3D12/OpenGL presentation hooks. It is **not** a library: `urk_add_mod`
+compiles those sources into the mod DLL, so the ImGui context, the device hooks
+and the menu state are per mod. Nothing is shared across mods at runtime.
+
+The mod drives it:
+
+```cpp
+ModRenderHook::add_frame_callback(&draw_hitboxes);   // runs inside the frame
+ModRenderHook::add_device_ready_callback(&make_gpu_resources);
+ModRenderHook::install(ctx, config);                 // config carries ModConfig values
+```
+
+A mod that needs to change the overlay itself copies it once and owns that copy:
+
+```powershell
+.\urk.exe new bigmod --vendor-overlay
+```
+
+`src/mods/bigmod/overlay/` is then compiled instead of the shared sources, and
+`mod_target.cmake` records it. Repository updates no longer touch that copy.
+## Tests
+
+```powershell
+cmake --build cmake-build-relwithdebinfo --target urk_tests --parallel
+ctest --test-dir cmake-build-relwithdebinfo -C RelWithDebInfo --output-on-failure
+```
+
+`urk_tests` is a plain executable with a 60-line harness and no test-framework
+dependency. It covers what does not need a game: IL2CPP name matching, export
+binding policy, cursor leases, the POD vector math, the ABI layout and version
+invariants, and the `urk new` naming rules. `urk_sdk_check` compiles the public
+SDK surface in every build, so a broken header fails even when only the loader
+is built.
+
+Anything that needs a running game is a runtime test executed through the
+DevBridge; see [docs/DEV_BRIDGE.md](docs/DEV_BRIDGE.md).
+## Where the old features went
+
+| Removed | Reason |
+|---|---|
+| Mono backend | one backend keeps the ABI and the event pump readable |
+| Unreal backend | never left preview; it carried a second reflection stack |
+| `urk.exe` GUI, installer, self-update | wxWidgets dependency for a project generator |
+| MCP server | `urk dev` covers it; MCP can be an adapter later |
+| string-based generator | 18k lines of templates were 99% static text |
+
+`mod_sdk.h` is still the single ABI source of truth for loader and mods. It is
+included from `sdk/` by both sides, so there is no embedded copy to keep in sync.
 
 ## License
 
-URKit is available under the [MIT License](LICENSE).
+MIT. See [LICENSE](LICENSE).

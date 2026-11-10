@@ -31,26 +31,20 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(FetchContent)
 
 option(URK_BUILD_LOADER "Build the Windows loader DLLs" ${WIN32})
-option(URK_BUILD_APP "Build urk.exe: project generator, updater, loader installer and MCP server" ${WIN32})
-option(URK_BUILD_DEV_BRIDGE "Build URKitDevBridge.dll, the in-game side of the development MCP" ${WIN32})
+option(URK_BUILD_MODS "Build the mods under mods/" ${WIN32})
+option(URK_WITH_IMGUI "Link the ImGui overlay into mods" ON)
+option(URK_BUILD_DEV_BRIDGE "Build URKitDevBridge.dll, the in-game test bridge used by urk dev" ${WIN32})
+option(URK_BUILD_CLI "Build the urk command line (new / deploy / dev)" ${WIN32})
+option(URK_BUILD_TESTS "Build the host-side unit tests" ${WIN32})
 option(URK_WITH_CURL "Enable libcurl-backed HTTPS JSON requests" ON)
 option(URK_WITH_SAFETYHOOK "Enable the SafetyHook backend and mid-function hooks" ON)
 option(URK_HARDEN_RELEASE "Enable release hardening for loader DLLs" ON)
-option(URK_BUILD_PUBLIC_RELEASE_STAGE "Add the prebuilt release staging target" OFF)
-set(URK_PUBLIC_RELEASE_DIR "${CMAKE_CURRENT_BINARY_DIR}/public-release" CACHE PATH
-    "Empty or URKit-managed directory for staged public release files")
 
-if (URK_BUILD_PUBLIC_RELEASE_STAGE AND NOT (URK_BUILD_LOADER AND URK_BUILD_APP AND URK_BUILD_DEV_BRIDGE))
-    message(FATAL_ERROR "URK_BUILD_PUBLIC_RELEASE_STAGE requires URK_BUILD_LOADER, URK_BUILD_APP and "
-                        "URK_BUILD_DEV_BRIDGE.")
+if (URK_BUILD_DEV_BRIDGE AND NOT WIN32)
+    message(FATAL_ERROR "URKitDevBridge.dll requires Windows. Configure with -DURK_BUILD_DEV_BRIDGE=OFF.")
 endif()
 
-if ((URK_BUILD_APP OR URK_BUILD_DEV_BRIDGE) AND NOT WIN32)
-    message(FATAL_ERROR "urk.exe and URKitDevBridge.dll require Windows. Configure with -DURK_BUILD_APP=OFF "
-                        "-DURK_BUILD_DEV_BRIDGE=OFF.")
-endif()
-
-if (URK_BUILD_APP OR URK_BUILD_DEV_BRIDGE)
+if (URK_BUILD_DEV_BRIDGE OR URK_BUILD_CLI)
     FetchContent_Declare(nlohmann_json
         GIT_REPOSITORY https://github.com/nlohmann/json.git
         GIT_TAG        v3.12.0
@@ -66,13 +60,24 @@ endfunction()
 
 include(cmake/URKitSources.cmake)
 
+# The SDK is ordinary source now. Compile the public headers in every build so a
+# broken header fails here instead of producing a broken generated project.
+add_library(urk_sdk_check OBJECT src/sdk/compile_check.cpp)
+target_compile_features(urk_sdk_check PRIVATE cxx_std_20)
+target_include_directories(urk_sdk_check PRIVATE ${URK_SDK_DIR} ${URK_ROOT_DIR}/src)
+target_compile_definitions(urk_sdk_check PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+if (MSVC)
+    target_compile_options(urk_sdk_check PRIVATE /W4 /permissive- /EHsc /utf-8)
+endif()
+urk_disable_vs_vcpkg_integration(urk_sdk_check)
+
 if (URK_BUILD_DEV_BRIDGE)
     add_library(URKitDevBridge SHARED ${URK_DEV_BRIDGE_SRC})
     target_compile_features(URKitDevBridge PRIVATE cxx_std_20)
     target_include_directories(URKitDevBridge PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/sdk
-        ${CMAKE_CURRENT_SOURCE_DIR}/dev/bridge
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/sdk
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/dev/bridge
     )
     target_compile_definitions(URKitDevBridge PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     target_link_libraries(URKitDevBridge PRIVATE nlohmann_json::nlohmann_json advapi32)
@@ -83,104 +88,76 @@ if (URK_BUILD_DEV_BRIDGE)
     urk_disable_vs_vcpkg_integration(URKitDevBridge)
 endif()
 
-if (URK_BUILD_APP)
-    enable_language(C)
-    enable_language(RC)
-
-    # wxWidgets from the release archive: it carries the bundled third-party sources,
-    # so no submodule clone is needed. Only base and core are built.
-    # wx decides wxUSE_EXCEPTIONS from _CPPUNWIND; it must be built with the same /EHsc as urk.exe.
-    add_compile_options("$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/EHsc>")
-    set(wxBUILD_SHARED OFF CACHE BOOL "" FORCE)
-    set(wxBUILD_MONOLITHIC OFF CACHE BOOL "" FORCE)
-    set(wxBUILD_SAMPLES OFF CACHE STRING "" FORCE)
-    set(wxBUILD_TESTS OFF CACHE STRING "" FORCE)
-    set(wxBUILD_DEMOS OFF CACHE BOOL "" FORCE)
-    set(wxBUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
-    set(wxBUILD_INSTALL OFF CACHE BOOL "" FORCE)
-    set(wxBUILD_USE_STATIC_RUNTIME ON CACHE BOOL "" FORCE)
-    set(wxUSE_WEBVIEW OFF CACHE BOOL "" FORCE)
-    set(wxUSE_MEDIACTRL OFF CACHE BOOL "" FORCE)
-    set(wxUSE_OPENGL OFF CACHE BOOL "" FORCE)
-    set(wxUSE_STC OFF CACHE BOOL "" FORCE)
-    set(wxUSE_RICHTEXT OFF CACHE BOOL "" FORCE)
-    set(wxUSE_XRC OFF CACHE BOOL "" FORCE)
-    set(wxUSE_AUI OFF CACHE BOOL "" FORCE)
-    set(wxUSE_RIBBON OFF CACHE BOOL "" FORCE)
-    set(wxUSE_PROPGRID OFF CACHE BOOL "" FORCE)
-    set(wxUSE_LIBTIFF OFF CACHE STRING "" FORCE)
-    set(wxUSE_LIBJPEG OFF CACHE STRING "" FORCE)
-    set(wxUSE_LIBWEBP OFF CACHE STRING "" FORCE)
-    FetchContent_Declare(wxWidgets
-        URL      https://github.com/wxWidgets/wxWidgets/releases/download/v3.3.3/wxWidgets-3.3.3.tar.bz2
-        URL_HASH SHA256=81b09d6dd9f1ed9301f8c55a968a488d0491f264dc2bab19a7e407ac67009482
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
-        EXCLUDE_FROM_ALL
+set(URK_MODS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mods")
+if (URK_BUILD_TESTS)
+    enable_testing()
+    add_executable(urk_tests
+        tests/test_main.cpp
+        tests/test_abi.cpp
+        tests/test_cursor_leases.cpp
+        tests/test_export_policy.cpp
+        tests/test_math.cpp
+        tests/test_name_matching.cpp
+        tests/test_scaffold.cpp
     )
-    FetchContent_MakeAvailable(wxWidgets)
-
-    # Keep generated headers inside the source tree: IDEs exclude the build
-    # directory from indexing, so a header generated there is visible to the
-    # compiler but permanently unresolved in the editor.
-    set(URK_GENERATED_SDK_DIR ${CMAKE_CURRENT_SOURCE_DIR}/generated/sdk)
-    set(URK_EMBEDDED_MOD_SDK_HEADER ${URK_GENERATED_SDK_DIR}/embedded_mod_sdk.h)
-    set(URK_EMBEDDED_DEV_TEST_HEADER ${URK_GENERATED_SDK_DIR}/embedded_dev_test.h)
-
-    # Embed the canonical SDK headers at configure time, not at build time: the
-    # generated files are include-dir headers, so an IDE that indexes the project
-    # before the first build would report them missing. CMAKE_CONFIGURE_DEPENDS
-    # re-runs the configure step whenever an embedded source changes.
-    file(MAKE_DIRECTORY ${URK_GENERATED_SDK_DIR})
-    function(urk_embed_sdk_header input output symbol delimiter)
-        execute_process(
-            COMMAND ${CMAKE_COMMAND}
-                -DINPUT=${input}
-                -DOUTPUT=${output}
-                -DSYMBOL=${symbol}
-                -DDELIMITER=${delimiter}
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake
-            RESULT_VARIABLE embed_result
-        )
-        if (NOT embed_result EQUAL 0)
-            message(FATAL_ERROR "Failed to embed ${input}")
-        endif()
-    endfunction()
-
-    urk_embed_sdk_header(${URK_SDK_DIR}/mod_sdk.h ${URK_EMBEDDED_MOD_SDK_HEADER} kEmbeddedModSdkHeader URKMODSDKH)
-    urk_embed_sdk_header(${URK_SDK_DIR}/dev_test.h ${URK_EMBEDDED_DEV_TEST_HEADER} kEmbeddedDevTestHeader URKDEVTESTH)
-    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-        ${URK_SDK_DIR}/mod_sdk.h
-        ${URK_SDK_DIR}/dev_test.h
-        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/GenerateEmbeddedSdkHeader.cmake)
-
-    add_executable(URKitApp WIN32
-        ${URK_APP_SRC}
-        ${URK_COMMON_HEADERS}
-        ${URK_EMBEDDED_MOD_SDK_HEADER}
-        ${URK_EMBEDDED_DEV_TEST_HEADER}
+    target_compile_features(urk_tests PRIVATE cxx_std_20)
+    target_include_directories(urk_tests PRIVATE
+        ${URK_ROOT_DIR}/src
+        ${URK_ROOT_DIR}/src/loader
+        ${URK_ROOT_DIR}/src/tools/urk
+        ${URK_SRC_DIR}/core/loader
+        ${URK_SDK_DIR}
     )
-    target_compile_features(URKitApp PRIVATE cxx_std_20)
-    target_include_directories(URKitApp PRIVATE
-        ${URK_INCLUDE_DIRS}
-        ${URK_GENERATED_SDK_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/app
-        ${CMAKE_CURRENT_SOURCE_DIR}/mcp/server
-    )
-    target_compile_definitions(URKitApp PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX UNICODE _UNICODE)
-    target_link_libraries(URKitApp PRIVATE wx::core wx::base nlohmann_json::nlohmann_json
-        bcrypt winhttp shell32 ole32 advapi32)
-    set_target_properties(URKitApp PROPERTIES OUTPUT_NAME "urk")
+    target_compile_definitions(urk_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
     if (MSVC)
-        target_compile_options(URKitApp PRIVATE /W4 /permissive- /EHsc /utf-8)
-        target_link_options(URKitApp PRIVATE
-            "$<$<NOT:$<CONFIG:Debug>>:/INCREMENTAL:NO>"
-            "$<$<NOT:$<CONFIG:Debug>>:/OPT:REF>"
-            "$<$<NOT:$<CONFIG:Debug>>:/OPT:ICF>"
-        )
+        target_compile_options(urk_tests PRIVATE /W4 /permissive- /EHsc /utf-8)
     endif()
-    urk_disable_vs_vcpkg_integration(URKitApp)
+    add_test(NAME urk_tests COMMAND urk_tests)
+    urk_disable_vs_vcpkg_integration(urk_tests)
 endif()
+if (URK_BUILD_CLI)
+    add_executable(urk src/tools/urk/main.cpp)
+    target_compile_features(urk PRIVATE cxx_std_20)
+    target_compile_definitions(urk PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_link_libraries(urk PRIVATE nlohmann_json::nlohmann_json)
+    set_target_properties(urk PROPERTIES OUTPUT_NAME "urk")
+    if (MSVC)
+        target_compile_options(urk PRIVATE /W4 /permissive- /EHsc /utf-8)
+    endif()
+    urk_disable_vs_vcpkg_integration(urk)
+endif()
+
+if (URK_BUILD_MODS)
+    if (URK_WITH_IMGUI)
+        # One ImGui build per configuration; every mod links its own copy of the
+        # static library, so each mod DLL carries an independent overlay.
+        FetchContent_Declare(imgui
+            GIT_REPOSITORY https://github.com/ocornut/imgui.git
+            GIT_TAG        v1.92.9b-docking
+        )
+        FetchContent_MakeAvailable(imgui)
+        add_library(imgui STATIC
+            ${imgui_SOURCE_DIR}/imgui.cpp
+            ${imgui_SOURCE_DIR}/imgui_draw.cpp
+            ${imgui_SOURCE_DIR}/imgui_tables.cpp
+            ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/overlay/third_party/imgui_win32_module_scope.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_dx12.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+        )
+        target_include_directories(imgui PUBLIC ${imgui_SOURCE_DIR} ${imgui_SOURCE_DIR}/backends)
+        set_target_properties(imgui PROPERTIES CXX_SCAN_FOR_MODULES OFF)
+        if (MSVC)
+            target_compile_options(imgui PRIVATE /W0 /permissive- /EHsc /utf-8)
+        endif()
+        urk_disable_vs_vcpkg_integration(imgui)
+    endif()
+
+    include(cmake/UrkMods.cmake)
+    add_subdirectory(src/mods)
+endif()
+
 
 if (NOT URK_BUILD_LOADER)
     message(STATUS "Windows proxy loader targets are disabled. Source layout validation completed.")
@@ -225,6 +202,7 @@ endif()
 
 if (URK_WITH_CURL)
     set(BUILD_CURL_EXE OFF CACHE BOOL "" FORCE)
+    set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(CURL_STATIC_CRT ON CACHE BOOL "" FORCE)
     set(CURL_DISABLE_INSTALL ON CACHE BOOL "" FORCE)
@@ -425,25 +403,6 @@ add_urk_proxy(URKitDwmApi dwmapi ${URK_DWMAPI_PROXY_SRC} ${URK_DWMAPI_DEF})
 add_urk_proxy(URKitMsImg32 msimg32 ${URK_MSIMG32_PROXY_SRC} ${URK_MSIMG32_DEF})
 add_urk_injected_loader(URKitInjected URKitInjector)
 
-if (URK_BUILD_PUBLIC_RELEASE_STAGE)
-    add_custom_target(URKitPublicRelease
-        COMMAND ${CMAKE_COMMAND}
-            -DOUTPUT_DIR=${URK_PUBLIC_RELEASE_DIR}
-            -DAPP=$<TARGET_FILE:URKitApp>
-            -DVERSION_LOADER=$<TARGET_FILE:URKit>
-            -DWINHTTP_LOADER=$<TARGET_FILE:URKitWinHttp>
-            -DWINMM_LOADER=$<TARGET_FILE:URKitWinMm>
-            -DDWMAPI_LOADER=$<TARGET_FILE:URKitDwmApi>
-            -DMSIMG32_LOADER=$<TARGET_FILE:URKitMsImg32>
-            -DINJECTED_LOADER=$<TARGET_FILE:URKitInjected>
-            -DDEV_BRIDGE=$<TARGET_FILE:URKitDevBridge>
-            -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}
-            -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/StagePublicRelease.cmake
-        DEPENDS URKitApp URKit URKitWinHttp URKitWinMm URKitDwmApi URKitMsImg32 URKitInjected URKitDevBridge
-        COMMENT "Staging prebuilt URKit binaries"
-        VERBATIM
-    )
-endif()
 
 set(URK_DEPLOY_DIR "" CACHE PATH "Target game folder for copying a proxy loader")
 set(URK_DEPLOY_PROXY "version" CACHE STRING "Proxy loader copied to URK_DEPLOY_DIR")
@@ -472,3 +431,15 @@ if (URK_DEPLOY_DIR)
         COMMENT "Copying ${URK_DEPLOY_PROXY}.dll to ${URK_DEPLOY_DIR}"
     )
 endif()
+
+
+
+
+
+
+
+
+
+
+
+

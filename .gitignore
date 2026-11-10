@@ -4,3 +4,4 @@ MAP.md
 /state
 .idea/
 /generated
+cmake-build-*/

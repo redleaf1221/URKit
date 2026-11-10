@@ -1,0 +1,81 @@
+#include "win32_message_pump.h"
+
+#include <algorithm>
+#include <cwchar>
+#include <iterator>
+#include <vector>
+
+namespace ModRenderHook {
+namespace {
+
+[[nodiscard]] bool contains_window(std::span<const HWND> windows, std::size_t end, HWND candidate) {
+    const auto finish = windows.begin() + static_cast<std::ptrdiff_t>(end);
+    return std::find(windows.begin(), finish, candidate) != finish;
+}
+
+} // namespace
+
+WindowMessagePumpResult pump_owned_window_messages(std::span<const HWND> windows, std::size_t messageBudget) {
+    WindowMessagePumpResult result{};
+    if (windows.empty() || messageBudget == 0)
+        return result;
+
+    const DWORD currentThread = GetCurrentThreadId();
+    thread_local std::vector<HWND> ownedWindows;
+    ownedWindows.clear();
+    ownedWindows.reserve(windows.size());
+
+    for (std::size_t index = 0; index < windows.size(); ++index) {
+        const HWND window = windows[index];
+        if (!window || !IsWindow(window) || contains_window(windows, index, window))
+            continue;
+        if (GetWindowThreadProcessId(window, nullptr) != currentThread) {
+            ++result.foreignThreadWindows;
+            continue;
+        }
+        ownedWindows.push_back(window);
+    }
+
+    MSG message{};
+    std::size_t remaining = messageBudget;
+    bool madeProgress = true;
+    while (remaining != 0 && madeProgress) {
+        madeProgress = false;
+        for (const HWND window : ownedWindows) {
+            if (remaining == 0)
+                break;
+            if (!PeekMessageW(&message, window, 0, 0, PM_REMOVE))
+                continue;
+            TranslateMessage(&message);
+            DispatchMessageW(&message);
+            ++result.dispatched;
+            --remaining;
+            madeProgress = true;
+        }
+    }
+
+    if (remaining == 0) {
+        for (const HWND window : ownedWindows) {
+            if (PeekMessageW(&message, window, 0, 0, PM_NOREMOVE)) {
+                result.backlogRemaining = true;
+                break;
+            }
+        }
+    }
+    return result;
+}
+
+bool is_imgui_platform_window(HWND window) {
+    if (!window || !IsWindow(window))
+        return false;
+    DWORD processId = 0;
+    GetWindowThreadProcessId(window, &processId);
+    if (processId != GetCurrentProcessId())
+        return false;
+    // Check the window class; IMGUI_CONTEXT is also set on the game window.
+    wchar_t className[32]{};
+    const int length = GetClassNameW(window, className, static_cast<int>(std::size(className)));
+    return length > 0 && std::wcscmp(className, L"ImGui Platform") == 0;
+}
+
+} // namespace ModRenderHook

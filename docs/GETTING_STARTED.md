@@ -1,75 +1,71 @@
 # Getting Started
 
-This is a walkthrough, not a reference. It takes you from a freshly generated
-project to a mod that finds the player, reads and changes a game value,
-shows a checkbox for it in the menu, and draws an overlay box on a target
-in the world. Every step builds on the last, and every
-one of them actually runs. Copy the code instead of just reading it.
+This is a walkthrough, not a reference. It takes you from an empty scaffold to a
+mod that finds the player, reads and changes a game value, shows a checkbox for
+it in the menu, and draws an overlay box on a target in the world. Every step
+builds on the last, and every one of them actually runs.
 
-Game names, tags, and managed types below are fictional. Swap them for
-whatever your target game actually uses; the handbook's
+The mod lives in this repository: `src/mods/<name>/`. Game names, tags and
+managed types below are fictional; swap them for your target and use the
+handbook's
 [type inspection section](SDK_HANDBOOK.md#81-inspect-an-unfamiliar-type-at-runtime)
-shows how to find those names when you don't know them yet.
+to find the real names.
 
-Once you're comfortable with this, [SDK_HANDBOOK.md](SDK_HANDBOOK.md) has the
-full picture: every object-search variant, hooks, the render/highlight
-pipeline, coroutines, and a diagnostics chapter for when a call quietly fails.
+Once you're comfortable here, [SDK_HANDBOOK.md](SDK_HANDBOOK.md) is the full
+reference: object search, hooks, the render/highlight pipeline, coroutines and a
+diagnostics chapter for calls that quietly fail.
 
 ## What you need
 
 - CMake 3.28+ and Ninja
-- LLVM/Clang, or the MSVC toolchain from VS 2022 Build Tools or newer
-- a URKit release, extracted to one folder (`urk.exe` and the loader DLLs)
-- the game you're modding, installed
+- the MSVC toolchain from VS 2022 or newer, or LLVM/Clang
+- one loader DLL from this repository, placed next to the game's executable
+- the game you're modding, installed and runnable
 
-## 1. Generate a project
-
-Open `urk.exe`, drop the game's executable on **Create**, leave the loader
-on **Proxy**, and press **Create project**. The same from a terminal:
+## 1. Create the mod
 
 ```powershell
-./urk.exe new --game-exe C:\Games\SampleGame\SampleGame.exe --name FirstMod --loader proxy
+.\cmake-build-relwithdebinfo\urk.exe new FirstMod
+cmake --build cmake-build-relwithdebinfo --target FirstMod --parallel
 ```
 
-URKit looks at the game folder and picks Mono or IL2CPP for you. If you
-already know which one the game uses, pass `--backend mono` or `--backend
-il2cpp` directly. The project lands at:
+`urk new` copies `src/mods/_template` to `src/mods/FirstMod`, rewrites the name
+and generates a mod id. Nothing is generated after that: the files are yours.
 
-```text
-C:\Games\SampleGame\urk-sdk-output\FirstMod\project
-```
+Two flags are worth knowing:
 
-Build it before you change anything, just to confirm the toolchain works:
+| Flag | Effect |
+|---|---|
+| `--no-imgui` | the mod is built without the overlay; it links only `KERNEL32.dll` |
+| `--vendor-overlay` | copies `src/overlay/` into the mod so you own and can change it |
+
+The build target already exists: `src/mods/CMakeLists.txt` globs the directory,
+so a new mod needs no CMake edit.
+
+## 2. Load the mod
+
+Deploy it and start the game:
 
 ```powershell
-cd C:\Games\SampleGame\urk-sdk-output\FirstMod\project
-cmake --preset clang-relwithdebinfo
-cmake --build --preset clang-relwithdebinfo --parallel
+.\cmake-build-relwithdebinfo\urk.exe deploy FirstMod --game C:\Games\SampleGame
 ```
 
-(Using MSVC instead? Run this from an x64 Visual Studio Developer PowerShell
-and use `msvc-relwithdebinfo`.)
+`deploy` copies the built DLL into `<game>\Mods`. Put one loader DLL (`version.dll`
+is a good first try, `dwmapi.dll` the usual second) next to the game's
+executable, launch the game, then open `URKit_logs.log` next to that executable
+and look for the line that says your mod initialized.
 
-The build copies the DLL straight into the game's `Mods` folder.
+If the log file does not exist at all, the game never loaded the loader you
+placed. If it exists but has no mod line, the loader ran and the mod failed to
+load; the log names the reason, including missing dependency DLLs.
 
-## 2. Confirm it actually loads
-
-Launch the game. Then open `URKit_logs.log`, next to the game executable, and
-look for a line saying the mod initialized. If the file isn't there at all,
-the game isn't importing the proxy DLL you installed. The **Loader** page of
-`urk.exe` shows which proxy is in the game folder; install another one there
-(`dwmapi.dll` is the usual second try), or switch to injector mode and inject
-into the running game.
-
-Keep this log open in a text editor while you work. Every step below writes
+Keep the log open in a text editor while you work. Every step below writes
 something to it.
 
 ## 3. Say hello from your own code
 
-Open `mod/lifecycle/mod_runtime.cpp`. This file is yours: URKit generates it
-once and never touches it again on updates. `start()` runs once, right after
-your mod initializes (a Mono project has the same shape, just with "Mono"
-instead of "IL2CPP" in the log line):
+Open `src/mods/FirstMod/mod/lifecycle/mod_runtime.cpp`. `start()` runs once,
+right after your mod initializes:
 
 ```cpp
 bool start(const URK_ModContext *ctx) {
@@ -84,11 +80,10 @@ bool start(const URK_ModContext *ctx) {
 }
 ```
 
-Add that `ModLog::info("FirstMod is alive")` line, rebuild
-(`cmake --build --preset clang-relwithdebinfo --parallel`; no need to re-run
-`cmake --preset` unless you added a new file), relaunch the game, and look
-for it in the log. If it's there, your build-edit-reload loop works and
-you're ready for actual game logic.
+Add the `ModLog::info("FirstMod is alive")` line, rebuild
+(`cmake --build cmake-build-relwithdebinfo --target FirstMod --parallel`), then
+relaunch the game and look for it in the log. If it's there, your
+build-edit-reload loop works and you're ready for actual game logic.
 
 ## 4. Toggle something with a key
 
@@ -222,7 +217,7 @@ its position, without a Unity Canvas, a shader, or a single line of DirectX.
 Include the header the generator already put in your project:
 
 ```cpp
-#include "ui/highlight.h"
+#include "overlay/ui/highlight.h"
 ```
 
 Then, in `update()`:
@@ -481,3 +476,4 @@ covers what this guide skipped on purpose:
 And when you're ready to organize more than a toggle and a checkbox,
 [Organize a feature](SDK_HANDBOOK.md#9-organize-a-feature) shows the module
 structure this guide deliberately skipped so you could see the raw API first.
+

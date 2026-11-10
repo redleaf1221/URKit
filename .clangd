@@ -1,5 +1,5 @@
 CompileFlags:
-  CompilationDatabase: out/build/clang-debug
+  CompilationDatabase: cmake-build-relwithdebinfo
   Compiler: clang++
 
 Index:
