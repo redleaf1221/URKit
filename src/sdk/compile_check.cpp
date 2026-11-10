@@ -29,4 +29,16 @@ void ReferenceSymbols() {
     (void)&URK::has_il2cpp_api;
 }
 
+// Array marshalling is template code, so it only type-checks when instantiated.
+// This function is never called; it exists so byte[]/Color32[] arguments are
+// compiled in every build instead of first being seen by a mod.
+void ReferenceArrayMarshalling() {
+    URK::Unity::Texture2D texture;
+    const std::vector<std::uint8_t> encoded{0, 1, 2, 3};
+    (void)URK::Unity::ImageConversion::LoadImage(texture, encoded, true);
+    (void)URK::Unity::ImageConversion::LoadImage(texture, std::span<const std::uint8_t>(encoded), false);
+    const std::vector<URK::Unity::Color32> colors(1);
+    texture.SetPixels32(std::span<const URK::Unity::Color32>(colors));
+}
+
 } // namespace urk::sdk_check

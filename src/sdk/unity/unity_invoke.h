@@ -246,6 +246,72 @@ template <> struct Arg<std::string_view> {
     Arg(std::string_view v) : storage(Backend::new_string(v)), ptr(storage), valid(storage != nullptr) {
     }
 };
+
+// Marshals a contiguous C++ range into a managed array of a value element type.
+// Arrays are references, so the argument slot receives the array pointer itself.
+template <class T> void *MakeValueArray(TypeRef elementType, std::span<const T> values) {
+    static_assert(std::is_trivially_copyable_v<T>, "managed array elements must be plain values");
+    const std::string elementName(elementType.name);
+    const void *elementClass = elementType.resolve_class();
+    if (!elementClass) {
+        set_error(std::string("Unity array argument failed: ") + elementName + " class not found");
+        append_backend_error();
+        return nullptr;
+    }
+    void *array = Backend::array_new(elementClass, values.size());
+    if (!array) {
+        set_error(std::string("Unity array argument failed: allocating ") + elementName + "[" +
+                  std::to_string(values.size()) + "] returned null");
+        append_backend_error();
+        return nullptr;
+    }
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        void *slot = Backend::array_addr_with_size(array, static_cast<int>(sizeof(T)), i);
+        if (!slot) {
+            set_error(std::string("Unity array argument failed: element ") + std::to_string(i) + " of " + elementName +
+                      "[] is not addressable");
+            append_backend_error();
+            return nullptr;
+        }
+        std::memcpy(slot, &values[i], sizeof(T));
+    }
+    return array;
+}
+
+template <> struct Arg<std::span<const std::uint8_t>> {
+    void *storage;
+    void *ptr;
+    bool valid;
+    Arg(std::span<const std::uint8_t> v)
+        : storage(MakeValueArray(ByteType, v)), ptr(storage), valid(storage != nullptr) {
+    }
+};
+template <> struct Arg<std::vector<std::uint8_t>> {
+    void *storage;
+    void *ptr;
+    bool valid;
+    Arg(const std::vector<std::uint8_t> &v)
+        : storage(MakeValueArray(ByteType, std::span<const std::uint8_t>(v.data(), v.size()))), ptr(storage),
+          valid(storage != nullptr) {
+    }
+};
+template <> struct Arg<std::span<const Color32>> {
+    void *storage;
+    void *ptr;
+    bool valid;
+    Arg(std::span<const Color32> v)
+        : storage(MakeValueArray(Color32Type, v)), ptr(storage), valid(storage != nullptr) {
+    }
+};
+template <> struct Arg<std::vector<Color32>> {
+    void *storage;
+    void *ptr;
+    bool valid;
+    Arg(const std::vector<Color32> &v)
+        : storage(MakeValueArray(Color32Type, std::span<const Color32>(v.data(), v.size()))), ptr(storage),
+          valid(storage != nullptr) {
+    }
+};
 void *make_reflection_array(void *elementType, const std::vector<void *> &values);
 template <class T> void *reflection_argument(Arg<T> &argument);
 template <class Tuple> void *invoke_reflection_method(void *reflectionMethod, void *target, Tuple &arguments);
@@ -583,7 +649,7 @@ template <class Ret, class... Args> Ret Object::Call(std::string_view methodName
     bool argsValid = true;
     std::apply([&](auto &...a) { ((argsValid = argsValid && a.valid, argv[i++] = a.ptr), ...); }, pack);
     if (!argsValid) {
-        detail::set_error(std::string("Unity Object::Call failed: managed string "
+        detail::set_error(std::string("Unity Object::Call failed: argument marshalling "
                                       "argument allocation failed in ") +
                           std::string(methodName));
         detail::append_backend_error();
@@ -635,7 +701,7 @@ Ret detail::InvokeStatic(TypeRef type, std::string_view methodName, Args &&...ar
     bool argsValid = true;
     std::apply([&](auto &...a) { ((argsValid = argsValid && a.valid, argv[i++] = a.ptr), ...); }, pack);
     if (!argsValid) {
-        set_error(std::string("Unity static call failed: managed string argument "
+        set_error(std::string("Unity static call failed: argument marshalling "
                               "allocation failed in ") +
                   std::string(methodName));
         append_backend_error();
@@ -1304,7 +1370,7 @@ std::vector<T> Object::CallArrayExact(std::string_view methodName, const std::ve
     bool argsValid = true;
     std::apply([&](auto &...a) { ((argsValid = argsValid && a.valid, argv[i++] = a.ptr), ...); }, pack);
     if (!argsValid) {
-        detail::set_error(std::string("Unity Object::CallArrayExact failed: managed string "
+        detail::set_error(std::string("Unity Object::CallArrayExact failed: argument marshalling "
                                       "argument allocation failed in ") +
                           std::string(methodName));
         detail::append_backend_error();

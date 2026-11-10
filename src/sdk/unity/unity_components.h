@@ -339,6 +339,10 @@ struct Texture2D : Texture {
     void SetPixel(int x, int y, Color color) const {
         CallExact<void>("SetPixel", {"System.Int32", "System.Int32", "UnityEngine.Color"}, x, y, color);
     }
+    // Texture2D.SetPixels32(Color32[]): the range is marshalled into a managed array.
+    void SetPixels32(std::span<const Color32> colors) const {
+        CallExact<void>("SetPixels32", {"UnityEngine.Color32[]"}, colors);
+    }
     bool Resize(int width, int height) const {
         return CallExact<bool>("Resize", {"System.Int32", "System.Int32"}, width, height);
     }
@@ -1228,6 +1232,20 @@ struct Sprite : Object {
                          SpriteMeshType meshType = SpriteMeshType::Tight) {
         return detail::InvokeStatic<Sprite>(SpriteType, "Create", texture, rect, pivot, pixelsPerUnit, extrude,
                                             static_cast<std::int32_t>(meshType));
+    }
+};
+
+// Static helpers that decode an encoded image (PNG, JPG, ...) into a texture.
+struct ImageConversion {
+    static constexpr TypeRef unity_type() {
+        return ImageConversionType;
+    }
+    // bool LoadImage(Texture2D, byte[], bool markNonReadable = false)
+    static bool LoadImage(Texture2D texture, std::span<const std::uint8_t> data, bool markNonReadable = false) {
+        return detail::InvokeStatic<bool>(ImageConversionType, "LoadImage", texture, data, markNonReadable);
+    }
+    static bool LoadImage(Texture2D texture, const std::vector<std::uint8_t> &data, bool markNonReadable = false) {
+        return LoadImage(texture, std::span<const std::uint8_t>(data.data(), data.size()), markNonReadable);
     }
 };
 struct Graphic : Behaviour {

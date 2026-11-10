@@ -14,6 +14,7 @@
 #include <mutex>
 #include <new>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -984,6 +985,7 @@ static bool field_static_set_value(const void *klass, const void *field, void *v
     static bool has_array_ref_at() { return URK::il2cpp::has_array_ref_at(); }
     static void* array_ref_at(void* array, std::size_t index) { return URK::il2cpp::array_ref_at(static_cast<URK::il2cpp::Array*>(array), index); }
     static void* array_addr_with_size(void* array, int elementSize, std::size_t index) { return URK::il2cpp::array_addr_with_size(static_cast<URK::il2cpp::Array*>(array), elementSize, index); }
+    static void* array_new(const void* elementClass, std::size_t length) { return URK::il2cpp::array_new(elementClass, length); }
     static bool has_array_set_ref() { return URK::il2cpp::has_array_set_ref(); }
     static bool array_set_ref(void* array, std::size_t index, void* value) { return URK::il2cpp::array_set_ref(static_cast<URK::il2cpp::Array*>(array), index, value); }
     static std::uintptr_t gchandle_new(void* object, int pinned) { return URK::il2cpp::gchandle_new(object, pinned); }
@@ -1331,6 +1333,10 @@ inline constexpr TypeRef MeshType{"", "UnityEngine", "Mesh"};
 inline constexpr TypeRef MaterialType{"", "UnityEngine", "Material"};
 inline constexpr TypeRef TextureType{"", "UnityEngine", "Texture"};
 inline constexpr TypeRef Texture2DType{"", "UnityEngine", "Texture2D"};
+// Element types used when a C++ range is marshalled into a managed array.
+inline constexpr TypeRef ByteType{"", "System", "Byte"};
+inline constexpr TypeRef Color32Type{"", "UnityEngine", "Color32"};
+inline constexpr TypeRef ImageConversionType{"", "UnityEngine", "ImageConversion"};
 inline constexpr TypeRef ShaderType{"", "UnityEngine", "Shader"};
 inline constexpr TypeRef SpriteType{"", "UnityEngine", "Sprite"};
 inline constexpr TypeRef AssetBundleType{"", "UnityEngine", "AssetBundle"};
