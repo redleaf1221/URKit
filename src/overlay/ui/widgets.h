@@ -399,7 +399,7 @@ inline bool toggle(const char *label, bool *value) {
     const ImVec4 off_col = Theme::mix(p.surface_raised, p.surface_hover, anim.hover);
     const ImVec4 track_col = Theme::mix(off_col, p.toggle_on, ease_out_cubic(anim.checked));
     dl->AddRectFilled(track_pos, track_end, ImGui::GetColorU32(track_col), rh);
-    constexpr float knob_r = rh - 3.0f;
+    const float knob_r = rh - 3.0f;
     const float knob_x = track_pos.x + rh + ((track_w - track_h) * ease_out_cubic(anim.checked));
     const ImVec2 knob_c(knob_x, track_pos.y + rh);
     const float knob_scale = 1.0f - (ease_out_cubic(anim.active) * 0.06f);

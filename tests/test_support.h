@@ -4,7 +4,9 @@
 #include <vector>
 
 // A deliberately small harness: registration, assertion and a non-zero exit
-// code. No third-party dependency and no extra build step.
+// code. CTest does the running, so there is no reporting layer here: one process
+// per case, and the exit code is the verdict. No third-party dependency and no
+// extra build step.
 namespace urk_test {
 
 struct Case {
@@ -19,7 +21,7 @@ struct Registrar {
 };
 
 void Fail(const char *file, int line, const std::string &message);
-int RunAll(const char *suite_name);
+int FailureCount();
 
 inline std::string Detail(const std::string &value) {
     return value;

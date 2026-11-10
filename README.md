@@ -111,15 +111,27 @@ A mod that needs to change the overlay itself copies it once and owns that copy:
 
 ```powershell
 cmake --build cmake-build-relwithdebinfo --target urk_tests --parallel
-ctest --test-dir cmake-build-relwithdebinfo -C RelWithDebInfo --output-on-failure
+ctest --test-dir cmake-build-relwithdebinfo --output-on-failure
+ctest --test-dir cmake-build-relwithdebinfo -R abi_ -j 8    # a subset
 ```
 
 `urk_tests` is a plain executable with a 60-line harness and no test-framework
-dependency. It covers what does not need a game: IL2CPP name matching, export
-binding policy, cursor leases, the POD vector math, the ABI layout and version
-invariants, and the `urk new` naming rules. `urk_sdk_check` compiles the public
-SDK surface in every build, so a broken header fails even when only the loader
-is built.
+dependency, but CTest owns the run: after every link the binary is asked for its
+case list and each case becomes its own CTest test (`urk_tests.<case>`), so a
+failure names the case, `-R`/`-j` work, and the IDE test runner sees the same
+list. It covers what does not need a game: IL2CPP name matching, export binding
+policy, cursor leases, the POD vector math, the ABI layout and version invariants,
+and the `urk new` naming rules. `urk_sdk_check` compiles the public SDK surface in
+every build, so a broken header fails even when only the loader is built.
+
+With Clang, `URK_TEST_COVERAGE` (on by default) instruments the test binary with
+`-fprofile-instr-generate -fcoverage-mapping`, so a ctest run drops one
+`*.profraw` per case in the build tree:
+
+```powershell
+llvm-profdata merge -sparse cmake-build-relwithdebinfo/tests/*.profraw -o cov.profdata
+llvm-cov report cmake-build-relwithdebinfo/tests/urk_tests.exe -instr-profile cov.profdata
+```
 
 Anything that needs a running game is a runtime test executed through the
 DevBridge; see [docs/DEV_BRIDGE.md](docs/DEV_BRIDGE.md).

@@ -49,3 +49,6 @@ jobs:
 
       - name: Build
         run: cmake --build --preset ${{ matrix.preset }} --parallel
+
+      - name: Test
+        run: ctest --test-dir cmake-build-release --output-on-failure

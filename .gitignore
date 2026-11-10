@@ -5,3 +5,6 @@ MAP.md
 .idea/
 /generated
 cmake-build-*/
+cov_out/
+*.profraw
+*.profdata

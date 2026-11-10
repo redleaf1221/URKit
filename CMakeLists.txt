@@ -40,6 +40,16 @@ option(URK_WITH_CURL "Enable libcurl-backed HTTPS JSON requests" ON)
 option(URK_WITH_SAFETYHOOK "Enable the SafetyHook backend and mid-function hooks" ON)
 option(URK_HARDEN_RELEASE "Enable release hardening for loader DLLs" ON)
 
+# Source-based coverage for the host tests. Clang is the only toolchain that
+# supports it here (MSVC has no equivalent flag pair), so it defaults on exactly
+# when Clang is in use: an IDE "Run with Coverage" works without extra setup.
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    set(URK_TEST_COVERAGE_DEFAULT ON)
+else()
+    set(URK_TEST_COVERAGE_DEFAULT OFF)
+endif()
+option(URK_TEST_COVERAGE "Instrument urk_tests for source-based coverage" ${URK_TEST_COVERAGE_DEFAULT})
+
 if (URK_BUILD_DEV_BRIDGE AND NOT WIN32)
     message(FATAL_ERROR "URKitDevBridge.dll requires Windows. Configure with -DURK_BUILD_DEV_BRIDGE=OFF.")
 endif()
@@ -90,30 +100,10 @@ endif()
 
 set(URK_MODS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/mods")
 if (URK_BUILD_TESTS)
+    # enable_testing() belongs to the top-level directory: it is what makes
+    # `ctest` look for CTestTestfile.cmake in this tree at all.
     enable_testing()
-    add_executable(urk_tests
-        tests/test_main.cpp
-        tests/test_abi.cpp
-        tests/test_cursor_leases.cpp
-        tests/test_export_policy.cpp
-        tests/test_math.cpp
-        tests/test_name_matching.cpp
-        tests/test_scaffold.cpp
-    )
-    target_compile_features(urk_tests PRIVATE cxx_std_20)
-    target_include_directories(urk_tests PRIVATE
-        ${URK_ROOT_DIR}/src
-        ${URK_ROOT_DIR}/src/loader
-        ${URK_ROOT_DIR}/src/tools/urk
-        ${URK_SRC_DIR}/core/loader
-        ${URK_SDK_DIR}
-    )
-    target_compile_definitions(urk_tests PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
-    if (MSVC)
-        target_compile_options(urk_tests PRIVATE /W4 /permissive- /EHsc /utf-8)
-    endif()
-    add_test(NAME urk_tests COMMAND urk_tests)
-    urk_disable_vs_vcpkg_integration(urk_tests)
+    add_subdirectory(tests)
 endif()
 if (URK_BUILD_CLI)
     add_executable(urk src/tools/urk/main.cpp)
