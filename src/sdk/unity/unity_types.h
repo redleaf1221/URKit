@@ -2,8 +2,11 @@
 
 #include "../runtime_api.h"
 
+#include "../runtime/managed_runtime.h"
+#include "detail/managed_backend.h"
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cctype>
 #include <cmath>
 #include <cstddef>
@@ -12,19 +15,20 @@
 #include <cstring>
 #include <limits>
 #include <mutex>
-#include <new>
 #include <optional>
-#include <span>
 #include <string>
 #include <string_view>
+#include <span>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "../il2cpp/il2cpp_runtime.h"
 
+#if defined(_WIN32)
+#include <excpt.h>
+#endif
 
 // URK_UNITY_NAMESPACE_BEGIN
 namespace URK::Unity {
@@ -662,347 +666,13 @@ enum class KeyCode : int {
 using DiagnosticSink = void (*)(const char *);
 
 namespace detail {
-// Per-thread last error, so main and render threads don't clobber each other.
-inline std::string &error_slot() {
-    thread_local std::string value;
-    return value;
-}
-inline std::mutex &cache_mutex() {
-    static std::mutex value;
-    return value;
-}
-inline std::unordered_map<std::string, const void *> &class_cache() {
-    static std::unordered_map<std::string, const void *> value;
-    return value;
-}
-inline std::unordered_map<std::string, void *> &type_cache() {
-    static std::unordered_map<std::string, void *> value;
-    return value;
-}
-inline std::unordered_map<std::string, const void *> &method_cache() {
-    static std::unordered_map<std::string, const void *> value;
-    return value;
-}
-inline std::unordered_map<std::string, const void *> &field_cache() {
-    static std::unordered_map<std::string, const void *> value;
-    return value;
-}
-inline void clear_error() noexcept {
-    error_slot().clear();
-}
-// The Unity helpers follow the Win32 GetLastError contract: a failure is
-// recorded for the caller and not printed, because only the caller knows the
-// context and owns the log policy. Define URK_UNITY_LOG_ERRORS=1 to get the old
-// echo-every-failure behaviour while chasing a specific call.
-#ifndef URK_UNITY_LOG_ERRORS
-#define URK_UNITY_LOG_ERRORS 0
-#endif
-
-inline void set_error(std::string_view text) {
-    error_slot().assign(text.data(), text.size());
-#if URK_UNITY_LOG_ERRORS
-    URK::log(("[Unity][ERROR] " + error_slot()).c_str());
-#endif
-}
-inline const char *fallback_error() noexcept {
-    const std::string &value = error_slot();
-    return value.empty() ? nullptr : value.c_str();
-}
 inline void append_backend_error();
-inline std::string z(std::string_view v) {
-    return std::string(v);
-}
-inline std::string signature_text(std::string_view methodName, const std::vector<const char *> &parameterTypeNames) {
-    std::string s(methodName);
-    s += "(";
-    for (std::size_t i = 0; i < parameterTypeNames.size(); ++i) {
-        if (i)
-            s += ", ";
-        s += parameterTypeNames[i] ? parameterTypeNames[i] : "<unknown>";
-    }
-    s += ")";
-    return s;
-}
-inline std::string type_cache_key(std::string_view image, std::string_view namespc, std::string_view name) {
-    std::string key(image);
-    key.push_back('|');
-    key.append(namespc);
-    key.push_back('|');
-    key.append(name);
-    return key;
-}
-inline std::string member_cache_key(const void *klass, std::string_view name, int argc) {
-    std::string key = std::to_string(reinterpret_cast<std::uintptr_t>(klass));
-    key.push_back('|');
-    key.append(name);
-    key.push_back('|');
-    key.append(std::to_string(argc));
-    return key;
-}
-inline std::string member_cache_key(const void *klass, std::string_view name,
-                                    const std::vector<const char *> &parameterTypeNames) {
-    std::string key = std::to_string(reinterpret_cast<std::uintptr_t>(klass));
-    key.push_back('|');
-    key.append(name);
-    key.push_back('(');
-    for (std::size_t i = 0; i < parameterTypeNames.size(); ++i) {
-        if (i)
-            key.push_back(',');
-        key.append(parameterTypeNames[i] ? parameterTypeNames[i] : "<unknown>");
-    }
-    key.push_back(')');
-    return key;
-}
-inline std::string normalized_type_name(std::string_view type) {
-    std::string out(type);
-    if (out.rfind("class ", 0) == 0)
-        out.erase(0, 6);
-    if (out.rfind("struct ", 0) == 0)
-        out.erase(0, 7);
-    std::transform(out.begin(), out.end(), out.begin(),
-                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    if (out == "bool" || out == "boolean" || out == "system.boolean")
-        return "system.boolean";
-    if (out == "int" || out == "int32" || out == "system.int32")
-        return "system.int32";
-    if (out == "uint" || out == "uint32" || out == "system.uint32")
-        return "system.uint32";
-    if (out == "short" || out == "int16" || out == "system.int16")
-        return "system.int16";
-    if (out == "ushort" || out == "uint16" || out == "system.uint16")
-        return "system.uint16";
-    if (out == "long" || out == "int64" || out == "system.int64")
-        return "system.int64";
-    if (out == "ulong" || out == "uint64" || out == "system.uint64")
-        return "system.uint64";
-    if (out == "float" || out == "single" || out == "system.single")
-        return "system.single";
-    if (out == "double" || out == "system.double")
-        return "system.double";
-    if (out == "byte" || out == "system.byte")
-        return "system.byte";
-    if (out == "sbyte" || out == "system.sbyte")
-        return "system.sbyte";
-    if (out == "char" || out == "system.char")
-        return "system.char";
-    if (out == "string" || out == "system.string")
-        return "system.string";
-    if (out == "object" || out == "system.object")
-        return "system.object";
-    if (out == "type" || out == "system.type")
-        return "system.type";
-    if (out == "void" || out == "system.void")
-        return "system.void";
-    return out;
-}
-inline bool type_name_matches(std::string_view actual, const char *requested) {
-    return requested && normalized_type_name(actual) == normalized_type_name(requested);
-}
-struct Backend {
-    static bool available() {
-        return URK::
-il2cpp::available(); }
-    static const char* backend_last_error() { return URK::il2cpp::last_error(); }
-    static const char* last_error() noexcept {
-        // Return the local slot so a stale backend error isn't reported.
-        const std::string &value = error_slot();
-        return value.empty() ? nullptr : value.c_str();
-    }
-    static const void* find_class(std::string_view image, std::string_view ns, std::string_view name) { auto i=z(image), n=z(ns), c=z(name); return URK::il2cpp::find_class(i.c_str(), n.c_str(), c.c_str()); }
-    static const void* object_get_class(void* object) { return object ? URK::il2cpp::object_get_class(static_cast<URK::il2cpp::Object*>(object)) : nullptr; }
-    static bool class_is_valuetype(const void* klass) { return klass && URK::il2cpp::class_is_valuetype(static_cast<const URK::il2cpp::Class*>(klass)); }
-    static const char* class_get_name(const void* klass) { return klass ? URK::il2cpp::class_get_name(static_cast<const URK::il2cpp::Class*>(klass)) : nullptr; }
-    static const char* class_get_namespace(const void* klass) { return klass ? URK::il2cpp::class_get_namespace(static_cast<const URK::il2cpp::Class*>(klass)) : nullptr; }
-    static const void* class_get_parent(const void* klass) { return klass ? URK::il2cpp::class_get_parent(static_cast<const URK::il2cpp::Class*>(klass)) : nullptr; }
-    static const void* class_get_methods(const void* klass, void** iterator) { return klass ? URK::il2cpp::class_get_methods(static_cast<const URK::il2cpp::Class*>(klass), iterator) : nullptr; }
-static const void *find_method(const void *klass, std::string_view name, int argc) {
-    if (!klass) {
-        set_error("Unity method lookup failed: class is null");
-        return nullptr;
-    }
-    const std::string cacheKey = member_cache_key(klass, name, argc);
-    {
-        std::lock_guard<std::mutex> lock(cache_mutex());
-        const auto found = method_cache().find(cacheKey);
-        if (found != method_cache().end())
-            return found->second;
-    }
-    auto n = z(name);
-    const void *current = klass;
-    while (current) {
-        void *it = nullptr;
-        const void *match = nullptr;
-        const void *nonGeneric = nullptr;
-        int matches = 0;
-        int nonGenericMatches = 0;
-        while (const auto *m = URK::il2cpp::class_get_methods(static_cast<const URK::il2cpp::Class *>(current), &it)) {
-            const char *mn = URK::il2cpp::method_get_name(m);
-            if (!mn || n != mn)
-                continue;
-            if (argc < 0 || static_cast<int>(URK::il2cpp::method_get_param_count(m)) == argc) {
-                match = m;
-                ++matches;
-                if (!URK::il2cpp::method_is_generic(m)) {
-                    nonGeneric = m;
-                    ++nonGenericMatches;
-                }
-            }
-        }
-        if (argc >= 0 && nonGenericMatches == 1) {
-            match = nonGeneric;
-        } else if (matches > 1) {
-            set_error(std::string("Unity method lookup failed: ambiguous overload by name/argc: ") + std::string(name));
-            return nullptr;
-        }
-        if (match) {
-            std::lock_guard<std::mutex> lock(cache_mutex());
-            method_cache()[cacheKey] = match;
-            return match;
-        }
-        current = URK::il2cpp::class_get_parent(static_cast<const URK::il2cpp::Class *>(current));
-    }
-    return nullptr;
-}
 
-    static const char* method_get_name(const void* method) { return method ? URK::il2cpp::method_get_name(static_cast<const URK::il2cpp::Method*>(method)) : nullptr; }
-    static bool method_is_generic(const void* method) { return method && URK::il2cpp::method_is_generic(static_cast<const URK::il2cpp::Method*>(method)); }
-static const void *find_method_exact(const void *klass, std::string_view name,
-                                     const std::vector<const char *> &parameterTypeNames) {
-    if (!klass) {
-        set_error("Unity exact method lookup failed: class is null");
-        return nullptr;
-    }
-    const std::string cacheKey = member_cache_key(klass, name, parameterTypeNames);
-    {
-        std::lock_guard<std::mutex> lock(cache_mutex());
-        const auto found = method_cache().find(cacheKey);
-        if (found != method_cache().end())
-            return found->second;
-    }
-    auto n = z(name);
-    int same_arity = 0;
-    std::string first_mismatch;
-    const void *current = klass;
-    while (current) {
-        void *it = nullptr;
-        const void *match = nullptr;
-        int matches = 0;
-        while (const auto *m = URK::il2cpp::class_get_methods(static_cast<const URK::il2cpp::Class *>(current), &it)) {
-            const char *mn = URK::il2cpp::method_get_name(m);
-            if (!mn || n != mn || URK::il2cpp::method_get_param_count(m) != parameterTypeNames.size())
-                continue;
-            ++same_arity;
-            bool ok = true;
-            for (std::uint32_t i = 0; i < parameterTypeNames.size(); ++i) {
-                char buf[256]{};
-                const auto *pt = URK::il2cpp::method_get_param(m, i);
-                const char *want = parameterTypeNames[i];
-                const bool named = URK::il2cpp::type_get_name(pt, buf, sizeof(buf));
-                std::string_view got(named ? buf : "");
-                if (!want || !named || (!type_name_matches(got, want))) {
-                    if (first_mismatch.empty())
-                        first_mismatch = std::string("; first mismatch param=") + std::to_string(i) +
-                                         " requested=" + (want ? want : "<null>") +
-                                         " actual=" + (got.empty() ? "<unavailable>" : std::string(got));
-                    ok = false;
-                    break;
-                }
-            }
-            if (ok) {
-                match = m;
-                ++matches;
-            }
-        }
-        if (matches > 1) {
-            set_error(std::string("Unity exact method lookup failed: ambiguous exact overload: ") +
-                      signature_text(name, parameterTypeNames));
-            return nullptr;
-        }
-        if (match) {
-            std::lock_guard<std::mutex> lock(cache_mutex());
-            method_cache()[cacheKey] = match;
-            return match;
-        }
-        current = URK::il2cpp::class_get_parent(static_cast<const URK::il2cpp::Class *>(current));
-    }
-    set_error(std::string("Unity exact method lookup failed: no overload matched ") +
-              signature_text(name, parameterTypeNames) + "; same-arity candidates=" + std::to_string(same_arity) +
-              first_mismatch);
-    return nullptr;
-}
-
-    static int runtime_invoke(const void* method, void* object, void** params, void** result, void** exception) { return URK::il2cpp::runtime_invoke(static_cast<const URK::il2cpp::Method*>(method), static_cast<URK::il2cpp::Object*>(object), params, result, exception); }
-    static void* object_unbox(void* object) { return object ? URK::il2cpp::object_unbox(static_cast<URK::il2cpp::Object*>(object)) : nullptr; }
-    static void* object_new(const void* klass) { return URK::il2cpp::object_new(static_cast<const URK::il2cpp::Class*>(klass)); }
-    static void runtime_object_init(void* object) { URK::il2cpp::runtime_object_init(static_cast<URK::il2cpp::Object*>(object)); }
-    static void* new_string(std::string_view text) {
-        if (text.size() > static_cast<std::size_t>(std::numeric_limits<std::uint32_t>::max())) {
-            set_error("Unity managed string exceeds the runtime uint32 length range");
-            return nullptr;
-        }
-        return URK::il2cpp::string_new_len(text.data(), static_cast<std::uint32_t>(text.size())); }
-    static bool string_to_utf8(void* string, char* output, std::size_t outputSize) { return URK::il2cpp::string_to_utf8(static_cast<URK::il2cpp::String*>(string), output, outputSize); }
-static const void *find_field(const void *klass, std::string_view name) {
-    const std::string cacheKey = member_cache_key(klass, name, -1);
-    {
-        std::lock_guard<std::mutex> lock(cache_mutex());
-        const auto found = field_cache().find(cacheKey);
-        if (found != field_cache().end())
-            return found->second;
-    }
-    auto n = z(name);
-    const void *current = klass;
-    while (current) {
-        void *it = nullptr;
-        while (const auto *f = URK::il2cpp::class_get_fields(static_cast<const URK::il2cpp::Class *>(current), &it)) {
-            const char *fn = URK::il2cpp::field_get_name(f);
-            if (fn && n == fn) {
-                std::lock_guard<std::mutex> lock(cache_mutex());
-                field_cache()[cacheKey] = f;
-                return f;
-            }
-        }
-        current = URK::il2cpp::class_get_parent(static_cast<const URK::il2cpp::Class *>(current));
-    }
-    return nullptr;
-}
-
-    static bool field_get_value(void* object, const void* field, void* output) { return URK::il2cpp::field_get_value(static_cast<URK::il2cpp::Object*>(object), static_cast<const URK::il2cpp::Field*>(field), output); }
-    static void* field_reference_write_pointer(void*& reference) { return reference; }
-    static bool field_set_value(void* object, const void* field, void* value) { return URK::il2cpp::field_set_value(static_cast<URK::il2cpp::Object*>(object), static_cast<const URK::il2cpp::Field*>(field), value); }
-static bool field_static_get_value(const void *klass, const void *field, void *output) {
-    (void)klass;
-    return URK::il2cpp::field_static_get_value(static_cast<const URK::il2cpp::Field *>(field), output);
-}
-
-static bool field_static_set_value(const void *klass, const void *field, void *value) {
-    (void)klass;
-    return URK::il2cpp::field_static_set_value(static_cast<const URK::il2cpp::Field *>(field), value);
-}
-
-    static std::size_t array_length(void* array) { return URK::il2cpp::array_length(static_cast<URK::il2cpp::Array*>(array)); }
-    static bool has_array_length() { return URK::il2cpp::has_array_length(); }
-    static bool has_array_ref_at() { return URK::il2cpp::has_array_ref_at(); }
-    static void* array_ref_at(void* array, std::size_t index) { return URK::il2cpp::array_ref_at(static_cast<URK::il2cpp::Array*>(array), index); }
-    static void* array_addr_with_size(void* array, int elementSize, std::size_t index) { return URK::il2cpp::array_addr_with_size(static_cast<URK::il2cpp::Array*>(array), elementSize, index); }
-    static void* array_new(const void* elementClass, std::size_t length) { return URK::il2cpp::array_new(elementClass, length); }
-    static bool has_array_set_ref() { return URK::il2cpp::has_array_set_ref(); }
-    static bool array_set_ref(void* array, std::size_t index, void* value) { return URK::il2cpp::array_set_ref(static_cast<URK::il2cpp::Array*>(array), index, value); }
-    static std::uintptr_t gchandle_new(void* object, int pinned) { return URK::il2cpp::gchandle_new(object, pinned); }
-    static std::uintptr_t gchandle_new_weakref(void* object, int trackResurrection) { return URK::il2cpp::gchandle_new_weakref(object, trackResurrection); }
-    static void* gchandle_get_target(std::uintptr_t handle) { return URK::il2cpp::gchandle_get_target(handle); }
-    static void gchandle_free(std::uintptr_t handle) { URK::il2cpp::gchandle_free(handle); }
-    static void* type_object_for_class(std::string_view image, std::string_view ns, std::string_view name) { const void* k=find_class(image, ns, name); if (!k) return nullptr; auto* t = URK::il2cpp::class_get_type(static_cast<const URK::il2cpp::Class*>(k)); return t ? URK::il2cpp::type_get_object(t) : nullptr; }
-        static void* method_get_object(const void* method, const void* refClass) { return URK::il2cpp::method_get_object(static_cast<const URK::il2cpp::Method*>(method), static_cast<const URK::il2cpp::Class*>(refClass)); }
-    static std::size_t method_get_param_count(const void* method) { return method ? URK::il2cpp::method_get_param_count(static_cast<const URK::il2cpp::Method*>(method)) : 0; }
-    static void* value_box(const void* klass, void* data) { return URK::il2cpp::value_box(static_cast<const URK::il2cpp::Class*>(klass), data); }
-
-    static std::int64_t string_length(void* string) { return static_cast<std::int64_t>(URK::il2cpp::string_length(static_cast<URK::il2cpp::String*>(string)));
-}
-}
-;
-
-// Holds a GC handle on the array; element wrappers stay non-owning.
+// Owns a strong GC handle to a managed reference array while exposing its
+// elements as the SDK's lightweight wrappers.  The wrappers deliberately do
+// not own their targets; the managed array does for the lifetime of this
+// lease.  This is intended for multi-call scans where returning a plain vector
+// of raw managed pointers would otherwise introduce a GC race.
 template <class T> class RootedObjectArray {
   public:
     RootedObjectArray() = default;
@@ -1042,18 +712,26 @@ template <class T> class RootedObjectArray {
     auto end() const {
         return items_.end();
     }
-    std::vector<T> copy_items() const & {
+    std::vector<T> copy_items() const {
         return items_;
-    }
-    std::vector<T> copy_items() && {
-        return std::move(items_);
     }
 
     void reset() {
         items_.clear();
-        const std::uintptr_t root = std::exchange(root_, 0);
-        if (root)
+        if (!root_)
+            return;
+        const URK::managed::GCHandle root = std::exchange(root_, URK::managed::GCHandle{});
+#if defined(_WIN32)
+        __try {
             Backend::gchandle_free(root);
+        } __except (native_access_exception_filter(_exception_code())) {
+            quarantined_gchandle_counter().fetch_add(1, std::memory_order_relaxed);
+            set_error("Unity rooted array release raised a native access fault; one "
+                      "array handle was quarantined");
+        }
+#else
+        Backend::gchandle_free(root);
+#endif
     }
 
     static RootedObjectArray from_managed_array(void *array, std::string_view operation) {
@@ -1073,23 +751,14 @@ template <class T> class RootedObjectArray {
             set_error(std::string(operation) + " requires array_length and array_ref_at exports");
             append_backend_error();
             out.reset();
-            return {};
+            return out;
         }
-
-        const std::size_t count = Backend::array_length(array);
-        if (count > out.items_.max_size()) {
-            set_error(std::string(operation) + " returned an array larger than the native container can represent");
-            out.reset();
-            return {};
-        }
-        try {
-            out.items_.reserve(count);
-        } catch (const std::bad_alloc &) {
-            set_error(std::string(operation) + " could not allocate storage for " + std::to_string(count) +
-                      " managed references");
-            out.reset();
-            return {};
-        }
+        constexpr std::size_t kMaxManagedReferenceArrayElements = 1u << 20;
+        const std::size_t reported_count = Backend::array_length(array);
+        const std::size_t count = std::min(reported_count, kMaxManagedReferenceArrayElements);
+        if (reported_count > kMaxManagedReferenceArrayElements)
+            set_error(std::string(operation) + " truncated an excessive managed array length");
+        out.items_.reserve(count);
         for (std::size_t index = 0; index < count; ++index) {
             if (void *item = Backend::array_ref_at(array, index))
                 out.items_.emplace_back(item);
@@ -1099,18 +768,14 @@ template <class T> class RootedObjectArray {
 
   private:
     std::vector<T> items_;
-    std::uintptr_t root_ = 0;
+    URK::managed::GCHandle root_ = 0;
 };
-
 inline void append_backend_error() {
     const char *e = Backend::backend_last_error();
     if (e && e[0]) {
         if (!error_slot().empty())
             error_slot() += "; backend: ";
         error_slot() += e;
-#if URK_UNITY_LOG_ERRORS
-        URK::log((std::string("[Unity][ERROR] backend: ") + e).c_str());
-#endif
     }
 }
 inline std::string managed_string_to_utf8(void *value) {
@@ -1143,10 +808,9 @@ inline std::string class_display_name(const void *klass) {
     return name && name[0] ? std::string(name) : std::string{};
 }
 
-// Accept any wrapper derived from Object/Component/MonoBehaviour as a managed reference.
-template <class T> struct is_wrapper : std::bool_constant<std::is_base_of_v<Object, std::remove_cvref_t<T>>> {};
+template <class T> struct is_wrapper : std::false_type {};
 template <class T> inline constexpr bool is_wrapper_v = is_wrapper<std::remove_cvref_t<T>>::value;
-}
+} // namespace detail
 
 inline const char *last_error() {
     return detail::Backend::last_error();
@@ -1164,7 +828,7 @@ inline bool require_main_thread(std::string_view operation = "Unity operation") 
     return false;
 }
 
-inline constexpr std::array<std::string_view, 17> common_type_images{
+inline constexpr std::array<std::string_view, 16> common_type_images{
     "UnityEngine.CoreModule.dll",
     "UnityEngine.PhysicsModule.dll",
     "UnityEngine.Physics2DModule.dll",
@@ -1175,7 +839,6 @@ inline constexpr std::array<std::string_view, 17> common_type_images{
     "UnityEngine.ImageConversionModule.dll",
     "UnityEngine.TextRenderingModule.dll",
     "Unity.TextMeshPro.dll",
-    "TextMeshPro.dll",
     "Unity.InputSystem.dll",
     "UnityEngine.AssetBundleModule.dll",
     "UnityEngine.dll",
@@ -1206,8 +869,6 @@ struct TypeRef {
         } else {
             resolved = detail::Backend::find_class(image, namespc, name);
         }
-        if (!resolved && image.empty())
-            resolved = detail::Backend::find_class(std::string_view{}, namespc, name);
         if (resolved) {
             std::lock_guard<std::mutex> lock(detail::cache_mutex());
             detail::class_cache()[key] = resolved;
@@ -1232,8 +893,6 @@ struct TypeRef {
         } else {
             resolved = detail::Backend::type_object_for_class(image, namespc, name);
         }
-        if (!resolved && image.empty())
-            resolved = detail::Backend::type_object_for_class(std::string_view{}, namespc, name);
         if (resolved) {
             std::lock_guard<std::mutex> lock(detail::cache_mutex());
             detail::type_cache()[key] = resolved;
@@ -1242,15 +901,30 @@ struct TypeRef {
     }
 };
 
+// Allocates an uninitialised managed instance; the caller runs the constructor
+// it needs. Object::New and the wrapper constructors both use it.
+namespace detail {
+void *NewObject(TypeRef type);
+} // namespace detail
+
 namespace detail {
 inline std::unordered_map<std::string, bool> &member_presence_cache() {
     static std::unordered_map<std::string, bool> cache;
     return cache;
 }
-}
+} // namespace detail
 
-// Stripped-member probes that invoke nothing. Results are cached both ways;
-// unresolved classes aren't (runtime not ready). argc is required: overloads are ambiguous.
+// IL2CPP and Mono builds strip UnityEngine members the game itself never
+// calls, so a wrapper cannot tell "removed from this build" from "the call
+// returned a default". These probes answer that without invoking anything, so
+// a caller can degrade instead of misreading a default as real data.
+// Presence is cached in both directions: Backend::find_method deliberately
+// caches only hits, and a miss re-walks every method of the class and its
+// bases, which is far too costly to repeat per object. An unresolved class is
+// not cached because that usually means the runtime is not ready yet.
+// argc is required, not defaulted: the backend's lookup rejects a name that
+// matches more than one arity as ambiguous and answers null, so an "any arity"
+// probe would report a perfectly present overloaded member as missing.
 inline bool has_method(TypeRef type, std::string_view methodName, int argc) {
     const void *klass = type.resolve_class();
     if (!klass) {
@@ -1346,15 +1020,9 @@ inline constexpr TypeRef ResourcesType{"", "UnityEngine", "Resources"};
 inline constexpr TypeRef DebugType{"", "UnityEngine", "Debug"};
 
 namespace detail {
-// Object is type-erased; ask Unity for every Component.
-template <class T> constexpr TypeRef component_search_type() {
-    if constexpr (std::is_same_v<std::remove_cvref_t<T>, Object>)
-        return ComponentType;
-    else
-        return T::unity_type();
-}
-
-// IL2CPP setters: raw storage for value types, the object for references.
+// IL2CPP field setters take the address of raw value-type storage, but take a
+// managed object directly for reference fields. Field getters still write a
+// reference into an output slot, so FieldOut keeps its pointer-to-pointer form.
 template <class T> struct FieldArg {
     T storage;
     void *ptr;
@@ -1456,8 +1124,6 @@ template <class T> void *field_value(T &v) {
     return a.ptr;
 }
 template <class Ret, class... Args> Ret InvokeStatic(TypeRef type, std::string_view methodName, Args &&...args);
-// Allocates an instance without running a constructor; the caller invokes ".ctor".
-void *NewObject(TypeRef type);
 template <class T, class... Args>
 std::vector<T> StaticArrayCall(TypeRef type, std::string_view methodName, Args &&...args);
 template <class T, class... ExtraArgs>
@@ -1470,7 +1136,7 @@ RootedObjectArray<T> FindObjectsUsingRooted(TypeRef owner, std::string_view meth
 template <class T>
 RootedObjectArray<T> QueryComponentsRooted(const Object &target, TypeRef componentType, bool recursive,
                                            bool includeInactive, bool reverse);
-}
+} // namespace detail
 struct TypeObject {
     void *handle_ = nullptr;
     explicit TypeObject(void *h = nullptr) : handle_(h) {
@@ -1497,22 +1163,15 @@ struct Object {
     static constexpr TypeRef unity_type() {
         return UnityObjectType;
     }
+    // Allocates an instance without running a constructor. Wrapper
+    // constructors such as Texture2D(int, int, ...) then call ".ctor".
+    static Object New(TypeRef type);
     bool alive() const {
         return handle_ ? detail::InvokeStatic<bool>(UnityObjectType, "op_Implicit", *this) : false;
     }
     std::string name() const;
     std::string ToString() const;
     std::string runtime_class_name() const;
-    // Allocates an instance without running a constructor: call ".ctor" yourself,
-    // or use the New() helper the type generator emits. Not valid for
-    // UnityEngine.Object subclasses, which need Instantiate() or AddComponent().
-    static Object New(TypeRef type);
-    void set_name(std::string_view value) const {
-        SetProperty("name", std::string(value));
-    }
-    void set_hideFlags(int value) const {
-        SetProperty("hideFlags", value);
-    }
     int hideFlags() const {
         return GetProperty<int>("hideFlags");
     }
@@ -1606,41 +1265,23 @@ struct Object {
     template <class T> static std::vector<T> FindAllInstances() {
         return FindObjectsOfTypeAll<T>();
     }
-    // The clone has the original's type unless one is named: Instantiate(go) returns a GameObject,
-    // Instantiate<GameObject>(component) also works. The original goes in as Object because the
-    // exact overload lookup compares parameter types by name and Unity declares Instantiate(Object).
-    static const Object &as_object(const Object &object) {
-        return object;
+    template <class T = Object> static T Instantiate(const T &original) {
+        return T{detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", original)};
     }
-    template <class T, class U> using InstantiateResult = std::conditional_t<std::is_void_v<T>, U, T>;
-    template <class T = void, class U> static InstantiateResult<T, U> Instantiate(const U &original) {
-        return InstantiateResult<T, U>{
-            detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", as_object(original))};
+    template <class T = Object> static T Instantiate(const T &original, const Transform &parent) {
+        return T{detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", original, parent)};
     }
-    template <class T = void, class U>
-    static InstantiateResult<T, U> Instantiate(const U &original, const Transform &parent) {
-        return InstantiateResult<T, U>{
-            detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", as_object(original), parent)};
+    template <class T = Object>
+    static T Instantiate(const T &original, const Transform &parent, bool instantiateInWorldSpace) {
+        return T{
+            detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", original, parent, instantiateInWorldSpace)};
     }
-    template <class T = void, class U>
-    static InstantiateResult<T, U> Instantiate(const U &original, const Transform &parent,
-                                               bool instantiateInWorldSpace) {
-        return InstantiateResult<T, U>{
-            detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", as_object(original), parent,
-                                         instantiateInWorldSpace)};
+    template <class T = Object> static T Instantiate(const T &original, Vector3 position, Quaternion rotation) {
+        return T{detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", original, position, rotation)};
     }
-    template <class T = void, class U>
-    static InstantiateResult<T, U> Instantiate(const U &original, Vector3 position, Quaternion rotation) {
-        return InstantiateResult<T, U>{
-            detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", as_object(original), position,
-                                         rotation)};
-    }
-    template <class T = void, class U>
-    static InstantiateResult<T, U> Instantiate(const U &original, Vector3 position, Quaternion rotation,
-                                               const Transform &parent) {
-        return InstantiateResult<T, U>{
-            detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", as_object(original), position,
-                                         rotation, parent)};
+    template <class T = Object>
+    static T Instantiate(const T &original, Vector3 position, Quaternion rotation, const Transform &parent) {
+        return T{detail::InvokeStatic<void *>(UnityObjectType, "Instantiate", original, position, rotation, parent)};
     }
     static void Destroy(const Object &object) {
         detail::InvokeStatic<void>(UnityObjectType, "Destroy", object);
@@ -1666,9 +1307,6 @@ struct Object {
     template <class Ret = void, class... Args>
     Ret CallExact(std::string_view methodName, const std::vector<const char *> &parameterTypeNames,
                   Args &&...args) const;
-    template <class... Args>
-    bool TryCallExact(std::string_view methodName, const std::vector<const char *> &parameterTypeNames,
-                      Args &&...args) const;
     template <class Ret = void, class... Args>
     Ret InvokeGeneric(std::string_view methodName, const std::vector<TypeObject> &genericTypes, Args &&...args) const;
     template <class T = Object>
@@ -1678,9 +1316,9 @@ struct Object {
     std::vector<T> CallArrayExact(std::string_view methodName, const std::vector<const char *> &parameterTypeNames,
                                   Args &&...args) const;
     template <class T = Object, class... Args>
-    detail::RootedObjectArray<T>
-    CallArrayExactRooted(std::string_view methodName, const std::vector<const char *> &parameterTypeNames,
-                         Args &&...args) const;
+    detail::RootedObjectArray<T> CallArrayExactRooted(std::string_view methodName,
+                                                      const std::vector<const char *> &parameterTypeNames,
+                                                      Args &&...args) const;
     std::vector<std::string> CallStringArrayExact(std::string_view methodName,
                                                   const std::vector<const char *> &parameterTypeNames) const;
     template <class T>
@@ -1735,4 +1373,4 @@ struct Texture2D;
 struct Shader;
 struct Sprite;
 
-}
+} // namespace URK::Unity

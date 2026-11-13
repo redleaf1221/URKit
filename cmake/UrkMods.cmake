@@ -60,6 +60,12 @@ function(urk_add_mod name)
         target_link_libraries(${name} PRIVATE imgui d3d11 d3d12 dxgi opengl32)
     endif()
 
+    # Extra libraries a mod asks for in its own mod_target.cmake, e.g. the JSON
+    # library its bridge speaks.
+    if (URK_MOD_LINK_LIBRARIES)
+        target_link_libraries(${name} PRIVATE ${URK_MOD_LINK_LIBRARIES})
+    endif()
+
     if (MSVC)
         target_compile_options(${name} PRIVATE /W3 /permissive- /EHsc /utf-8)
     endif()

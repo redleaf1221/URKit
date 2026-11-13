@@ -12,6 +12,7 @@
 #include "../sdk/network_api.h"
 #include "../sdk/runtime_bootstrap.h"
 #include "../sdk/unity/unity.h"
+#include "../sdk/unity/unity_inspect.h"
 
 namespace urk::sdk_check {
 
@@ -39,6 +40,17 @@ void ReferenceArrayMarshalling() {
     (void)URK::Unity::ImageConversion::LoadImage(texture, std::span<const std::uint8_t>(encoded), false);
     const std::vector<URK::Unity::Color32> colors(1);
     texture.SetPixels32(std::span<const URK::Unity::Color32>(colors));
+}
+
+// The inspection layer is header-only too. Referencing its record types keeps
+// their layout and the guarded metadata helpers compiled in every build.
+void ReferenceInspection() {
+    URK::Unity::Inspect::MethodInfo method{};
+    method.signature_complete = true;
+    (void)method;
+    URK::Unity::Inspect::TypeInfo type{};
+    (void)type;
+    (void)URK::Unity::Inspect::kMaxMethodParameters;
 }
 
 } // namespace urk::sdk_check

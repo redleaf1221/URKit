@@ -13,6 +13,8 @@ foreach(urk_mod_dir IN LISTS URK_MOD_DIRECTORIES)
     # Per-mod switches live in the mod directory, so `urk new --no-imgui` is real
     # and does not need a repository-wide reconfigure to change.
     set(URK_MOD_WITH_IMGUI ${URK_WITH_IMGUI})
+    unset(URK_MOD_LINK_LIBRARIES)
+    unset(URK_MOD_VENDORED_OVERLAY)
     if (EXISTS "${urk_mod_dir}/mod_target.cmake")
         include("${urk_mod_dir}/mod_target.cmake")
     endif()

@@ -1,4 +1,5 @@
 #pragma once
+#include "unity_euler.h"
 #include "unity_types.h"
 
 namespace URK::Unity {
@@ -114,11 +115,35 @@ struct Transform : Component {
     void set_localPosition(Vector3 v) const {
         SetProperty("localPosition", v);
     }
+    Quaternion localRotation() const {
+        return GetProperty<Quaternion>("localRotation");
+    }
+    void set_localRotation(Quaternion q) const {
+        SetProperty("localRotation", q);
+    }
+    // The euler accessors are the ones IL2CPP strips most often - a build that
+    // only ever assigns rotation loses set_localEulerAngles outright. The
+    // quaternion properties always survive because the engine itself uses them,
+    // so the angles convert natively and travel through those instead.
+    Vector3 localEulerAngles() const {
+        return has_property(TransformType, "localEulerAngles") ? GetProperty<Vector3>("localEulerAngles")
+                                                               : quaternion_to_euler(localRotation());
+    }
+    void set_localEulerAngles(Vector3 v) const {
+        if (has_method(TransformType, "set_localEulerAngles", 1))
+            SetProperty("localEulerAngles", v);
+        else
+            set_localRotation(euler_to_quaternion(v));
+    }
     Vector3 eulerAngles() const {
-        return GetProperty<Vector3>("eulerAngles");
+        return has_property(TransformType, "eulerAngles") ? GetProperty<Vector3>("eulerAngles")
+                                                          : quaternion_to_euler(rotation());
     }
     void set_eulerAngles(Vector3 v) const {
-        SetProperty("eulerAngles", v);
+        if (has_method(TransformType, "set_eulerAngles", 1))
+            SetProperty("eulerAngles", v);
+        else
+            set_rotation(euler_to_quaternion(v));
     }
     Quaternion rotation() const {
         return GetProperty<Quaternion>("rotation");
@@ -140,6 +165,9 @@ struct Transform : Component {
     }
     Vector3 up() const {
         return GetProperty<Vector3>("up");
+    }
+    void LookAt(Vector3 worldPosition) const {
+        CallExact<void>("LookAt", {"UnityEngine.Vector3"}, worldPosition);
     }
     Vector3 lossyScale() const {
         return GetProperty<Vector3>("lossyScale");
@@ -193,6 +221,27 @@ struct Camera : Behaviour {
     }
     float aspect() const {
         return GetProperty<float>("aspect");
+    }
+    bool orthographic() const {
+        return GetProperty<bool>("orthographic");
+    }
+    float orthographicSize() const {
+        return GetProperty<float>("orthographicSize");
+    }
+    void set_orthographicSize(float value) const {
+        SetProperty("orthographicSize", value);
+    }
+    int cullingMask() const {
+        return GetProperty<int>("cullingMask");
+    }
+    float depth() const {
+        return GetProperty<float>("depth");
+    }
+    int targetDisplay() const {
+        return GetProperty<int>("targetDisplay");
+    }
+    Object targetTexture() const {
+        return GetProperty<Object>("targetTexture");
     }
     int pixelWidth() const {
         return GetProperty<int>("pixelWidth");
@@ -324,11 +373,14 @@ struct Texture2D : Texture {
         handle_ = detail::NewObject(unity_type());
         if (!handle_)
             return;
-        CallExact<void>(".ctor", {"System.Int32", "System.Int32", "UnityEngine.TextureFormat", "System.Boolean"},
-                        width, height, static_cast<std::int32_t>(format), mipChain);
+        CallExact<void>(".ctor", {"System.Int32", "System.Int32", "UnityEngine.TextureFormat", "System.Boolean"}, width,
+                        height, static_cast<std::int32_t>(format), mipChain);
     }
     static constexpr TypeRef unity_type() {
         return Texture2DType;
+    }
+    bool isReadable() const {
+        return GetProperty<bool>("isReadable");
     }
     int mipmapCount() const {
         return GetProperty<int>("mipmapCount");
@@ -889,6 +941,8 @@ struct AudioSource : Behaviour {
     Object clip() const {
         return GetProperty<Object>("clip");
     }
+    // The setter takes AudioClip specifically; SetProperty would infer the
+    // generic Object wrapper and fail exact-overload lookup against it.
     void set_clip(Object value) const {
         CallExact<void>("set_clip", {"UnityEngine.AudioClip"}, value);
     }
@@ -1017,6 +1071,9 @@ struct Animator : Behaviour {
     Object avatar() const {
         return GetProperty<Object>("avatar");
     }
+    // These setters take a specific type, not the generic Object the getters
+    // return; SetProperty would infer "UnityEngine.Object" and fail exact
+    // overload lookup (see AudioSource::set_clip's identical fix above).
     void set_avatar(Object value) const {
         CallExact<void>("set_avatar", {"UnityEngine.Avatar"}, value);
     }
@@ -2311,7 +2368,8 @@ struct AssetBundle : Object {
     static constexpr TypeRef unity_type() {
         return AssetBundleType;
     }
-    // Borrowed reference; invalid after Unload().
+    // This wrapper is a borrowed managed reference. Unity owns the bundle and
+    // its assets; do not use this or assets returned from it after Unload().
     static AssetBundle LoadFromFile(std::string_view path) {
         AssetBundle bundle = detail::InvokeStatic<AssetBundle>(AssetBundleType, "LoadFromFile", path);
         if (!bundle && !detail::fallback_error())
@@ -2429,8 +2487,7 @@ struct GameObject : Object {
         return detail::InvokeStatic<GameObject>(GameObjectType, "Find", name);
     }
     static GameObject FindWithTag(std::string_view tag) {
-        // The managed wrapper can be stripped; the extern binding survives through Unity 6.
-        return detail::InvokeStatic<GameObject>(GameObjectType, "FindGameObjectWithTag", tag);
+        return detail::InvokeStatic<GameObject>(GameObjectType, "FindWithTag", tag);
     }
     static std::vector<GameObject> FindGameObjectsWithTag(std::string_view tag) {
         return detail::StaticArrayCall<GameObject>(GameObjectType, "FindGameObjectsWithTag", tag);
@@ -2519,13 +2576,19 @@ struct GameObject : Object {
     bool activeInHierarchy() const {
         return GetProperty<bool>("activeInHierarchy");
     }
+    // Some protected Unity players expose the Boolean parameter with a
+    // non-canonical type name. SetActive has a unique one-argument overload,
+    // so resolve it by name and arity instead of rejecting a valid method over
+    // a metadata spelling mismatch.
     void SetActive(bool value) const {
-        CallExact<void>("SetActive", {"System.Boolean"}, value);
+        Call<void>("SetActive", value);
     }
     Scene scene() const {
         return Scene{Call<void *>("get_scene")};
     }
-    // GameObject.scene may be stripped; check before treating the object as an asset.
+    // Managed stripping drops GameObject.scene from builds whose own code
+    // never reads it, and then every object looks scene-less. Check this
+    // before treating an unreadable scene as "prefab or asset".
     static bool scene_available() {
         return has_method(GameObjectType, "get_scene", 0);
     }
@@ -2616,17 +2679,15 @@ struct GameObject : Object {
             .copy_items();
     }
     template <class T = Object> detail::RootedObjectArray<T> GetComponentsRooted() const {
-        return detail::QueryComponentsRooted<T>(*this, detail::component_search_type<T>(), false, true, false);
+        return detail::QueryComponentsRooted<T>(*this, T::unity_type(), false, true, false);
     }
     template <class T = Object>
     detail::RootedObjectArray<T> GetComponentsInChildrenRooted(bool includeInactive = false) const {
-        return detail::QueryComponentsRooted<T>(*this, detail::component_search_type<T>(), true, includeInactive,
-                                                false);
+        return detail::QueryComponentsRooted<T>(*this, T::unity_type(), true, includeInactive, false);
     }
     template <class T = Object>
     detail::RootedObjectArray<T> GetComponentsInParentRooted(bool includeInactive = false) const {
-        return detail::QueryComponentsRooted<T>(*this, detail::component_search_type<T>(), true, includeInactive,
-                                                true);
+        return detail::QueryComponentsRooted<T>(*this, T::unity_type(), true, includeInactive, true);
     }
     template <class T> T AddComponent() const {
         if constexpr (std::is_same_v<T, Transform>)
@@ -2734,5 +2795,4 @@ inline void EventSystem::SetSelectedGameObject(GameObject value) const {
     CallExact<void>("SetSelectedGameObject", {"UnityEngine.GameObject"}, value);
 }
 
-
-}
+} // namespace URK::Unity

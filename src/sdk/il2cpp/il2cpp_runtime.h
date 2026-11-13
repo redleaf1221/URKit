@@ -21,6 +21,9 @@ using Object = void;
 using String = void;
 using Array = void;
 using Thread = void;
+// A GC handle is an opaque integer; 0 is the invalid handle.
+using GCHandle = std::uintptr_t;
+static_assert(sizeof(GCHandle) == sizeof(void *));
 
 inline const URK_Il2CppApi *&ApiSlot() {
     static const URK_Il2CppApi *api = nullptr;
@@ -926,7 +929,8 @@ inline std::uintptr_t gchandle_new_weakref(void *object, int track_resurrection)
     if (URK_IL2CPP_HAS(gchandle_new_weakref_v2) && a->gchandle_new_weakref_v2)
         return a->gchandle_new_weakref_v2(object, track_resurrection);
     return URK_IL2CPP_HAS(gchandle_new_weakref) && a->gchandle_new_weakref
-               ? a->gchandle_new_weakref(object, track_resurrection) : 0;
+               ? a->gchandle_new_weakref(object, track_resurrection)
+               : 0;
 }
 inline void *gchandle_get_target(std::uintptr_t gchandle) {
     const auto *a = api();
@@ -937,7 +941,8 @@ inline void *gchandle_get_target(std::uintptr_t gchandle) {
     if (gchandle > static_cast<std::uintptr_t>((std::numeric_limits<std::uint32_t>::max)()))
         return nullptr;
     return URK_IL2CPP_HAS(gchandle_get_target) && a->gchandle_get_target
-               ? a->gchandle_get_target(static_cast<std::uint32_t>(gchandle)) : nullptr;
+               ? a->gchandle_get_target(static_cast<std::uint32_t>(gchandle))
+               : nullptr;
 }
 inline void gchandle_free(std::uintptr_t gchandle) {
     const auto *a = api();

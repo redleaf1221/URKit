@@ -13,7 +13,7 @@ inline void LogWarning(std::string_view message) {
 inline void LogError(std::string_view message) {
     detail::InvokeStatic<void>(DebugType, "LogError", message);
 }
-}
+} // namespace Debug
 namespace Screen {
 inline int width() {
     return detail::InvokeStatic<int>(ScreenType, "get_width");
@@ -24,7 +24,7 @@ inline int height() {
 inline float dpi() {
     return detail::InvokeStatic<float>(ScreenType, "get_dpi");
 }
-}
+} // namespace Screen
 namespace ObjectFilter {
 inline constexpr int kHideFlagsHierarchyMask = 1;
 inline constexpr int kHideFlagsImplicitRuntimeMask = 4 | 16 | 32;
@@ -65,10 +65,127 @@ inline std::vector<GameObject> canonicalize_game_objects(
     }
     return filtered;
 }
-}
+} // namespace ObjectFilter
 namespace SceneManager {
 inline TypeRef type() {
     return {"", "UnityEngine.SceneManagement", "SceneManager"};
+}
+inline int sceneCountInBuildSettings() {
+    return detail::InvokeStatic<int>(type(), "get_sceneCountInBuildSettings");
+}
+inline bool HasLoadSceneByBuildIndex() {
+    const void *klass = type().resolve_class();
+    if (!klass)
+        return false;
+    const std::vector<const char *> signature{"System.Int32"};
+    return detail::Backend::find_method_exact(klass, "LoadScene", signature) != nullptr;
+}
+inline bool HasLoadSceneByName() {
+    const void *klass = type().resolve_class();
+    if (!klass)
+        return false;
+    const std::vector<const char *> signature{"System.String"};
+    return detail::Backend::find_method_exact(klass, "LoadScene", signature) != nullptr;
+}
+inline void LoadSceneByBuildIndex(int buildIndex) {
+    detail::InvokeStatic<void>(type(), "LoadScene", buildIndex);
+}
+inline void LoadSceneByName(std::string_view name) {
+    detail::InvokeStatic<void>(type(), "LoadScene", name);
+}
+
+// Unity offers several ways to load a scene and managed stripping keeps only
+// the ones a build actually calls: a game whose own code says
+// LoadSceneAsync(name, LoadSceneMode.Single) ships without LoadScene(string)
+// entirely. Every route is tried rather than assuming the simplest one exists.
+struct LoadSceneRoute {
+    const char *method;
+    bool by_name;
+    bool takes_mode;
+};
+inline constexpr LoadSceneRoute load_scene_routes[] = {
+    {"LoadScene", true, false},       {"LoadScene", true, true},       {"LoadSceneAsync", true, false},
+    {"LoadSceneAsync", true, true},   {"LoadScene", false, false},     {"LoadScene", false, true},
+    {"LoadSceneAsync", false, false}, {"LoadSceneAsync", false, true},
+};
+
+inline const void *find_load_scene_route(const LoadSceneRoute &route) {
+    const void *klass = type().resolve_class();
+    if (!klass)
+        return nullptr;
+    std::vector<const char *> signature;
+    signature.push_back(route.by_name ? "System.String" : "System.Int32");
+    if (route.takes_mode)
+        signature.push_back("UnityEngine.SceneManagement.LoadSceneMode");
+    return detail::Backend::find_method_exact(klass, route.method, signature);
+}
+
+inline std::string load_scene_route_text(const LoadSceneRoute &route) {
+    std::string text = std::string(route.method) + "(" + (route.by_name ? "string" : "int");
+    if (route.takes_mode)
+        text += ", LoadSceneMode";
+    return text + ")";
+}
+
+// The routes this build kept, for a message that says what was actually looked
+// for instead of naming one overload.
+inline std::string AvailableLoadSceneRoutes() {
+    std::string text;
+    for (const LoadSceneRoute &route : load_scene_routes) {
+        if (!find_load_scene_route(route))
+            continue;
+        if (!text.empty())
+            text += ", ";
+        text += load_scene_route_text(route);
+    }
+    return text;
+}
+
+inline bool HasLoadSceneRoute(bool by_name) {
+    for (const LoadSceneRoute &route : load_scene_routes) {
+        if (route.by_name == by_name && find_load_scene_route(route))
+            return true;
+    }
+    return false;
+}
+
+// LoadSceneMode.Single: replace what is loaded, which is what the panel means.
+inline constexpr int kLoadSceneModeSingle = 0;
+
+inline bool LoadSceneUsingAnyRoute(bool by_name, std::string_view name, int buildIndex) {
+    detail::clear_error();
+    for (const LoadSceneRoute &route : load_scene_routes) {
+        if (route.by_name != by_name)
+            continue;
+        const void *method = find_load_scene_route(route);
+        if (!method)
+            continue;
+        void *argv[2]{};
+        void *managed_name = nullptr;
+        int index_value = buildIndex;
+        int mode_value = kLoadSceneModeSingle;
+        if (by_name) {
+            managed_name = detail::Backend::new_string(name);
+            if (!managed_name) {
+                detail::set_error("Unity scene load failed: the scene name could not "
+                                  "be created in the runtime");
+                return false;
+            }
+            argv[0] = managed_name;
+        } else {
+            argv[0] = &index_value;
+        }
+        if (route.takes_mode)
+            argv[1] = &mode_value;
+        void *result = nullptr;
+        void *exception = nullptr;
+        if (detail::Backend::runtime_invoke(method, nullptr, argv, &result, &exception) && !exception) {
+            detail::clear_error();
+            return true;
+        }
+        detail::set_error("Unity scene load failed: " + load_scene_route_text(route) + " raised an exception");
+    }
+    return false;
 }
 inline Scene GetActiveScene() {
     return Scene{detail::InvokeStatic<void *>(type(), "GetActiveScene")};
@@ -120,7 +237,18 @@ inline std::vector<GameObject> FindSceneGameObjects(bool includeInactive = true)
     return FindSceneGameObjectsFiltered(includeInactive ? static_cast<std::uint32_t>(ObjectFilterFlags::IncludeInactive)
                                                         : static_cast<std::uint32_t>(ObjectFilterFlags::None));
 }
+} // namespace SceneManager
+namespace SceneUtility {
+inline TypeRef type() {
+    return {"", "UnityEngine.SceneManagement", "SceneUtility"};
 }
+inline bool available() {
+    return type().resolve_class() != nullptr;
+}
+inline std::string GetScenePathByBuildIndex(int buildIndex) {
+    return detail::InvokeStatic<std::string>(type(), "GetScenePathByBuildIndex", buildIndex);
+}
+} // namespace SceneUtility
 namespace Time {
 inline float time() {
     return detail::InvokeStatic<float>(TimeType, "get_time");
@@ -137,7 +265,7 @@ inline float timeScale() {
 inline void set_timeScale(float value) {
     detail::InvokeStatic<void>(TimeType, "set_timeScale", value);
 }
-}
+} // namespace Time
 namespace Input {
 inline bool available() {
     return URK::has_input();
@@ -178,7 +306,7 @@ inline bool GetMouseButtonDown(MouseButton button) {
 inline bool GetMouseButtonUp(MouseButton button) {
     return GetMouseButtonUp(static_cast<int>(button));
 }
-}
+} // namespace Input
 inline Vector2 screen_size(Camera camera = {}) {
     int width_value = Screen::width();
     int height_value = Screen::height();
@@ -316,7 +444,7 @@ inline bool world_visible(Vector3 world, float min_facing = 0.01f) {
     return world_visible(Camera::main(), world, min_facing);
 }
 
-}
+} // namespace URK::Unity
 // URK_UNITY_ALIASES_BEGIN
 namespace Unity {
 using AudioSource = URK::Unity::AudioSource;
@@ -445,12 +573,6 @@ inline const char *last_error() {
 inline void clear_error() {
     URK::Unity::clear_error();
 }
-inline bool is_main_thread() {
-    return URK::Unity::is_main_thread();
-}
-inline bool require_main_thread(std::string_view operation = "Unity operation") {
-    return URK::Unity::require_main_thread(operation);
-}
 inline CanvasRoot CreateOverlayCanvas(std::string_view name, bool addRaycaster = true) {
     return URK::Unity::CreateOverlayCanvas(name, addRaycaster);
 }
@@ -465,7 +587,7 @@ inline void LogWarning(std::string_view message) {
 inline void LogError(std::string_view message) {
     URK::Unity::Debug::LogError(message);
 }
-}
+} // namespace Debug
 
 namespace Screen {
 inline int width() {
@@ -489,7 +611,7 @@ inline bool contains(Vector2 point, float padding = 0.0f, Camera camera = {}) {
 inline Vector2 clamp(Vector2 point, float padding = 0.0f, Camera camera = {}) {
     return URK::Unity::clamp_to_screen(point, padding, camera);
 }
-}
+} // namespace Screen
 
 namespace SceneManager {
 inline Scene GetActiveScene() {
@@ -518,7 +640,7 @@ inline std::vector<GameObject> FindSceneGameObjectsFiltered(
 inline std::vector<GameObject> FindSceneGameObjects(bool includeInactive = true) {
     return URK::Unity::SceneManager::FindSceneGameObjects(includeInactive);
 }
-}
+} // namespace SceneManager
 
 namespace Time {
 inline float time() {
@@ -536,7 +658,7 @@ inline float timeScale() {
 inline void set_timeScale(float value) {
     URK::Unity::Time::set_timeScale(value);
 }
-}
+} // namespace Time
 
 namespace Input {
 inline bool available() {
@@ -578,7 +700,7 @@ inline bool GetMouseButtonDown(MouseButton button) {
 inline bool GetMouseButtonUp(MouseButton button) {
     return URK::Unity::Input::GetMouseButtonUp(button);
 }
-}
+} // namespace Input
 
 inline Vector2 direction_to_screen_edge(Vector2 direction, float padding = 24.0f, Camera camera = {}) {
     return URK::Unity::direction_to_screen_edge(direction, padding, camera);
@@ -608,5 +730,11 @@ inline bool world_visible(Vector3 world, float min_facing = 0.01f) {
     return URK::Unity::world_visible(world, min_facing);
 }
 
-
+inline bool is_main_thread() {
+    return URK::Unity::is_main_thread();
 }
+inline bool require_main_thread(std::string_view operation = "Unity operation") {
+    return URK::Unity::require_main_thread(operation);
+}
+
+} // namespace Unity
