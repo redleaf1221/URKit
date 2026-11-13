@@ -72,6 +72,7 @@ enum class DebugState : std::uint8_t {
     Indicator,
     Offscreen,
     TooClose,
+    TooFar,
     InvalidRect,
     MissingTransform,
     DeadTransform,
@@ -101,6 +102,9 @@ struct Style {
     float indicator_center_gap = 16.0f;
     float indicator_center_dot_radius = 4.0f;
     float hide_within_distance = 0.0f;
+    // Zero disables the check. Beyond it the highlight is skipped instead of
+    // drawn extremely small, which is what a distant target produces.
+    float max_distance = 0.0f;
     float reference_distance = 12.0f;
     float min_scale = 0.48f;
     float max_scale = 1.18f;
@@ -172,9 +176,12 @@ class Manager {
     enum class PendingKind : std::uint8_t {
         AddTransform,
         AddWorldPoint,
+        AddScreenRect,
         MarkDirty,
         MarkAllDirty,
         SetWorldPoint,
+        SetScreenRect,
+        SetLabel,
         Remove,
         Clear,
     };
@@ -184,6 +191,8 @@ class Manager {
         HighlightId id = 0;
         Transform transform{};
         Vector3 world{};
+        ImVec2 screen_min{};
+        ImVec2 screen_max{};
         Style style{};
         std::string label{};
     };
@@ -334,6 +343,23 @@ class Manager {
         return add_screen_rect(to_imgui(min), to_imgui(max), label, style);
     }
 
+    HighlightId enqueue_add_screen_rect(ImVec2 min, ImVec2 max, const char *label, Style style = {}) {
+        PendingCommand command{};
+        command.kind = PendingKind::AddScreenRect;
+        command.id = allocate_id();
+        command.screen_min = min;
+        command.screen_max = max;
+        command.style = style;
+        command.label = safe_label(label);
+        const HighlightId id = command.id;
+        enqueue(std::move(command));
+        return id;
+    }
+
+    HighlightId enqueue_add_screen_rect(Vector2 min, Vector2 max, const char *label, Style style = {}) {
+        return enqueue_add_screen_rect(to_imgui(min), to_imgui(max), label, style);
+    }
+
     bool remove(HighlightId id) {
         return remove_entry(id);
     }
@@ -387,6 +413,14 @@ class Manager {
     void set_label(HighlightId id, const char *label) {
         if (Entry *entry = find(id))
             entry->label = safe_label(label);
+    }
+
+    void enqueue_set_label(HighlightId id, const char *label) {
+        PendingCommand command{};
+        command.kind = PendingKind::SetLabel;
+        command.id = id;
+        command.label = safe_label(label);
+        enqueue(std::move(command));
     }
 
     void set_world_point(HighlightId id, Vector3 world) {
@@ -446,6 +480,19 @@ class Manager {
 
     void set_screen_rect(HighlightId id, Vector2 min, Vector2 max) {
         set_screen_rect(id, to_imgui(min), to_imgui(max));
+    }
+
+    void enqueue_set_screen_rect(HighlightId id, ImVec2 min, ImVec2 max) {
+        PendingCommand command{};
+        command.kind = PendingKind::SetScreenRect;
+        command.id = id;
+        command.screen_min = min;
+        command.screen_max = max;
+        enqueue(std::move(command));
+    }
+
+    void enqueue_set_screen_rect(HighlightId id, Vector2 min, Vector2 max) {
+        enqueue_set_screen_rect(id, to_imgui(min), to_imgui(max));
     }
 
     void set_screen_center(HighlightId id, ImVec2 center) {
@@ -573,6 +620,25 @@ class Manager {
                 case PendingKind::AddWorldPoint:
                     add_world_point_entry(command.id, command.world, command.label.c_str(), command.style);
                     break;
+                case PendingKind::AddScreenRect: {
+                    Entry entry{};
+                    entry.id = command.id;
+                    entry.kind = TargetKind::ScreenRect;
+                    entry.screen_min = command.screen_min;
+                    entry.screen_max = command.screen_max;
+                    entry.style = command.style;
+                    entry.label = command.label;
+                    index_[entry.id] = entries_.size();
+                    entries_.push_back(entry);
+                    note_state(entries_.back(), DebugState::Added, nullptr, "screen rect registered");
+                    break;
+                }
+                case PendingKind::SetScreenRect:
+                    set_screen_rect(command.id, command.screen_min, command.screen_max);
+                    break;
+                case PendingKind::SetLabel:
+                    set_label(command.id, command.label.c_str());
+                    break;
                 case PendingKind::MarkDirty:
                     mark_dirty(command.id);
                     break;
@@ -621,6 +687,12 @@ class Manager {
             return ResolveState::Skipped;
 
         const ProjectionResult &projection = entry.last_projection;
+
+        if (entry.style.max_distance > 0.0f && projection.distance > entry.style.max_distance) {
+            note_state(entry, DebugState::TooFar, &projection,
+                       "target is beyond the configured maximum highlight distance");
+            return ResolveState::Skipped;
+        }
 
         if (projection.on_screen && entry.style.hide_within_distance > 0.0f && projection.distance > 0.0f &&
             projection.distance <= entry.style.hide_within_distance) {
@@ -998,6 +1070,8 @@ class Manager {
                 return "offscreen";
             case DebugState::TooClose:
                 return "too_close";
+            case DebugState::TooFar:
+                return "too_far";
             case DebugState::InvalidRect:
                 return "invalid_rect";
             case DebugState::MissingTransform:
@@ -1192,6 +1266,22 @@ inline HighlightId add_screen_rect(Vector2 min, Vector2 max, const char *label, 
     return manager().add_screen_rect(min, max, label, style);
 }
 
+inline HighlightId enqueue_add_screen_rect(ImVec2 min, ImVec2 max, const char *label, Style style = {}) {
+    return manager().enqueue_add_screen_rect(min, max, label, style);
+}
+
+inline HighlightId enqueue_add_screen_rect(Vector2 min, Vector2 max, const char *label, Style style = {}) {
+    return manager().enqueue_add_screen_rect(min, max, label, style);
+}
+
+inline void enqueue_set_screen_rect(HighlightId id, ImVec2 min, ImVec2 max) {
+    manager().enqueue_set_screen_rect(id, min, max);
+}
+
+inline void enqueue_set_screen_rect(HighlightId id, Vector2 min, Vector2 max) {
+    manager().enqueue_set_screen_rect(id, min, max);
+}
+
 inline bool remove(HighlightId id) {
     return manager().remove(id);
 }
@@ -1202,6 +1292,10 @@ inline void clear() {
 
 inline void set_label(HighlightId id, const char *label) {
     manager().set_label(id, label);
+}
+
+inline void enqueue_set_label(HighlightId id, const char *label) {
+    manager().enqueue_set_label(id, label);
 }
 
 inline void mark_dirty(HighlightId id) {
